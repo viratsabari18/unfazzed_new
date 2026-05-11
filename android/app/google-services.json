@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "888601961403",
+    "project_id": "aphomeservices-5ws1oh",
+    "storage_bucket": "aphomeservices-5ws1oh.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888601961403:android:d2df81f9974770189d5a9e",
+        "android_client_info": {
+          "package_name": "com.aphomeservices.zeerah"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8qDhsCwyCFTwwf9grfTm2i7pPtV-KFkw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
