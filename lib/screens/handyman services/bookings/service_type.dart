@@ -335,22 +335,6 @@ class _ServiceTypeState extends State<ServiceType> {
                       ),
                     ),
                     SizedBox(width: Insets.sm),
-                    TextButton(
-                      onPressed: () => Navigator.pushNamed(context, AppRoutes.selectLocation),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(horizontal: Insets.xsm),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text(
-                        "Change",
-                        style: TextStyle(
-                          color: AppColors.primaryRed,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               );

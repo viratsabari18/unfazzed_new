@@ -358,12 +358,17 @@ class _BookingHistoryState extends State<BookingHistory> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(handyman?['display_name']?.toString() ?? item['provider_name']?.toString() ?? "Finding..."),
-                                  SizedBox(height: AppSizes.h(context, 4)),
                                   Text(
-                                    UserMessages.handyman,
-                                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                    (status == BookingStatus.cancelled || status == BookingStatus.rejected)
+                                        ? "Cancelled"
+                                        : (handyman?['display_name']?.toString() ?? item['provider_name']?.toString() ?? "Finding...")
                                   ),
+                                  SizedBox(height: AppSizes.h(context, 4)),
+                                  if (status != BookingStatus.cancelled && status != BookingStatus.rejected)
+                                    Text(
+                                      UserMessages.handyman,
+                                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                    ),
                                 ],
                               ),
                             ],

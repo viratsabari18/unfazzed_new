@@ -2,6 +2,7 @@ import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/providers/dashboard_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:zeerah/screens/home/coming_soon_section.dart';
 
 class ExpoloreCategories extends StatelessWidget {
   const ExpoloreCategories({super.key});
@@ -14,6 +15,10 @@ class ExpoloreCategories extends StatelessWidget {
 
         if (dashboardProvider.isLoading && categories.isEmpty) {
           return const SizedBox.shrink();
+        }
+
+        if (categories.isEmpty && !dashboardProvider.isLoading) {
+          return const ComingSoonSection();
         }
 
         return Column(

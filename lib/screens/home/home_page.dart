@@ -27,10 +27,10 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 children: [
                   const HomeTopBanner(),
-                  Transform.translate(
-                    offset: const Offset(0, -30),
-                    child: const HomeOfferSection(),
-                  ),
+                  // Transform.translate(
+                  //   offset: const Offset(0, -30),
+                  //   child: const HomeOfferSection(),
+                  // ),
                 ],
               ),
             ),

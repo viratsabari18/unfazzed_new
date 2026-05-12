@@ -51,6 +51,10 @@ class ExpolreCategoriesStack extends StatelessWidget {
           );
         }
 
+        if (dashboardProvider.categories.isEmpty && !dashboardProvider.isLoading) {
+          return const SizedBox.shrink();
+        }
+
         if (items.isEmpty && !dashboardProvider.isLoading) {
           // Show a placeholder card if no items are found
           return Column(
@@ -234,14 +238,6 @@ class _EditorPickCarouselState extends State<EditorPickCarousel> {
   }) {
     final n = widget.items.length;
     final centerV = page.floor();
-    if (n == 1) {
-      return _buildPositionedCard(
-        item: widget.items[0],
-        delta: 0,
-        cardWidth: cardWidth,
-        cardHeight: cardHeight,
-      );
-    }
 
     final entries = <_RenderEntry>[];
     for (var offset = -2; offset <= 4; offset++) {

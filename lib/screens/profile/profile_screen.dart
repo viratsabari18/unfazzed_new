@@ -7,6 +7,7 @@ import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/services/auth_service.dart';
 import 'package:zeerah/core/services/payment_service.dart';
 import 'package:zeerah/core/common/notification_switch.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
   final UserModel? user;
@@ -143,7 +144,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _ProfileMenuItem(
                   icon: Icons.phone_outlined,
                   title: 'Helpline Number',
-                  onTap: () {},
+                  onTap: () async {
+                    final Uri launchUri = Uri(
+                      scheme: 'tel',
+                      path: '7986544683',
+                    );
+                    if (await canLaunchUrl(launchUri)) {
+                      await launchUrl(launchUri);
+                    }
+                  },
                 ),
                 _ProfileMenuItem(
                   icon: Icons.notifications_none_outlined,
