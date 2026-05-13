@@ -5,26 +5,39 @@ import 'package:http/http.dart' as http;
 class BookingService {
   final String baseUrl = ApiConfig.apiBaseUrl;
 
-  Future<Map<String, dynamic>> fetchBookingList({String? token}) async {
-    try {
-      final response = await http.get(
-        Uri.parse("$baseUrl/booking-list"),
-        headers: {
-          'Accept': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-          
-        },
-      );
+Future<Map<String, dynamic>> fetchBookingList({String? token}) async {
+  try {
+    final response = await http.get(
+      Uri.parse("$baseUrl/booking-list"),
+      headers: {
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
 
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
-      return {};
-    } catch (e) {
-      print("Error fetching booking list: $e");
-      return {};
+    // PRINT STATUS CODE
+    print("BOOKING LIST STATUS CODE: ${response.statusCode}");
+
+    // PRINT RAW RESPONSE
+    print("BOOKING LIST RAW RESPONSE:");
+    print(response.body);
+
+    if (response.statusCode == 200) {
+      final decodedData = json.decode(response.body);
+
+      // PRINT DECODED JSON
+      print("BOOKING LIST DECODED DATA:");
+      print(decodedData);
+
+      return decodedData;
     }
+
+    return {};
+  } catch (e) {
+    print("Error fetching booking list: $e");
+    return {};
   }
+}
 
   Future<Map<String, dynamic>> fetchBookingDetail({required String bookingId, String? token}) async {
     try {

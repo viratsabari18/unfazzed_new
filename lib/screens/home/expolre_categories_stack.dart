@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:zeerah/core/common/app_exports.dart';
+import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/core/providers/dashboard_provider.dart';
 
 class ExpolreCategoriesStack extends StatelessWidget {
@@ -17,6 +18,14 @@ class ExpolreCategoriesStack extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<DashboardProvider>(
       builder: (context, dashboardProvider, _) {
+        final addressProvider =
+    Provider.of<AddressProvider>(context);
+
+final location = addressProvider.selectedLocation;
+
+if (location == null) {
+  return const SizedBox.shrink();
+}
         final subCategories = dashboardProvider.currentSubCategories;
         
         // Map dynamic sub-categories to CategoryItem format for the carousel, deduplicating by title

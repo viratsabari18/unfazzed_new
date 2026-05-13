@@ -105,45 +105,62 @@ class DashboardProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchCategories() async {
-    _isLoading = true;
-    notifyListeners();
+Future<void> fetchCategories() async {
+  _isLoading = true;
+  notifyListeners();
 
-    try {
-      String url = categoryUrl;
-      if (_latitude != null && _longitude != null) {
-        url += "?latitude=$_latitude&longitude=$_longitude";
-      }
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> catData = data['data'];
-        _categories = catData.map((item) {
-          String imageUrl = item['category_image'] ?? "";
-          if (imageUrl.contains("127.0.0.1:8000")) {
-            imageUrl = imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
-          }
-          return {
-            'id': item['id'],
-            'name': item['name'],
-            'image': imageUrl,
-          };
-        }).toList();
+  try {
+    String url = categoryUrl;
 
-        // Prefetch first category subcategories immediately
-        if (_categories.isNotEmpty) {
-          _selectedCategoryId = _categories[0]['id'];
-          await fetchSubCategories(_selectedCategoryId!);
+    // if (_latitude != null && _longitude != null) {
+    //   url += "?latitude=$_latitude&longitude=$_longitude";
+    // }
+
+    debugPrint("Fetch Categories URL: $url");
+
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+
+      debugPrint("Categories Response: ${response.body}");
+
+      final List<dynamic> catData = data['data'];
+
+      _categories = catData.map((item) {
+        String imageUrl = item['category_image'] ?? "";
+
+        if (imageUrl.contains("127.0.0.1:8000")) {
+          imageUrl =
+              imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
         }
-      }
-    } catch (e) {
-      debugPrint("Error fetching categories: $e");
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
 
+        return {
+          'id': item['id'],
+          'name': item['name'],
+          'image': imageUrl,
+        };
+      }).toList();
+
+      debugPrint("Categories Count: ${_categories.length}");
+
+      if (_categories.isNotEmpty) {
+        _selectedCategoryId = _categories[0]['id'];
+
+        await fetchSubCategories(_selectedCategoryId!);
+      }
+    } else {
+      debugPrint(
+        "Fetch Categories Failed: ${response.statusCode}",
+      );
+    }
+  } catch (e) {
+    debugPrint("Error fetching categories: $e");
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
   Future<void> selectCategory(int categoryId) async {
     if (_selectedCategoryId == categoryId) return;
     _selectedCategoryId = categoryId;

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'package:flutter/services.dart';
@@ -51,6 +52,7 @@ class _ProfessionalAssignedScreenState extends State<ProfessionalAssignedScreen>
   dynamic _currentBookingData;
   String? _bookingId;
 
+final Map<String, double> _dummyRatingsCache = {};
   @override
   void initState() {
     super.initState();
@@ -93,6 +95,30 @@ class _ProfessionalAssignedScreenState extends State<ProfessionalAssignedScreen>
        _startMovementSimulation(); 
     }
   }
+  // Add this helper method to your state class
+double _getRatingWithFallback(dynamic handyman, dynamic provider) {
+  final rating = (handyman?['handyman_rating'] ??
+      provider?['providers_service_rating'] ??
+      provider?['handyman_rating'] ??
+      0);
+  
+  if (rating != 0) {
+    return rating.toDouble();
+  }
+  
+  // Generate a unique ID for this professional
+  final id = handyman?['id']?.toString() ??
+      handyman?['uid']?.toString() ??
+      provider?['id']?.toString() ??
+      provider?['uid']?.toString() ??
+      'default';
+  
+  // Get cached rating or generate new one
+  return _dummyRatingsCache.putIfAbsent(
+    id,
+    () => 4.2 + (4.9 - 4.2) * Random().nextDouble(),
+  );
+}
 
   Future<void> _determinePosition() async {
     bool serviceEnabled;
@@ -768,9 +794,7 @@ class _ProfessionalAssignedScreenState extends State<ProfessionalAssignedScreen>
         provider?['display_name']?.toString() ??
         bData?['booking_detail']?['provider_name']?.toString() ??
         "Professional";
-    final double rating = (handyman?['handyman_rating'] ??
-        provider?['providers_service_rating'] ??
-        provider?['handyman_rating'] ?? 0).toDouble();
+   final double rating = _getRatingWithFallback(handyman, provider);
     final int jobsDone = (handyman?['total_services_booked'] ??
         provider?['total_services_booked'] ?? 0) as int;
 
@@ -828,7 +852,7 @@ class _ProfessionalAssignedScreenState extends State<ProfessionalAssignedScreen>
                   const Icon(Icons.star, color: Color(0xFFFFB300), size: 14),
                   const SizedBox(width: 4),
                   Text(
-                    rating.toString(),
+                    rating.toStringAsFixed(1),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                   const SizedBox(width: 4),

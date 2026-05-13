@@ -14,6 +14,43 @@
       },
       "oauth_client": [
         {
+          "client_id": "888601961403-anfr3q9he33ehj3ran6dk5bgi4423v1q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aphomeservices.zeerah",
+            "certificate_hash": "0c2c1d22c4a94dc3be90bcb732e724064d64cd6e"
+          }
+        },
+        {
+          "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8qDhsCwyCFTwwf9grfTm2i7pPtV-KFkw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888601961403:android:6eeccc51de64d3e29d5a9e",
+        "android_client_info": {
+          "package_name": "com.fixom.provider.app"
+        }
+      },
+      "oauth_client": [
+        {
           "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
           "client_type": 3
         }

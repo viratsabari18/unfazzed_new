@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zeerah/core/common/app_exports.dart';
+import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/widgets/custom/social_button.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/services/auth_service.dart';
@@ -16,22 +17,36 @@ class SignInScreen extends StatefulWidget {
 class _SignInScreenState extends State<SignInScreen> {
   final TextEditingController phoneController = TextEditingController();
   final AuthService _authService = AuthService();
-  
+
   bool isLoading = false;
   String? errorText;
 
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => isLoading = true);
-    final userCredential = await _authService.signInWithGoogle();
-    setState(() => isLoading = false);
-    
-    if (userCredential != null && userCredential.user != null) {
-      if (mounted) {
-        Provider.of<UserProvider>(context, listen: false).setUser(userCredential.user);
-        Navigator.pushReplacementNamed(context, AppRoutes.landingPage);
-      }
+ Future<void> _handleGoogleSignIn() async {
+  setState(() => isLoading = true);
+
+  final userCredential = await _authService.signInWithGoogle();
+
+  if (userCredential != null && userCredential.user != null) {
+    if (mounted) {
+      Provider.of<UserProvider>(
+        context,
+        listen: false,
+      ).setUser(userCredential.user);
+
+      await Provider.of<AddressProvider>(
+        context,
+        listen: false,
+      ).setCurrentLocationAutomatically();
+
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.landingPage,
+      );
     }
   }
+
+  setState(() => isLoading = false);
+}
 
   Future<void> _handlePhoneSignIn() async {
     String? error = Validations.validatePhone(phoneController.text);
@@ -42,15 +57,19 @@ class _SignInScreenState extends State<SignInScreen> {
     }
 
     setState(() => isLoading = true);
-    
+
     final formattedPhone = "+91${phoneController.text.trim()}";
-    
+
     await _authService.verifyPhoneNumber(
       phoneNumber: formattedPhone,
-      onCodeSent: (verificationId) {
+      onCodeSent: (verificationId) async {
+        await Provider.of<AddressProvider>(
+          context,
+          listen: false,
+        ).setCurrentLocationAutomatically();
         setState(() => isLoading = false);
         Navigator.pushNamed(
-          context, 
+          context,
           AppRoutes.otpVerifly,
           arguments: {
             'verificationId': verificationId,
@@ -117,9 +136,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           fontSize: w * 0.035,
                         ),
                         children: [
-                          const TextSpan(
-                            text: UserMessages.termsOfUse1,
-                          ),
+                          const TextSpan(text: UserMessages.termsOfUse1),
                           TextSpan(
                             text: UserMessages.termsOfUse2,
                             style: TextStyles.bodySmall.copyWith(
@@ -184,8 +201,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
                         if (errorText != null)
                           Padding(
-                            padding:
-                                EdgeInsets.only(left: Insets.xs, top: 5),
+                            padding: EdgeInsets.only(left: Insets.xs, top: 5),
                             child: Text(
                               errorText!,
                               style: TextStyle(
@@ -200,7 +216,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     SizedBox(height: h * 0.012),
 
                     Text(
-                    UserMessages.sendOtpToYourNumber,
+                      UserMessages.sendOtpToYourNumber,
                       style: TextStyles.bodySmall.copyWith(
                         color: AppColors.naturalBlack,
                         fontSize: w * 0.035,
@@ -231,7 +247,6 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                     ),
 
-
                     SizedBox(height: h * 0.025),
 
                     SocialButton(
@@ -245,7 +260,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     SizedBox(height: h * 0.015),
 
                     SocialButton(
-                      image:UserMessages.signInWithMailImage ,
+                      image: UserMessages.signInWithMailImage,
                       text: UserMessages.signInWithMail,
                       width: w,
                       height: h,

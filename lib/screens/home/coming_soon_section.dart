@@ -51,9 +51,9 @@ class ComingSoonSection extends StatelessWidget {
                   text: "COMING ",
                   style: TextStyle(color: Color(0xFFC5C5C5)),
                 ),
-                const TextSpan(
+                TextSpan(
                   text: "SOON",
-                  style: TextStyle(color: Color(0xFF1B9E56)),
+                  style: TextStyle(color: AppColors.primaryRed),
                 ),
               ],
             ),
@@ -74,7 +74,7 @@ class ComingSoonSection extends StatelessWidget {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.sm),
               decoration: BoxDecoration(
-                color: const Color(0xFF1B9E56),
+                color: AppColors.blinkingRed,
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Text(

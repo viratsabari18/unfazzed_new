@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/booking_history.dart';
 import 'package:zeerah/screens/home/home_page.dart';
@@ -18,7 +17,7 @@ class _LandingScreenState extends State<LandingScreen> {
 
   final List<Widget> pages = [
     const HomePage(),
-     BookingHistory(),
+    BookingHistory(),
     const MessageScreen(),
     ProfileScreen(user: UserModel.mock()),
   ];
@@ -165,18 +164,9 @@ class NavBarPainter extends CustomPainter {
 
     path.moveTo(0, 0);
     path.lineTo(centerX - 44.2, 0);
-    path.quadraticBezierTo(
-      centerX - 29.75, 0,
-      centerX - 22.1, 10.2,
-    );
-    path.quadraticBezierTo(
-      centerX, 38.25,
-      centerX + 22.1, 10.2,
-    );
-    path.quadraticBezierTo(
-      centerX + 29.75, 0,
-      centerX + 44.2, 0,
-    );
+    path.quadraticBezierTo(centerX - 29.75, 0, centerX - 22.1, 10.2);
+    path.quadraticBezierTo(centerX, 38.25, centerX + 22.1, 10.2);
+    path.quadraticBezierTo(centerX + 29.75, 0, centerX + 44.2, 0);
     path.lineTo(size.width, 0);
     path.lineTo(size.width, size.height);
     path.lineTo(0, size.height);

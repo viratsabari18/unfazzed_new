@@ -25,8 +25,16 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshDashboardData();
-      
+      final addressProvider = Provider.of<AddressProvider>(
+        context,
+        listen: false,
+      );
+
+      // ONLY LOAD WHEN LOCATION EXISTS
+      if (addressProvider.selectedLocation != null) {
+        _refreshDashboardData();
+      }
+
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       if (userProvider.apiToken != null && userProvider.apiToken!.isNotEmpty) {
         _fetchWalletBalance();
@@ -36,7 +44,10 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
       }
 
       // Refresh dashboard if address changes
-      Provider.of<AddressProvider>(context, listen: false).addListener(_onAddressChange);
+      Provider.of<AddressProvider>(
+        context,
+        listen: false,
+      ).addListener(_onAddressChange);
     });
   }
 
@@ -46,24 +57,38 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
   }
 
   void _refreshDashboardData({bool force = false}) {
-    final addressProvider = Provider.of<AddressProvider>(context, listen: false);
+    final addressProvider = Provider.of<AddressProvider>(
+      context,
+      listen: false,
+    );
     final location = addressProvider.selectedLocation;
-    
-    double? lat = location?['latitude'] != null ? double.tryParse(location!['latitude'].toString()) : null;
-    double? lng = location?['longitude'] != null ? double.tryParse(location!['longitude'].toString()) : null;
-    
-    final dashboardProvider = Provider.of<DashboardProvider>(context, listen: false);
-    
+
+    if (location == null ||
+        location['latitude'] == null ||
+        location['longitude'] == null) {
+      debugPrint("Location not selected yet");
+      return;
+    }
+
+    double? lat = location?['latitude'] != null
+        ? double.tryParse(location!['latitude'].toString())
+        : null;
+    double? lng = location?['longitude'] != null
+        ? double.tryParse(location!['longitude'].toString())
+        : null;
+
+    final dashboardProvider = Provider.of<DashboardProvider>(
+      context,
+      listen: false,
+    );
+
     if (force) {
       dashboardProvider.setLocation(lat, lng);
       dashboardProvider.fetchDashboardData();
       dashboardProvider.fetchCategories();
       dashboardProvider.fetchOffers();
     } else {
-      dashboardProvider.fetchInitialData(
-        latitude: lat,
-        longitude: lng,
-      );
+      dashboardProvider.fetchInitialData(latitude: lat, longitude: lng);
     }
   }
 
@@ -83,8 +108,11 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       userProvider.removeListener(_onUserProviderChange);
-      
-      final addressProvider = Provider.of<AddressProvider>(context, listen: false);
+
+      final addressProvider = Provider.of<AddressProvider>(
+        context,
+        listen: false,
+      );
       addressProvider.removeListener(_onAddressChange);
     } catch (e) {
       debugPrint("Error removing listeners in HomeTopBanner: $e");
@@ -101,23 +129,28 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
 
     if (mounted && response['notification_data'] != null) {
       final List notifications = response['notification_data'];
-      final unreadCount = notifications.where((n) => n['read_at'] == null).length;
+      final unreadCount = notifications
+          .where((n) => n['read_at'] == null)
+          .length;
       userProvider.updateUnreadNotificationCount(unreadCount);
     }
   }
 
   Future<void> _fetchWalletBalance() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    
+
     // Only fetch if we have an API token
     if (userProvider.apiToken == null || userProvider.apiToken!.isEmpty) {
       return;
     }
-    
+
     try {
-      final history = await _paymentService.fetchWalletHistory(token: userProvider.apiToken);
+      final history = await _paymentService.fetchWalletHistory(
+        token: userProvider.apiToken,
+      );
       if (mounted && history['available_balance'] != null) {
-        final balance = double.tryParse(history['available_balance'].toString()) ?? 0.0;
+        final balance =
+            double.tryParse(history['available_balance'].toString()) ?? 0.0;
         userProvider.updateWalletBalance(balance);
       }
     } catch (e) {
@@ -129,8 +162,8 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
   Widget build(BuildContext context) {
     return Consumer<DashboardProvider>(
       builder: (context, dashboardProvider, _) {
-        final List<String> banners = dashboardProvider.sliderImages.isNotEmpty 
-            ? dashboardProvider.sliderImages 
+        final List<String> banners = dashboardProvider.sliderImages.isNotEmpty
+            ? dashboardProvider.sliderImages
             : [
                 UserMessages.homepageBannerDummy2,
                 UserMessages.homepageBannerDummy3,
@@ -138,10 +171,13 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                 UserMessages.homepageBannerDummy,
               ];
 
-        if (dashboardProvider.isLoading && dashboardProvider.sliderImages.isEmpty) {
+        if (dashboardProvider.isLoading &&
+            dashboardProvider.sliderImages.isEmpty) {
           return SizedBox(
             height: AppSizes.h(context, 325),
-            child: const Center(child: CircularProgressIndicator(color: AppColors.primaryRed)),
+            child: const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryRed),
+            ),
           );
         }
 
@@ -161,23 +197,26 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                   },
                 ),
                 items: banners.map((image) {
-                  return image.startsWith('http') 
-                    ? CachedNetworkImage(
-                        imageUrl: image,
-                        httpHeaders: const {},
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator()),
-                        ),
-                        errorWidget: (context, url, error) => const Icon(Icons.error),
-                      )
-                    : Image.asset(
-                        image,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      );
+                  return image.startsWith('http')
+                      ? CachedNetworkImage(
+                          imageUrl: image,
+                          httpHeaders: const {},
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.error),
+                        )
+                      : Image.asset(
+                          image,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        );
                 }).toList(),
               ),
               Positioned(
@@ -226,17 +265,23 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
             child: Consumer<AddressProvider>(
               builder: (context, provider, _) {
                 final selectedLoc = provider.selectedLocation;
-                final String address = selectedLoc?['address'] ?? "Select your location";
-                
+                final String address =
+                    selectedLoc?['address'] ?? "Select your location";
+
                 return GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.selectLocation),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.selectLocation),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.near_me, color: Colors.black, size: 18),
+                          const Icon(
+                            Icons.near_me,
+                            color: Colors.black,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
                           Consumer<UserProvider>(
                             builder: (context, userProvider, _) {
@@ -296,10 +341,7 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const SizedBox(width: 8),
-                    Image.asset(
-                      UserMessages.homepageAppbarCoin,
-                      height: 24,
-                    ),
+                    Image.asset(UserMessages.homepageAppbarCoin, height: 24),
                     const SizedBox(width: 6),
                     Consumer<UserProvider>(
                       builder: (context, userProvider, _) {
@@ -315,7 +357,8 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+                      onTap: () =>
+                          Navigator.pushNamed(context, AppRoutes.profile),
                       child: Container(
                         padding: const EdgeInsets.all(2),
                         decoration: const BoxDecoration(
@@ -325,7 +368,11 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                         child: const CircleAvatar(
                           radius: 14,
                           backgroundColor: Color(0xFFE53935),
-                          child: Icon(Icons.person, color: Colors.white, size: 18),
+                          child: Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
                       ),
                     ),
@@ -335,21 +382,29 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
               const SizedBox(width: 12),
               // Notification Icon
               GestureDetector(
-                onTap: () => Navigator.pushNamed(context, AppRoutes.notificationHistory),
+                onTap: () =>
+                    Navigator.pushNamed(context, AppRoutes.notificationHistory),
                 child: Consumer<UserProvider>(
                   builder: (context, userProvider, _) {
                     final count = userProvider.unreadNotificationCount;
                     return Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        const Icon(Icons.notifications, color: Colors.black, size: 32),
+                        const Icon(
+                          Icons.notifications,
+                          color: Colors.black,
+                          size: 32,
+                        ),
                         if (count > 0)
                           Positioned(
                             right: -2,
                             top: -2,
                             child: Container(
                               padding: const EdgeInsets.all(4),
-                              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
                               decoration: const BoxDecoration(
                                 color: Color(0xFFFFD600),
                                 shape: BoxShape.circle,

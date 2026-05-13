@@ -6,6 +6,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:zeerah/core/common/app_exports.dart';
 import 'package:provider/provider.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
+import 'package:zeerah/screens/location/address_type_bottomsheet.dart';
 
 class SelectLocationScreen extends StatelessWidget {
   const SelectLocationScreen({super.key});
@@ -15,10 +16,12 @@ class SelectLocationScreen extends StatelessWidget {
     final savedAddresses = Provider.of<AddressProvider>(context).savedAddresses;
 
     // Set status bar to light icons on dark background
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A1A),
@@ -34,7 +37,11 @@ class SelectLocationScreen extends StatelessWidget {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 28),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                     Text(
@@ -59,7 +66,9 @@ class SelectLocationScreen extends StatelessWidget {
               _buildSectionLabel('SAVED ADDRESSES'),
 
               // Saved Address Cards
-              ...savedAddresses.map((address) => _buildSavedAddressCard(context, address)),
+              ...savedAddresses.map(
+                (address) => _buildSavedAddressCard(context, address),
+              ),
 
               const SizedBox(height: 24), // Bottom padding
             ],
@@ -87,7 +96,11 @@ class SelectLocationScreen extends StatelessWidget {
             color: const Color(0xFF757575),
             fontSize: 15,
           ),
-          prefixIcon: const Icon(Icons.search, color: Color(0xFF757575), size: 22),
+          prefixIcon: const Icon(
+            Icons.search,
+            color: Color(0xFF757575),
+            size: 22,
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
@@ -104,49 +117,6 @@ class SelectLocationScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Use Current Location
-          _buildLocationOptionItem(
-            icon: Icons.gps_fixed,
-            title: 'Use current location',
-            subtitle: 'Using GPS for exact location',
-            onTap: () async {
-              try {
-                // Request permission
-                LocationPermission permission = await Geolocator.checkPermission();
-                if (permission == LocationPermission.denied) {
-                  permission = await Geolocator.requestPermission();
-                }
-                
-                if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
-                  Position position = await Geolocator.getCurrentPosition();
-                  List<Placemark> placemarks = await placemarkFromCoordinates(
-                    position.latitude,
-                    position.longitude,
-                  );
-                  
-                  if (placemarks.isNotEmpty) {
-                    final p = placemarks.first;
-                    final String name = p.subLocality ?? p.locality ?? 'Current Location';
-                    final String fullAddress = "${p.name ?? ''} ${p.subLocality ?? ''} ${p.locality ?? ''}".trim();
-                    
-                    final location = {
-                      'label': 'Home',
-                      'icon': Icons.home_outlined,
-                      'address': fullAddress,
-                      'latitude': position.latitude,
-                      'longitude': position.longitude,
-                      'distance': '0 m',
-                    };
-                    
-                    Provider.of<AddressProvider>(context, listen: false).setSelectedLocation(location);
-                    Navigator.pop(context);
-                  }
-                }
-              } catch (e) {
-                debugPrint("Error getting current location: $e");
-              }
-            },
-          ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Divider(color: Color(0xFF3A3A3A), height: 1),
@@ -155,7 +125,18 @@ class SelectLocationScreen extends StatelessWidget {
           _buildLocationOptionItem(
             icon: Icons.add,
             title: 'Add Address',
-            onTap: () => Navigator.pushNamed(context, AppRoutes.confirmLocation),
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: const Color(0xFF1C1C1C),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (_) {
+                  return const AddressTypeBottomSheet();
+                },
+              );
+            },
           ),
         ],
       ),
@@ -216,7 +197,9 @@ class SelectLocationScreen extends StatelessWidget {
       margin: const EdgeInsets.only(top: 24, left: 16, right: 16, bottom: 8),
       child: Row(
         children: [
-          const Expanded(child: Divider(color: Color(0xFF3A3A3A), thickness: 1)),
+          const Expanded(
+            child: Divider(color: Color(0xFF3A3A3A), thickness: 1),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
@@ -229,16 +212,24 @@ class SelectLocationScreen extends StatelessWidget {
               ),
             ),
           ),
-          const Expanded(child: Divider(color: Color(0xFF3A3A3A), thickness: 1)),
+          const Expanded(
+            child: Divider(color: Color(0xFF3A3A3A), thickness: 1),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSavedAddressCard(BuildContext context, Map<String, dynamic> data) {
+  Widget _buildSavedAddressCard(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
     return GestureDetector(
       onTap: () {
-        Provider.of<AddressProvider>(context, listen: false).setSelectedLocation(data);
+        Provider.of<AddressProvider>(
+          context,
+          listen: false,
+        ).setSelectedLocation(data);
         Navigator.pop(context);
       },
       child: Container(
@@ -248,88 +239,101 @@ class SelectLocationScreen extends StatelessWidget {
           color: const Color(0xFF242424),
           borderRadius: BorderRadius.circular(14),
         ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left Column: Icon + Distance
-          SizedBox(
-            width: 48,
-            child: Column(
-              children: [
-                Icon(data['icon'], color: Colors.white, size: 26),
-                const SizedBox(height: 4),
-                Text(
-                  data['distance'],
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFF9E9E9E),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Right Column: Address Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['label'],
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  data['address'],
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 13,
-                  ),
-                ),
-                if (data['phone'] != null) ...[
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left Column: Icon + Distance
+            SizedBox(
+              width: 48,
+              child: Column(
+                children: [
+                  Icon(data['icon'], color: Colors.white, size: 26),
                   const SizedBox(height: 4),
-                  RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.poppins(fontSize: 12),
-                      children: [
-                        const TextSpan(
-                          text: 'Phone number: ',
-                          style: TextStyle(color: Color(0xFF9E9E9E)),
-                        ),
-                        TextSpan(
-                          text: data['phone'],
-                          style: const TextStyle(
-                            color: Color(0xFFE53935),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    data['distance'],
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      color: const Color(0xFF9E9E9E),
+                      fontSize: 11,
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _buildActionButton(Icons.more_horiz),
-                    const SizedBox(width: 10),
-                    _buildActionButton(Icons.share, isShare: true),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            // Right Column: Address Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    data['label'],
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    data['address'],
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (data['phone'] != null) ...[
+                    const SizedBox(height: 4),
+                    RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.poppins(fontSize: 12),
+                        children: [
+                          const TextSpan(
+                            text: 'Phone number: ',
+                            style: TextStyle(color: Color(0xFF9E9E9E)),
+                          ),
+                          TextSpan(
+                            text: data['phone'],
+                            style: const TextStyle(
+                              color: Color(0xFFE53935),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildActionButton(Icons.more_horiz),
+                      const SizedBox(width: 10),
+                      _buildActionButton(Icons.share, isShare: true),
+                      const SizedBox(width: 10),
+                      IconButton(
+                        onPressed: () {
+                          Provider.of<AddressProvider>(
+                            context,
+                            listen: false,
+                          ).deleteAddress(data);
+                        },
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildActionButton(IconData icon, {bool isShare = false}) {
     return Container(
@@ -343,7 +347,11 @@ class SelectLocationScreen extends StatelessWidget {
         child: isShare
             ? Transform.scale(
                 scaleX: -1,
-                child: Icon(Icons.reply, color: const Color(0xFFE53935), size: 18),
+                child: Icon(
+                  Icons.reply,
+                  color: const Color(0xFFE53935),
+                  size: 18,
+                ),
               )
             : Icon(icon, color: const Color(0xFFE53935), size: 18),
       ),

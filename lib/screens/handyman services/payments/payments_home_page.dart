@@ -184,7 +184,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.naturalWhite),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.bookingHistory),
         ),
         centerTitle: true,
         title: Text(

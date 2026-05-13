@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zeerah/core/config/api_config.dart';
 import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
@@ -17,7 +19,7 @@ class ServiceInProgress extends StatefulWidget {
   final DateTime? startTime;
   final DateTime? completionTime;
   final String? price;
-  
+
   const ServiceInProgress({
     super.key,
     required this.serviceDuration,
@@ -58,93 +60,159 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
   Future<void> _checkCompletionStatus() async {
     String? bookingId;
     if (widget.bookingData != null) {
-      final bData = widget.bookingData is List ? (widget.bookingData as List).first : widget.bookingData;
-      bookingId = bData['booking_detail']?['id']?.toString() ?? 
-                  bData['id']?.toString();
+      final bData = widget.bookingData is List
+          ? (widget.bookingData as List).first
+          : widget.bookingData;
+      bookingId =
+          bData['booking_detail']?['id']?.toString() ?? bData['id']?.toString();
     }
-    
+
     if (bookingId == null) return;
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final apiToken = userProvider.apiToken;
-      final url = Uri.parse('${ApiConfig.apiBaseUrl}/booking-detail?booking_id=$bookingId');
-      
-      final response = await http.get(url, headers: {
-        'Authorization': 'Bearer $apiToken',
-        'Accept': 'application/json',
-        
-      });
+      final url = Uri.parse(
+        '${ApiConfig.apiBaseUrl}/booking-detail?booking_id=$bookingId',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $apiToken',
+          'Accept': 'application/json',
+        },
+      );
 
       if (response.statusCode == 200) {
         final rawData = json.decode(response.body);
-        final data = rawData is List ? (rawData.isNotEmpty ? rawData.first : {}) : rawData;
-        
+        final data = rawData is List
+            ? (rawData.isNotEmpty ? rawData.first : {})
+            : rawData;
+
         final rawDetail = data['booking_detail'];
-        final bookingDetail = rawDetail is List ? (rawDetail.isNotEmpty ? rawDetail.first : {}) : rawDetail;
-        final rawStatus = (bookingDetail?['status'] ?? data['status'])?.toString() ?? "";
+        final bookingDetail = rawDetail is List
+            ? (rawDetail.isNotEmpty ? rawDetail.first : {})
+            : rawDetail;
+        final rawStatus =
+            (bookingDetail?['status'] ?? data['status'])?.toString() ?? "";
         final currentStatus = rawStatus.trim().toLowerCase();
-        
+
         if (data != null && mounted) {
-           setState(() {
-             _currentBookingData = data;
-           });
+          setState(() {
+            _currentBookingData = data;
+          });
         }
 
         if (currentStatus == 'completed') {
-           _handleServiceCompletion(stopPolling: true);
+          _handleServiceCompletion(stopPolling: true);
         } else if (currentStatus == 'pending_approval') {
-           _handleServiceCompletion(stopPolling: false);
+          _handleServiceCompletion(stopPolling: false);
         }
       }
     } catch (_) {}
   }
 
-  void _startTimer() {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    
-    // Sync with global elapsed time if it already exists
-    if (userProvider.elapsedSeconds > 0 && totalSeconds == widget.serviceDuration) {
-      totalSeconds = userProvider.elapsedSeconds;
+  void _startTimer() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    String? bookingId;
+
+    if (widget.bookingData != null) {
+      final bData = widget.bookingData is List
+          ? (widget.bookingData as List).first
+          : widget.bookingData;
+
+      bookingId =
+          bData['booking_detail']?['id']?.toString() ?? bData['id']?.toString();
+    }
+
+    if (bookingId == null) return;
+
+    // UNIQUE KEY FOR EACH BOOKING
+    final storageKey = 'service_start_time_$bookingId';
+
+    String? savedStartTime = prefs.getString(storageKey);
+
+    DateTime startTime;
+
+    if (savedStartTime != null) {
+      startTime = DateTime.parse(savedStartTime);
+    } else {
+      // FIRST TIME ONLY
+      startTime = widget.startTime ?? DateTime.now();
+
+      await prefs.setString(storageKey, startTime.toIso8601String());
+    }
+
+    totalSeconds = DateTime.now().difference(startTime).inSeconds;
+
+    if (mounted) {
+      setState(() {});
     }
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted && !isCompleted && !userProvider.isServicePaused) {
-        setState(() {
-          totalSeconds++;
-        });
-        userProvider.updateElapsedSeconds(totalSeconds);
-      }
+      if (!mounted || isCompleted) return;
+
+      setState(() {
+        totalSeconds = DateTime.now().difference(startTime).inSeconds;
+      });
     });
   }
 
-  void _handleServiceCompletion({bool stopPolling = true}) {
-    // Stop the running time counter
-    if (_timer.isActive) _timer.cancel();
-    
-    // Stop the status polling only if explicitly requested (e.g., when fully completed)
-    if (stopPolling && _statusPollingTimer != null && _statusPollingTimer!.isActive) {
+  Future<void> _handleServiceCompletion({bool stopPolling = true}) async {
+    // Stop timer
+    if (_timer.isActive) {
+      _timer.cancel();
+    }
+
+    // Stop polling if needed
+    if (stopPolling &&
+        _statusPollingTimer != null &&
+        _statusPollingTimer!.isActive) {
       _statusPollingTimer?.cancel();
     }
-    
+
+    // REMOVE SAVED TIMER FOR THIS BOOKING
+    final prefs = await SharedPreferences.getInstance();
+
+    String? bookingId;
+
+    if (_currentBookingData != null) {
+      final bData = _currentBookingData is List
+          ? (_currentBookingData as List).first
+          : _currentBookingData;
+
+      bookingId =
+          bData['booking_detail']?['id']?.toString() ?? bData['id']?.toString();
+    }
+
+    if (bookingId != null) {
+      await prefs.remove('service_start_time_$bookingId');
+    }
+
+    // Mark completed
     if (mounted && !isCompleted) {
       final now = DateTime.now();
+
       Provider.of<UserProvider>(context, listen: false).setServiceEndTime(now);
+
       setState(() {
         isCompleted = true;
       });
-      print("Service reached completion state at $now.");
+
+      print("Service completed at $now");
     }
 
-    // Auto-navigate to payments if fully completed
+    // Navigate only once
     if (stopPolling && mounted) {
-      // Use a flag to ensure we don't push the route multiple times
       if (!_hasNavigatedToPayments) {
         _hasNavigatedToPayments = true;
+
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
             Navigator.pushReplacementNamed(
-              context, 
+              context,
               AppRoutes.paymentsHome,
               arguments: {
                 'booking_data': _currentBookingData,
@@ -157,6 +225,7 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
     }
   }
 
+  final Map<String, double> _dummyRatingsCache = {};
 
   String formatTime(int seconds) {
     int h = seconds ~/ 3600;
@@ -200,7 +269,7 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                           Text(
+                          Text(
                             UserMessages.liveTimer,
                             style: TextStyle(
                               color: AppColors.primaryRed,
@@ -227,21 +296,26 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                             ),
                           ),
                           SizedBox(height: AppSizes.h(context, 4)),
-                          Text(
-                            () {
-                              final userProvider = Provider.of<UserProvider>(context, listen: false);
-                              final time = widget.startTime ?? userProvider.serviceStartTime;
-                              if (time != null) {
-                                return "Started at ${DateFormat('hh:mm a').format(time)}";
-                              }
-                              return UserMessages.startedAt;
-                            }(),
-                            style: TextStyle(
-                              fontSize: AppSizes.w(context, 11),
-                              color: AppColors.primaryRed,
-                            ),
-                          ),
-                          SizedBox(height: AppSizes.h(context, 3)),
+                          // Text(
+                          //   () {
+                          //     final userProvider = Provider.of<UserProvider>(
+                          //       context,
+                          //       listen: false,
+                          //     );
+                          //     final time =
+                          //         widget.startTime ??
+                          //         userProvider.serviceStartTime;
+                          //     if (time != null) {
+                          //       return "Started at ${DateFormat('hh:mm a').format(time)}";
+                          //     }
+                          //     return UserMessages.startedAt;
+                          //   }(),
+                          //   style: TextStyle(
+                          //     fontSize: AppSizes.w(context, 11),
+                          //     color: AppColors.primaryRed,
+                          //   ),
+                          // ),
+                          // SizedBox(height: AppSizes.h(context, 3)),
                           Text.rich(
                             TextSpan(
                               children: [
@@ -255,11 +329,25 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                                 ),
                                 TextSpan(
                                   text: () {
-                                    final bData = _currentBookingData is List ? (_currentBookingData as List).first : _currentBookingData;
+                                    final bData = _currentBookingData is List
+                                        ? (_currentBookingData as List).first
+                                        : _currentBookingData;
+
                                     final rawService = bData?['service'];
-                                    final service = rawService is List ? (rawService.isNotEmpty ? rawService.first : {}) : rawService;
-                                    return service?['duration'] != null 
-                                        ? " ${service['duration']} Hrs" 
+
+                                    final service = rawService is List
+                                        ? (rawService.isNotEmpty
+                                              ? rawService.first
+                                              : {})
+                                        : rawService;
+
+                                    print("========== SERVICE DATA ==========");
+                                    print(service);
+                                    print("========== DURATION ==========");
+                                    print(service?['duration']);
+
+                                    return service?['duration'] != null
+                                        ? " ${service['duration']} Hrs"
                                         : UserMessages.estimatedTime;
                                   }(),
                                   style: TextStyle(
@@ -347,52 +435,88 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                         padding: EdgeInsets.all(Insets.sm),
                         child: Builder(
                           builder: (context) {
-                            final bData = _currentBookingData is List ? (_currentBookingData as List).first : _currentBookingData;
+                            final bData = _currentBookingData is List
+                                ? (_currentBookingData as List).first
+                                : _currentBookingData;
                             final rawHandyman = bData?['handyman_data'];
-                            final handyman = rawHandyman is List ? (rawHandyman.isNotEmpty ? rawHandyman.first : {}) : rawHandyman;
+                            final handyman = rawHandyman is List
+                                ? (rawHandyman.isNotEmpty
+                                      ? rawHandyman.first
+                                      : {})
+                                : rawHandyman;
                             final rawProvider = bData?['provider_data'];
-                            final provider = rawProvider is List ? (rawProvider.isNotEmpty ? rawProvider.first : {}) : rawProvider;
+                            final provider = rawProvider is List
+                                ? (rawProvider.isNotEmpty
+                                      ? rawProvider.first
+                                      : {})
+                                : rawProvider;
                             final rawService = bData?['service'];
-                            final service = rawService is List ? (rawService.isNotEmpty ? rawService.first : {}) : rawService;
-                            
-                            final providerName = handyman?['display_name']?.toString() ?? provider?['display_name']?.toString() ?? bData?['booking_detail']?['provider_name']?.toString() ?? "";
-                            final providerImage = handyman?['profile_image'] ??
-                                                  service?['provider_image'] ??
-                                                  provider?['profile_image'] ?? 
-                                                  provider?['employee_image'] ?? 
-                                                  provider?['provider_image'] ??
-                                                  bData?['booking_detail']?['provider_image'];
-                            
+                            final service = rawService is List
+                                ? (rawService.isNotEmpty
+                                      ? rawService.first
+                                      : {})
+                                : rawService;
+
+                            final providerName =
+                                handyman?['display_name']?.toString() ??
+                                provider?['display_name']?.toString() ??
+                                bData?['booking_detail']?['provider_name']
+                                    ?.toString() ??
+                                "";
+                            final providerImage =
+                                handyman?['profile_image'] ??
+                                service?['provider_image'] ??
+                                provider?['profile_image'] ??
+                                provider?['employee_image'] ??
+                                provider?['provider_image'] ??
+                                bData?['booking_detail']?['provider_image'];
+
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 CircleAvatar(
                                   radius: AppSizes.w(context, 28),
                                   backgroundColor: Colors.grey.shade200,
-                                  backgroundImage: (providerImage != null && providerImage.toString().startsWith('http'))
+                                  backgroundImage:
+                                      (providerImage != null &&
+                                          providerImage.toString().startsWith(
+                                            'http',
+                                          ))
                                       ? NetworkImage(
                                           providerImage,
                                           headers: const {},
                                         )
                                       : null,
-                                  child: (providerImage == null || !providerImage.toString().startsWith('http'))
-                                      ? const Icon(Icons.person, color: AppColors.naturalBlack)
+                                  child:
+                                      (providerImage == null ||
+                                          !providerImage.toString().startsWith(
+                                            'http',
+                                          ))
+                                      ? const Icon(
+                                          Icons.person,
+                                          color: AppColors.naturalBlack,
+                                        )
                                       : null,
                                 ),
                                 SizedBox(width: Insets.sm),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Expanded(
                                             child: Text(
                                               providerName,
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w600,
-                                                fontSize: AppSizes.w(context, 16),
+                                                fontSize: AppSizes.w(
+                                                  context,
+                                                  16,
+                                                ),
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -408,54 +532,138 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                                               color: isCompleted
                                                   ? AppColors.completedBlue
                                                   : AppColors.progressGreen,
-                                              borderRadius: BorderRadius.circular(Insets.xs),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    Insets.xs,
+                                                  ),
                                             ),
                                             child: Text(
                                               () {
-                                                final bData = _currentBookingData is List ? (_currentBookingData as List).first : _currentBookingData;
-                                                final rawDetail = bData?['booking_detail'];
-                                                final detail = rawDetail is List ? (rawDetail.isNotEmpty ? rawDetail.first : {}) : rawDetail;
-                                                final status = detail?['status']?.toString().toLowerCase();
-                                                
-                                                if (status == 'pending_approval') return "Pending Approval";
-                                                return isCompleted ? UserMessages.completed : UserMessages.inProgress;
+                                                final bData =
+                                                    _currentBookingData is List
+                                                    ? (_currentBookingData
+                                                              as List)
+                                                          .first
+                                                    : _currentBookingData;
+                                                final rawDetail =
+                                                    bData?['booking_detail'];
+                                                final detail = rawDetail is List
+                                                    ? (rawDetail.isNotEmpty
+                                                          ? rawDetail.first
+                                                          : {})
+                                                    : rawDetail;
+                                                final status = detail?['status']
+                                                    ?.toString()
+                                                    .toLowerCase();
+
+                                                if (status ==
+                                                    'pending_approval')
+                                                  return "Pending Approval";
+                                                return isCompleted
+                                                    ? UserMessages.completed
+                                                    : UserMessages.inProgress;
                                               }(),
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 color: AppColors.naturalWhite,
-                                                fontSize: AppSizes.w(context, 12),
+                                                fontSize: AppSizes.w(
+                                                  context,
+                                                  12,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ],
                                       ),
                                       const SizedBox(height: 4),
+                                      // Find the rating display section and replace it
                                       Row(
                                         children: [
-                                          const Icon(Icons.star, color: Color(0xFFFFB300), size: 14),
+                                          const Icon(
+                                            Icons.star,
+                                            color: Color(0xFFFFB300),
+                                            size: 14,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            (handyman?['handyman_rating'] ?? provider?['providers_service_rating'] ?? provider?['handyman_rating'] ?? 0).toString(),
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                            (() {
+                                              final rating =
+                                                  handyman?['handyman_rating'] ??
+                                                  provider?['providers_service_rating'] ??
+                                                  provider?['handyman_rating'] ??
+                                                  0;
+
+                                              if (rating == 0) {
+                                                // Create a unique key for this handyman/provider
+                                                final id =
+                                                    handyman?['id']
+                                                        ?.toString() ??
+                                                    provider?['id']
+                                                        ?.toString() ??
+                                                    handyman?['uid']
+                                                        ?.toString() ??
+                                                    provider?['uid']
+                                                        ?.toString() ??
+                                                    'default';
+
+                                                // Get cached rating or generate new one
+                                                final cachedRating =
+                                                    _dummyRatingsCache.putIfAbsent(
+                                                      id,
+                                                      () =>
+                                                          4.2 +
+                                                          (4.9 - 4.2) *
+                                                              Random()
+                                                                  .nextDouble(),
+                                                    );
+
+                                                return cachedRating
+                                                    .toStringAsFixed(1);
+                                              }
+
+                                              return rating.toString();
+                                            })(),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
                                             "(${handyman?['total_services_booked'] ?? provider?['total_services_booked'] ?? 0} jobs done)",
-                                            style: const TextStyle(color: Colors.black54, fontSize: 12),
+                                            style: const TextStyle(
+                                              color: Colors.black54,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ],
                                       ),
                                       SizedBox(height: AppSizes.h(context, 6)),
                                       Text(
                                         () {
-                                          final bData = _currentBookingData is List ? (_currentBookingData as List).first : _currentBookingData;
-                                          final rawDetail = bData?['booking_detail'];
-                                          final detail = rawDetail is List ? (rawDetail.isNotEmpty ? rawDetail.first : {}) : rawDetail;
-                                          final status = detail?['status']?.toString().toLowerCase();
-                                          
-                                          if (status == 'pending_approval') return "Service Pending Approval";
-                                          if (status == 'completed') return UserMessages.serviceCompletedText;
-                                          return UserMessages.serviceInProgressText;
+                                          final bData =
+                                              _currentBookingData is List
+                                              ? (_currentBookingData as List)
+                                                    .first
+                                              : _currentBookingData;
+                                          final rawDetail =
+                                              bData?['booking_detail'];
+                                          final detail = rawDetail is List
+                                              ? (rawDetail.isNotEmpty
+                                                    ? rawDetail.first
+                                                    : {})
+                                              : rawDetail;
+                                          final status = detail?['status']
+                                              ?.toString()
+                                              .toLowerCase();
+
+                                          if (status == 'pending_approval')
+                                            return "Service Pending Approval";
+                                          if (status == 'completed')
+                                            return UserMessages
+                                                .serviceCompletedText;
+                                          return UserMessages
+                                              .serviceInProgressText;
                                         }(),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -483,23 +691,46 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                             Expanded(
                               child: GestureDetector(
                                 onTap: () async {
-                                  final bData = _currentBookingData is List ? (_currentBookingData as List).first : _currentBookingData;
-                                  
+                                  final bData = _currentBookingData is List
+                                      ? (_currentBookingData as List).first
+                                      : _currentBookingData;
+
                                   final rawHandyman = bData?['handyman_data'];
-                                  final handyman = rawHandyman is List ? (rawHandyman.isNotEmpty ? rawHandyman.first : {}) : rawHandyman;
-                                  
+                                  final handyman = rawHandyman is List
+                                      ? (rawHandyman.isNotEmpty
+                                            ? rawHandyman.first
+                                            : {})
+                                      : rawHandyman;
+
                                   final rawProvider = bData?['provider_data'];
-                                  final provider = rawProvider is List ? (rawProvider.isNotEmpty ? rawProvider.first : {}) : rawProvider;
-                                  
-                                  final phone = (handyman?['contact_number'] ?? provider?['contact_number'])?.toString()?.replaceAll(' ', '');
-                                  
+                                  final provider = rawProvider is List
+                                      ? (rawProvider.isNotEmpty
+                                            ? rawProvider.first
+                                            : {})
+                                      : rawProvider;
+
+                                  final phone =
+                                      (handyman?['contact_number'] ??
+                                              provider?['contact_number'])
+                                          ?.toString()
+                                          ?.replaceAll(' ', '');
+
                                   if (phone != null && phone.isNotEmpty) {
                                     try {
-                                      final Uri url = Uri(scheme: 'tel', path: phone);
+                                      final Uri url = Uri(
+                                        scheme: 'tel',
+                                        path: phone,
+                                      );
                                       if (await canLaunchUrl(url)) {
-                                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                                        await launchUrl(
+                                          url,
+                                          mode: LaunchMode.externalApplication,
+                                        );
                                       } else {
-                                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                                        await launchUrl(
+                                          url,
+                                          mode: LaunchMode.externalApplication,
+                                        );
                                       }
                                     } catch (e) {
                                       debugPrint('Could not launch call: $e');
@@ -513,22 +744,30 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                                     horizontal: Insets.md,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: isCompleted ? AppColors.darkRed : AppColors.primaryYellow,
-                                    borderRadius: BorderRadius.circular(Insets.xsm),
+                                    color: isCompleted
+                                        ? AppColors.darkRed
+                                        : AppColors.primaryYellow,
+                                    borderRadius: BorderRadius.circular(
+                                      Insets.xsm,
+                                    ),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(
                                         Icons.phone_outlined,
-                                        color: isCompleted ? AppColors.naturalWhite : Colors.black,
+                                        color: isCompleted
+                                            ? AppColors.naturalWhite
+                                            : Colors.black,
                                       ),
                                       SizedBox(width: Insets.xxs),
                                       Text(
                                         UserMessages.call,
                                         style: TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          color: isCompleted ? AppColors.naturalWhite : Colors.black,
+                                          color: isCompleted
+                                              ? AppColors.naturalWhite
+                                              : Colors.black,
                                         ),
                                       ),
                                     ],
@@ -538,47 +777,78 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                             ),
                             SizedBox(width: AppSizes.w(context, 16)),
                             Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    final bData = _currentBookingData is List ? (_currentBookingData as List).first : _currentBookingData;
-                                    
-                                    final rawHandyman = bData?['handyman_data'];
-                                    final handyman = rawHandyman is List ? (rawHandyman.isNotEmpty ? rawHandyman.first : {}) : rawHandyman;
-                                    
-                                    final rawProvider = bData?['provider_data'];
-                                    final provider = rawProvider is List ? (rawProvider.isNotEmpty ? rawProvider.first : {}) : rawProvider;
-                                    
-                                    final rawDetail = bData?['booking_detail'];
-                                    final detail = rawDetail is List ? (rawDetail.isNotEmpty ? rawDetail.first : {}) : rawDetail;
-                                    
-                                    final rawService = bData?['service'];
-                                    final service = rawService is List ? (rawService.isNotEmpty ? rawService.first : {}) : rawService;
+                              child: GestureDetector(
+                                onTap: () {
+                                  final bData = _currentBookingData is List
+                                      ? (_currentBookingData as List).first
+                                      : _currentBookingData;
 
-                                    Navigator.pushNamed(
-                                      context, 
-                                      AppRoutes.chatHomeScreen,
-                                      arguments: {
-                                        'name': handyman?['display_name'] ?? provider?['display_name'] ?? detail?['provider_name'] ?? "Professional",
-                                        'image': handyman?['profile_image'] ?? 
-                                                 service?['provider_image'] ?? 
-                                                 provider?['profile_image'] ?? 
-                                                 provider?['employee_image'] ?? 
-                                                 provider?['provider_image'] ??
-                                                 detail?['provider_image'] ?? 
-                                                 "lib/assets/images/rider_image.png",
-                                        'phone': (handyman?['contact_number'] ?? provider?['contact_number'])?.toString(),
-                                        'booking_id': detail?['id']?.toString(),
-                                        'provider_uid': handyman?['uid']?.toString() ?? provider?['uid']?.toString(),
-                                        'handyman_uid': handyman?['uid']?.toString() ?? provider?['uid']?.toString(),
-                                        'handyman_id': handyman?['uid']?.toString() ?? 
-                                                       provider?['uid']?.toString() ?? 
-                                                       handyman?['id']?.toString() ?? 
-                                                       provider?['id']?.toString() ?? 
-                                                       detail?['provider_id']?.toString(),
-                                      },
-                                    );
-                                  },
-                                  child: Container(
+                                  final rawHandyman = bData?['handyman_data'];
+                                  final handyman = rawHandyman is List
+                                      ? (rawHandyman.isNotEmpty
+                                            ? rawHandyman.first
+                                            : {})
+                                      : rawHandyman;
+
+                                  final rawProvider = bData?['provider_data'];
+                                  final provider = rawProvider is List
+                                      ? (rawProvider.isNotEmpty
+                                            ? rawProvider.first
+                                            : {})
+                                      : rawProvider;
+
+                                  final rawDetail = bData?['booking_detail'];
+                                  final detail = rawDetail is List
+                                      ? (rawDetail.isNotEmpty
+                                            ? rawDetail.first
+                                            : {})
+                                      : rawDetail;
+
+                                  final rawService = bData?['service'];
+                                  final service = rawService is List
+                                      ? (rawService.isNotEmpty
+                                            ? rawService.first
+                                            : {})
+                                      : rawService;
+
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.chatHomeScreen,
+                                    arguments: {
+                                      'name':
+                                          handyman?['display_name'] ??
+                                          provider?['display_name'] ??
+                                          detail?['provider_name'] ??
+                                          "Professional",
+                                      'image':
+                                          handyman?['profile_image'] ??
+                                          service?['provider_image'] ??
+                                          provider?['profile_image'] ??
+                                          provider?['employee_image'] ??
+                                          provider?['provider_image'] ??
+                                          detail?['provider_image'] ??
+                                          "lib/assets/images/rider_image.png",
+                                      'phone':
+                                          (handyman?['contact_number'] ??
+                                                  provider?['contact_number'])
+                                              ?.toString(),
+                                      'booking_id': detail?['id']?.toString(),
+                                      'provider_uid':
+                                          handyman?['uid']?.toString() ??
+                                          provider?['uid']?.toString(),
+                                      'handyman_uid':
+                                          handyman?['uid']?.toString() ??
+                                          provider?['uid']?.toString(),
+                                      'handyman_id':
+                                          handyman?['uid']?.toString() ??
+                                          provider?['uid']?.toString() ??
+                                          handyman?['id']?.toString() ??
+                                          provider?['id']?.toString() ??
+                                          detail?['provider_id']?.toString(),
+                                    },
+                                  );
+                                },
+                                child: Container(
                                   height: AppSizes.h(context, 45),
                                   padding: EdgeInsets.symmetric(
                                     vertical: Insets.xxs,
@@ -586,7 +856,9 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                                   ),
                                   decoration: BoxDecoration(
                                     border: Border.all(color: Colors.black),
-                                    borderRadius: BorderRadius.circular(Insets.xsm),
+                                    borderRadius: BorderRadius.circular(
+                                      Insets.xsm,
+                                    ),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -627,14 +899,24 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                                     TextSpan(
                                       children: [
                                         TextSpan(
-                                    text: () {
-                                      final bData = _currentBookingData is List ? (_currentBookingData as List).first : _currentBookingData;
-                                      final rawDetail = bData?['booking_detail'];
-                                      final detail = rawDetail is List ? (rawDetail.isNotEmpty ? rawDetail.first : {}) : rawDetail;
-                                      return (detail?['status'] == 'pending_approval')
-                                          ? "Pending Approval: "
-                                          : "Completed: ";
-                                    }(),
+                                          text: () {
+                                            final bData =
+                                                _currentBookingData is List
+                                                ? (_currentBookingData as List)
+                                                      .first
+                                                : _currentBookingData;
+                                            final rawDetail =
+                                                bData?['booking_detail'];
+                                            final detail = rawDetail is List
+                                                ? (rawDetail.isNotEmpty
+                                                      ? rawDetail.first
+                                                      : {})
+                                                : rawDetail;
+                                            return (detail?['status'] ==
+                                                    'pending_approval')
+                                                ? "Pending Approval: "
+                                                : "Completed: ";
+                                          }(),
                                           style: TextStyle(
                                             color: AppColors.completedBlue,
                                             fontWeight: FontWeight.w600,
@@ -643,10 +925,18 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                                         ),
                                         TextSpan(
                                           text: () {
-                                            final userProvider = Provider.of<UserProvider>(context, listen: false);
-                                            final time = widget.completionTime ?? userProvider.serviceEndTime;
+                                            final userProvider =
+                                                Provider.of<UserProvider>(
+                                                  context,
+                                                  listen: false,
+                                                );
+                                            final time =
+                                                widget.completionTime ??
+                                                userProvider.serviceEndTime;
                                             if (time != null) {
-                                              return DateFormat('hh:mm a').format(time);
+                                              return DateFormat(
+                                                'hh:mm a',
+                                              ).format(time);
                                             }
                                             return "2:40 PM"; // Fallback
                                           }(),
@@ -704,26 +994,41 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                         children: [
                           ServiceDetailsCard(bookingData: _currentBookingData),
                           SizedBox(height: AppSizes.h(context, 15)),
-                          if (isCompleted || _currentBookingData?['booking_detail']?['status'] == 'pending_approval') ...[
+                          if (isCompleted ||
+                              _currentBookingData?['booking_detail']?['status'] ==
+                                  'pending_approval') ...[
                             EndOtpView(
                               totalTime: formatTime(totalSeconds),
                               bookingData: _currentBookingData,
-                              otp: (_currentBookingData?['booking_detail']?['otp'] ?? 
-                                    _currentBookingData?['booking_detail']?['service_otp'] ??
-                                    _currentBookingData?['otp'])?.toString()
+                              otp:
+                                  (_currentBookingData?['booking_detail']?['otp'] ??
+                                          _currentBookingData?['booking_detail']?['service_otp'] ??
+                                          _currentBookingData?['otp'])
+                                      ?.toString(),
                             ),
                           ] else ...[
                             ServiceProgressWidget(
                               currentStep: () {
-                                final bData = _currentBookingData is List ? (_currentBookingData as List).first : _currentBookingData;
+                                final bData = _currentBookingData is List
+                                    ? (_currentBookingData as List).first
+                                    : _currentBookingData;
                                 final rawDetail = bData?['booking_detail'];
-                                final detail = rawDetail is List ? (rawDetail.isNotEmpty ? rawDetail.first : {}) : rawDetail;
-                                final status = detail?['status']?.toString().toLowerCase();
-                                
+                                final detail = rawDetail is List
+                                    ? (rawDetail.isNotEmpty
+                                          ? rawDetail.first
+                                          : {})
+                                    : rawDetail;
+                                final status = detail?['status']
+                                    ?.toString()
+                                    .toLowerCase();
+
                                 if (status == 'completed') return 5;
                                 if (status == 'pending_approval') return 4;
-                                if (status == 'in_progress' || status == 'started') return 3;
-                                if (status == 'arrived' || status == 'ongoing') return 2;
+                                if (status == 'in_progress' ||
+                                    status == 'started')
+                                  return 3;
+                                if (status == 'arrived' || status == 'ongoing')
+                                  return 2;
                                 return 2;
                               }(),
                             ),

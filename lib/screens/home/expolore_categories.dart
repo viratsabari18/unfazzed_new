@@ -1,4 +1,5 @@
 import 'package:zeerah/core/common/app_exports.dart';
+import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/core/providers/dashboard_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -11,7 +12,15 @@ class ExpoloreCategories extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<DashboardProvider>(
       builder: (context, dashboardProvider, _) {
-        final categories = dashboardProvider.categories;
+           final addressProvider =   Provider.of<AddressProvider>(context);
+
+  final location = addressProvider.selectedLocation;
+
+  if (location == null) {
+    return const SizedBox.shrink();
+  }
+
+  final categories = dashboardProvider.categories;
 
         if (dashboardProvider.isLoading && categories.isEmpty) {
           return const SizedBox.shrink();
