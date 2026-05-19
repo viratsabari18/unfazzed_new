@@ -170,7 +170,7 @@ static const String estimated = "Estimated: ";
 static const String estimatedTime = "3hrs";
 
 static const String serviceComplete = "Service Complete";
-static const String handymanHas = "Handyman has ";
+static const String handymanHas = "Handyman ";
 static const String finished = "finished";
 static const String theService = " the service";
 static const String professionalRating = "⭐ 4.9 (175 jobs done)";

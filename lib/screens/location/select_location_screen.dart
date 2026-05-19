@@ -250,7 +250,7 @@ class SelectLocationScreen extends StatelessWidget {
                   Icon(data['icon'], color: Colors.white, size: 26),
                   const SizedBox(height: 4),
                   Text(
-                    data['distance'],
+                    data['distance'] ?? '0 m',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       color: const Color(0xFF9E9E9E),
@@ -267,7 +267,7 @@ class SelectLocationScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    data['label'],
+                    data['label'] ?? 'Other',
                     style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -276,7 +276,7 @@ class SelectLocationScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    data['address'],
+                    data['address'] ?? '',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
@@ -312,18 +312,7 @@ class SelectLocationScreen extends StatelessWidget {
                       const SizedBox(width: 10),
                       _buildActionButton(Icons.share, isShare: true),
                       const SizedBox(width: 10),
-                      IconButton(
-                        onPressed: () {
-                          Provider.of<AddressProvider>(
-                            context,
-                            listen: false,
-                          ).deleteAddress(data);
-                        },
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.red,
-                        ),
-                      ),
+                      _buildDeleteButton(context, data),
                     ],
                   ),
                 ],
@@ -331,6 +320,66 @@ class SelectLocationScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton(BuildContext context, Map<String, dynamic> data) {
+    return IconButton(
+      onPressed: () async {
+        // Show confirmation dialog
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF242424),
+            title: Text(
+              'Delete Address',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Text(
+              'Are you sure you want to delete this address?',
+              style: GoogleFonts.poppins(
+                color: Colors.white70,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF9E9E9E),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  'Delete',
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFFE53935),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm == true) {
+          await Provider.of<AddressProvider>(
+            context,
+            listen: false,
+          ).deleteAddress(context, data);
+        }
+      },
+      icon: const Icon(
+        Icons.delete_outline,
+        color: Color(0xFFE53935),
+        size: 20,
       ),
     );
   }

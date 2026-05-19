@@ -14,7 +14,7 @@ class BookingServiceProgressHome extends StatefulWidget {
     this.bookingData,
     this.startTime,
     this.completionTime,
-    this.price,
+    this.price, 
   }) : super(key: key);
 
   @override
@@ -37,12 +37,33 @@ class _BookingServiceProgressHomeState extends State<BookingServiceProgressHome>
         centerTitle: true,
         backgroundColor: AppColors.primaryRed,
         title: Text(
-          UserMessages.serviceInProgress,
-          style: TextStyle(
-            color: AppColors.naturalWhite,
-            fontSize: AppSizes.w(context, 20),
-          ),
-        ),
+  (() {
+    final bData = widget.bookingData is List
+        ? (widget.bookingData as List).first
+        : widget.bookingData;
+
+    final rawDetail = bData?['booking_detail'];
+    final detail = rawDetail is List
+        ? (rawDetail.isNotEmpty ? rawDetail.first : {})
+        : rawDetail;
+
+    final status = detail?['status']
+        ?.toString()
+        .toLowerCase()
+        .trim();
+
+    if (status == 'pending_approval' ||
+        status == 'completed') {
+      return "Service Completed";
+    }
+
+    return UserMessages.serviceInProgress;
+  })(),
+  style: TextStyle(
+    color: AppColors.naturalWhite,
+    fontSize: AppSizes.w(context, 20),
+  ),
+),
       ),
       body: Column(
         children: [

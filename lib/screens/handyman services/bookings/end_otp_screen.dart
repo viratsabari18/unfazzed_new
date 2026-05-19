@@ -212,76 +212,76 @@ class EndOtpView extends StatelessWidget {
             ),
           ),
           SizedBox(height: AppSizes.h(context, 30)),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: Insets.md),
-            child: Column(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.ratingsAndReview,
-                      arguments: {'booking_data': bookingData},
-                    );
-                  },
-                  child: Container(
-                    height: AppSizes.h(context, 55),
-                    decoration: BoxDecoration(
-                      color: AppColors.naturalWhite,
-                      border: Border.all(width: 0.2, color: AppColors.naturalBlack),
-                      borderRadius: BorderRadius.circular(Insets.sm),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.naturalBlack12,
-                          blurRadius: 16,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.star, color: AppColors.starColor),
-                          SizedBox(width: 6),
-                          Text(UserMessages.rateService),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: AppSizes.h(context, 16)),
-                GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    height: AppSizes.h(context, 55),
-                    decoration: BoxDecoration(
-                      color: AppColors.naturalWhite,
-                      borderRadius: BorderRadius.circular(Insets.sm),
-                      border: Border.all(width: 0.2, color: AppColors.naturalBlack),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.naturalBlack12,
-                          blurRadius: 17,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.support_agent),
-                          SizedBox(width: 6),
-                          Text(UserMessages.support),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Padding(
+          //   padding: EdgeInsets.symmetric(horizontal: Insets.md),
+          //   child: Column(
+          //     children: [
+          //       GestureDetector(
+          //         onTap: () {
+          //           Navigator.pushNamed(
+          //             context,
+          //             AppRoutes.ratingsAndReview,
+          //             arguments: {'booking_data': bookingData},
+          //           );
+          //         },
+          //         child: Container(
+          //           height: AppSizes.h(context, 55),
+          //           decoration: BoxDecoration(
+          //             color: AppColors.naturalWhite,
+          //             border: Border.all(width: 0.2, color: AppColors.naturalBlack),
+          //             borderRadius: BorderRadius.circular(Insets.sm),
+          //             boxShadow: const [
+          //               BoxShadow(
+          //                 color: AppColors.naturalBlack12,
+          //                 blurRadius: 16,
+          //                 offset: Offset(0, 6),
+          //               ),
+          //             ],
+          //           ),
+          //           child: const Center(
+          //             child: Row(
+          //               mainAxisAlignment: MainAxisAlignment.center,
+          //               children: [
+          //                 Icon(Icons.star, color: AppColors.starColor),
+          //                 SizedBox(width: 6),
+          //                 Text(UserMessages.rateService),
+          //               ],
+          //             ),
+          //           ),
+          //         ),
+          //       ),
+          //       SizedBox(height: AppSizes.h(context, 16)),
+          //       GestureDetector(
+          //         onTap: () {},
+          //         child: Container(
+          //           height: AppSizes.h(context, 55),
+          //           decoration: BoxDecoration(
+          //             color: AppColors.naturalWhite,
+          //             borderRadius: BorderRadius.circular(Insets.sm),
+          //             border: Border.all(width: 0.2, color: AppColors.naturalBlack),
+          //             boxShadow: const [
+          //               BoxShadow(
+          //                 color: AppColors.naturalBlack12,
+          //                 blurRadius: 17,
+          //                 offset: Offset(0, 6),
+          //               ),
+          //             ],
+          //           ),
+          //           child: const Center(
+          //             child: Row(
+          //               mainAxisAlignment: MainAxisAlignment.center,
+          //               children: [
+          //                 Icon(Icons.support_agent),
+          //                 SizedBox(width: 6),
+          //                 Text(UserMessages.support),
+          //               ],
+          //             ),
+          //           ),
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
   
         ],
       ),

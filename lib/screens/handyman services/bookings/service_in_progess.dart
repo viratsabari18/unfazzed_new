@@ -42,10 +42,31 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
   @override
   void initState() {
     super.initState();
-    _currentBookingData = widget.bookingData;
-    totalSeconds = widget.serviceDuration;
-    _startTimer();
-    _startStatusPolling();
+_currentBookingData = widget.bookingData;
+totalSeconds = widget.serviceDuration;
+
+final bData = _currentBookingData is List
+    ? (_currentBookingData as List).first
+    : _currentBookingData;
+
+final rawDetail = bData?['booking_detail'];
+final detail = rawDetail is List
+    ? (rawDetail.isNotEmpty ? rawDetail.first : {})
+    : rawDetail;
+
+final status = detail?['status']
+    ?.toString()
+    .toLowerCase()
+    .trim();
+
+if (status == 'pending_approval' ||
+    status == 'pending approval' ||
+    status == 'completed') {
+  isCompleted = true;
+}
+
+_startTimer();
+_startStatusPolling();
   }
 
   Timer? _statusPollingTimer;
@@ -150,6 +171,9 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
     if (mounted) {
       setState(() {});
     }
+    if (isCompleted) {
+  return;
+}
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || isCompleted) return;
@@ -395,7 +419,7 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                                   ),
                                 ),
                                 TextSpan(
-                                  text: " finish ",
+                                  text: UserMessages.finished,
                                   style: TextStyle(
                                     color: AppColors.completedBlue,
                                     fontSize: AppSizes.w(context, 16),
@@ -403,7 +427,7 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                                   ),
                                 ),
                                 TextSpan(
-                                  text: "the service",
+                                  text: " the service",
                                   style: TextStyle(
                                     color: AppColors.naturalBlack,
                                     fontSize: AppSizes.w(context, 16),

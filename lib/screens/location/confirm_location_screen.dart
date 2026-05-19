@@ -3,13 +3,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:zeerah/screens/location/enter_address_bottom_sheet.dart';
 import 'package:zeerah/screens/location/map_view_widget.dart';
+
 
 class ConfirmLocationScreen extends StatefulWidget {
   const ConfirmLocationScreen({super.key});
@@ -29,20 +29,19 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
   LatLng _currentLocation = const LatLng(28.6139, 77.2090); // Default: Delhi
   LatLng? _lastFetchedLocation;
   String _selectedAddressType = "Home";
-  
+
   // UI State
   bool _isFetchingAddress = false;
   bool _isSearching = false;
   List<Map<String, dynamic>> _searchResults = [];
-  
+
   // Value Notifiers for UI updates
   final ValueNotifier<String> _locationNameNotifier = ValueNotifier("Getting your location...");
   final ValueNotifier<String> _fullAddressNotifier = ValueNotifier("");
 
   // Dark Map Style
   static const String _darkMapStyle = '''
-  [
-    {
+    [{
       "elementType": "geometry",
       "stylers": [{"color": "#1d2c4d"}]
     },
@@ -83,8 +82,7 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
       "featureType": "administrative.locality",
       "elementType": "labels.text.fill",
       "stylers": [{"color": "#c4d4e0"}]
-    }
-  ]
+    }]
   ''';
 
   @override
@@ -127,17 +125,16 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
       );
 
       LatLng newLocation = LatLng(position.latitude, position.longitude);
-      
+
       // Animate map to location
       await _mapWidgetKey.currentState?.animateTo(newLocation);
       _currentLocation = newLocation;
-      
+
       // Get address
       await _getAddressFromCoordinates(newLocation);
-      
+
       // Update location name
       _locationNameNotifier.value = "Your Location";
-      
     } catch (e) {
       debugPrint("Error getting location: $e");
       _locationNameNotifier.value = "Location unavailable";
@@ -146,7 +143,7 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
 
   Future<void> _getAddressFromCoordinates(LatLng location) async {
     if (_isFetchingAddress) return;
-    
+
     // Check if we recently fetched this location
     if (_lastFetchedLocation != null) {
       final distance = Geolocator.distanceBetween(
@@ -157,10 +154,10 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
       );
       if (distance < 20) return; // Skip if less than 20 meters
     }
-    
+
     _isFetchingAddress = true;
     _lastFetchedLocation = location;
-    
+
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(
         location.latitude,
@@ -169,12 +166,12 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
 
       if (placemarks.isNotEmpty && mounted) {
         final place = placemarks.first;
-        
+
         // Get area name
         final areaName = place.subLocality?.isNotEmpty == true
             ? place.subLocality
             : place.locality;
-        
+
         // Build full address
         final addressParts = [
           place.street,
@@ -186,7 +183,7 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
         final fullAddress = addressParts
             .where((e) => e != null && e.toString().isNotEmpty)
             .join(", ");
-        
+
         _locationNameNotifier.value = areaName ?? "Selected Location";
         _fullAddressNotifier.value = fullAddress.isNotEmpty ? fullAddress : "Address not available";
       }
@@ -212,7 +209,7 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
     }
 
     setState(() => _isSearching = true);
-    
+
     try {
       List<Location> locations = await locationFromAddress(query);
       List<Map<String, dynamic>> results = [];
@@ -222,7 +219,7 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
           location.latitude,
           location.longitude,
         );
-        
+
         if (placemarks.isNotEmpty) {
           final p = placemarks.first;
           final name = p.name ?? p.subLocality ?? p.locality ?? query;
@@ -231,7 +228,7 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
             p.locality,
             p.administrativeArea,
           ].where((e) => e != null && e.isNotEmpty).join(", ");
-          
+
           results.add({
             'name': name,
             'address': address,
@@ -254,18 +251,16 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
     }
   }
 
-  
-
   void _onSelectSearchResult(Map<String, dynamic> result) async {
     final LatLng selectedLocation = result['latLng'];
-    
+
     // Animate map to selected location
     await _mapWidgetKey.currentState?.animateTo(selectedLocation);
     _currentLocation = selectedLocation;
-    
+
     // Get address for selected location
     await _getAddressFromCoordinates(selectedLocation);
-    
+
     // Clear search
     if (mounted) {
       setState(() {
@@ -300,7 +295,10 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
                   _searchLocation(value);
                 });
               },
-              style: GoogleFonts.poppins(color: Colors.white, fontSize: 15),
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 15,
+              ),
               decoration: InputDecoration(
                 hintText: "Search for area, street name...",
                 hintStyle: GoogleFonts.poppins(
@@ -338,8 +336,10 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _searchResults.length,
-                separatorBuilder: (_, __) => 
-                    const Divider(color: Color(0xFF3A3A3A), height: 1),
+                separatorBuilder: (context, __) => const Divider(
+                  color: Color(0xFF3A3A3A),
+                  height: 1,
+                ),
                 itemBuilder: (context, index) {
                   final result = _searchResults[index];
                   return ListTile(
@@ -360,7 +360,7 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
                     subtitle: Text(
                       result['address'],
                       style: GoogleFonts.poppins(
-                        color: Color(0xFF9E9E9E),
+                        color: const Color(0xFF9E9E9E),
                         fontSize: 12,
                       ),
                     ),
@@ -420,12 +420,16 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.location_on, color: Color(0xFFE53935), size: 28),
+                const Icon(
+                  Icons.location_on,
+                  color: Color(0xFFE53935),
+                  size: 28,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: ValueListenableBuilder(
+                  child: ValueListenableBuilder<String>(
                     valueListenable: _locationNameNotifier,
-                    builder: (_, value, __) => Text(
+                    builder: (context, value, __) => Text(
                       value,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
@@ -453,9 +457,9 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.only(left: 36),
-              child: ValueListenableBuilder(
+              child: ValueListenableBuilder<String>(
                 valueListenable: _fullAddressNotifier,
-                builder: (_, value, __) => Text(
+                builder: (context, value, __) => Text(
                   value,
                   style: GoogleFonts.poppins(
                     color: const Color(0xFF9E9E9E),
@@ -542,7 +546,7 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
             _buildSearchBar(),
             // Center Pin
             _buildCenterPin(),
-            // GPS Button - Added above bottom panel
+            // GPS Button
             Positioned(
               bottom: 210,
               left: 0,
@@ -550,7 +554,11 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
               child: Center(
                 child: OutlinedButton.icon(
                   onPressed: _getCurrentLocation,
-                  icon: const Icon(Icons.gps_fixed, color: Color(0xFFE53935), size: 18),
+                  icon: const Icon(
+                    Icons.gps_fixed,
+                    color: Color(0xFFE53935),
+                    size: 18,
+                  ),
                   label: Text(
                     "Use current location",
                     style: GoogleFonts.poppins(
@@ -560,10 +568,18 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    side: const BorderSide(
+                      color: Color(0xFFE53935),
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
                     backgroundColor: const Color(0xFF1C1C1C).withOpacity(0.85),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),

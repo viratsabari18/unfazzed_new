@@ -33,12 +33,25 @@ dependencies:
   google_sign_in: ^6.2.1
   url_launcher: ^6.3.1
   razorpay_flutter: ^1.4.5
+  smooth_page_indicator: ^1.2.0+3
+  flutter_html: ^3.0.0-beta.2
+  share_plus: ^10.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   card_swiper: ^3.0.1
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "lib/assets/icon/app_icon.png"
+
+
+
+
 flutter:
   uses-material-design: true
 

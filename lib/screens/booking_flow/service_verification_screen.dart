@@ -542,7 +542,7 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
                   const Icon(Icons.star, color: Color(0xFFFFB300), size: 16),
                   const SizedBox(width: 4),
                   Text(
-                    rating.toString(),
+                    "4.2",
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 4),

@@ -340,22 +340,22 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(width: 8),
-                    Image.asset(UserMessages.homepageAppbarCoin, height: 24),
-                    const SizedBox(width: 6),
-                    Consumer<UserProvider>(
-                      builder: (context, userProvider, _) {
-                        return Text(
-                          "₹${userProvider.walletBalance.toStringAsFixed(0)}",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            color: Colors.black,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
+                    // const SizedBox(width: 8),
+                    // Image.asset(UserMessages.homepageAppbarCoin, height: 24),
+                    // const SizedBox(width: 6),
+                    // Consumer<UserProvider>(
+                    //   builder: (context, userProvider, _) {
+                    //     return Text(
+                    //       "₹${userProvider.walletBalance.toStringAsFixed(0)}",
+                    //       style: GoogleFonts.poppins(
+                    //         fontWeight: FontWeight.w600,
+                    //         fontSize: 15,
+                    //         color: Colors.black,
+                    //       ),
+                    //     );
+                    //   },
+                    // ),
+                    // const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () =>
                           Navigator.pushNamed(context, AppRoutes.profile),

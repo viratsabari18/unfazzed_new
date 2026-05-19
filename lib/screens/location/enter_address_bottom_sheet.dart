@@ -9,6 +9,7 @@ class EnterAddressBottomSheet extends StatefulWidget {
   final double latitude;
   final double longitude;
   final String addressType;
+
   const EnterAddressBottomSheet({
     super.key,
     required this.address,
@@ -23,10 +24,12 @@ class EnterAddressBottomSheet extends StatefulWidget {
 }
 
 class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
-  final _houseController = TextEditingController();
-  final _floorController = TextEditingController();
-  final _towerController = TextEditingController();
+  final TextEditingController _houseController = TextEditingController();
+  final TextEditingController _floorController = TextEditingController();
+  final TextEditingController _towerController = TextEditingController();
+  
   bool _isFormValid = false;
+  bool _isSaving = false;
   late String _selectedAddressType;
 
   @override
@@ -50,50 +53,79 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
     });
   }
 
-  void _confirmAddress() {
-    final addressProvider = Provider.of<AddressProvider>(
-      context,
-      listen: false,
-    );
+  Future<void> _confirmAddress() async {
+    if (!_isFormValid) return;
+    
+    setState(() => _isSaving = true);
+    
+    try {
+      final addressProvider = Provider.of<AddressProvider>(
+        context,
+        listen: false,
+      );
 
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final userName = userProvider.user?.displayName ?? "User";
-    final userPhone = userProvider.user?.phoneNumber ?? "+91-0000000000";
+      final userProvider = Provider.of<UserProvider>(
+        context,
+        listen: false,
+      );
+      
+      final userName = userProvider.user?.displayName ?? "User";
+      final userPhone = userProvider.user?.phoneNumber ?? "+91-0000000000";
 
-    // Build the complete address
-    String completeAddress = _houseController.text.trim();
-    if (_floorController.text.trim().isNotEmpty) {
-      completeAddress += ", Floor ${_floorController.text.trim()}";
-    }
-    if (_towerController.text.trim().isNotEmpty) {
-      completeAddress += ", ${_towerController.text.trim()}";
-    }
-    completeAddress += ", ${widget.address}";
+      // Build the complete address
+      String completeAddress = _houseController.text.trim();
+      
+      if (_floorController.text.trim().isNotEmpty) {
+        completeAddress += ", Floor ${_floorController.text.trim()}";
+      }
+      
+      if (_towerController.text.trim().isNotEmpty) {
+        completeAddress += ", ${_towerController.text.trim()}";
+      }
+      
+      completeAddress += ", ${widget.address}";
 
-    // Create new address map
-    final newAddress = {
-      'label': _selectedAddressType.isEmpty ? 'Other' : _selectedAddressType,
-      'icon': _selectedAddressType == 'Home'
-          ? Icons.home_outlined
-          : (_selectedAddressType == 'Work'
+      // Create new address map
+      final newAddress = {
+        'label': _selectedAddressType.isEmpty ? 'Other' : _selectedAddressType,
+        'icon': _selectedAddressType == 'Home'
+            ? Icons.home_outlined
+            : (_selectedAddressType == 'Work'
                 ? Icons.work_outline
                 : Icons.location_on_outlined),
-      'distance': '0 m',
-      'address': completeAddress,
-      'phone': userPhone,
-      'receiver_name': userName,
-      'latitude': widget.latitude,
-      'longitude': widget.longitude,
-    };
+        'distance': '0 m',
+        'address': completeAddress,
+        'phone': userPhone,
+        'receiver_name': userName,
+        'latitude': widget.latitude,
+        'longitude': widget.longitude,
+      };
 
-    // Save to provider
-    addressProvider.addAddress(context, newAddress);
-    // Also set as currently selected location
-    addressProvider.setSelectedLocation(newAddress);
-
-    // Navigate back twice (to close bottom sheet then the location screen)
-    Navigator.pop(context); // Close bottom sheet
-    Navigator.pop(context); // Go back to previous screen
+      // Save to provider (will sync with backend)
+      final success = await addressProvider.addAddress(context, newAddress);
+      
+      if (success && mounted) {
+        // Also set as currently selected location
+        addressProvider.setSelectedLocation(newAddress);
+        
+        // Navigate back twice (to close bottom sheet then the location screen)
+        Navigator.pop(context); // Close bottom sheet
+        Navigator.pop(context); // Go back to previous screen
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
@@ -107,7 +139,9 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
         return Container(
           decoration: const BoxDecoration(
             color: Color(0xFF1C1C1C),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
           ),
           child: Column(
             children: [
@@ -149,7 +183,11 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
               color: Color(0xFF3A3A3A),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.close, color: Colors.white, size: 20),
+            child: const Icon(
+              Icons.close,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
         ),
       ),
@@ -195,7 +233,11 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.phone_outlined, color: Colors.white, size: 22),
+              const Icon(
+                Icons.phone_outlined,
+                color: Colors.white,
+                size: 22,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: RichText(
@@ -208,7 +250,9 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
                       TextSpan(text: "$userName, "),
                       TextSpan(
                         text: userPhone,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -232,6 +276,7 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
     final hasHome = savedAddresses.any((e) => e['label'] == 'Home');
     final hasWork = savedAddresses.any((e) => e['label'] == 'Work');
     final hasOther = savedAddresses.any((e) => e['label'] == 'Other');
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -259,12 +304,10 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
                   _addressChip(label: "Home", icon: Icons.home_outlined),
                   const SizedBox(width: 8),
                 ],
-
                 if (!hasWork) ...[
                   _addressChip(label: "Work", icon: Icons.work_outline),
                   const SizedBox(width: 8),
                 ],
-
                 if (!hasOther)
                   _addressChip(
                     label: "Other",
@@ -332,14 +375,23 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
     );
   }
 
-  Widget _addressChip({required String label, required IconData icon}) {
-final bool isSelected = _selectedAddressType == label;
+  Widget _addressChip({
+    required String label,
+    required IconData icon,
+  }) {
+    final bool isSelected = _selectedAddressType == label;
+    
     return GestureDetector(
       onTap: () => setState(() => _selectedAddressType = label),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 10,
+        ),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFC62828) : const Color(0xFF2A2A2A),
+          color: isSelected
+              ? const Color(0xFFC62828)
+              : const Color(0xFF2A2A2A),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
@@ -352,7 +404,9 @@ final bool isSelected = _selectedAddressType == label;
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.white : const Color(0xFF9E9E9E),
+              color: isSelected
+                  ? Colors.white
+                  : const Color(0xFF9E9E9E),
               size: 18,
             ),
             if (label.isNotEmpty) ...[
@@ -360,7 +414,9 @@ final bool isSelected = _selectedAddressType == label;
               Text(
                 label,
                 style: GoogleFonts.poppins(
-                  color: isSelected ? Colors.white : const Color(0xFF9E9E9E),
+                  color: isSelected
+                      ? Colors.white
+                      : const Color(0xFF9E9E9E),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -381,8 +437,14 @@ final bool isSelected = _selectedAddressType == label;
             hint: "House number *",
             controller: _houseController,
           ),
-          _buildInputField(hint: "Floor", controller: _floorController),
-          _buildInputField(hint: "LandDmark", controller: _towerController),
+          _buildInputField(
+            hint: "Floor",
+            controller: _floorController,
+          ),
+          _buildInputField(
+            hint: "Landmark",
+            controller: _towerController,
+          ),
         ],
       ),
     );
@@ -396,7 +458,10 @@ final bool isSelected = _selectedAddressType == label;
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: TextField(
         controller: controller,
-        style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
+        style: GoogleFonts.poppins(
+          color: Colors.white,
+          fontSize: 14,
+        ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.poppins(
@@ -419,7 +484,10 @@ final bool isSelected = _selectedAddressType == label;
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE53935), width: 1.5),
+            borderSide: const BorderSide(
+              color: Color(0xFFE53935),
+              width: 1.5,
+            ),
           ),
         ),
       ),
@@ -439,7 +507,7 @@ final bool isSelected = _selectedAddressType == label;
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         child: ElevatedButton(
-          onPressed: _isFormValid ? _confirmAddress : null,
+          onPressed: (_isFormValid && !_isSaving) ? _confirmAddress : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: _isFormValid
                 ? const Color(0xFFE53935)
@@ -451,14 +519,25 @@ final bool isSelected = _selectedAddressType == label;
             elevation: 0,
             disabledBackgroundColor: const Color(0xFF4A4A4A),
           ),
-          child: Text(
-            "Confirm address",
-            style: GoogleFonts.poppins(
-              color: _isFormValid ? Colors.white : const Color(0xFF9E9E9E),
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-          ),
+          child: _isSaving
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(
+                  "Confirm address",
+                  style: GoogleFonts.poppins(
+                    color: _isFormValid
+                        ? Colors.white
+                        : const Color(0xFF9E9E9E),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
         ),
       ),
     );

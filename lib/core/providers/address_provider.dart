@@ -3,36 +3,80 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zeerah/core/services/address_service.dart';
 
 class AddressProvider with ChangeNotifier {
-  AddressProvider() {
-    _loadFromPrefs();
-  }
-
   final List<Map<String, dynamic>> _savedAddresses = [];
-
   Map<String, dynamic>? _selectedLocation;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  AddressProvider() {
+    _initializeAddresses();
+  }
 
   List<Map<String, dynamic>> get savedAddresses =>
       List.unmodifiable(_savedAddresses);
 
   Map<String, dynamic>? get selectedLocation => _selectedLocation;
 
-  void clearAddressData() async {
-    _selectedLocation = null;
-    _savedAddresses.clear();
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.remove('selected_location');
-    await prefs.remove('saved_addresses');
-
-    notifyListeners();
+  Future<void> _initializeAddresses() async {
+    await _loadFromPrefs();
+    
+    // If local is empty, fetch from backend
+    if (_savedAddresses.isEmpty) {
+      await fetchAddressesFromBackend();
+    }
   }
 
-  /// ADD ADDRESS
-  /// Returns true if added
-  /// Returns false if label already exists
+  /// Fetch addresses from backend and save locally
+  Future<void> fetchAddressesFromBackend() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await AddressService.fetchAddressList();
+
+      if (response != null && response.status && response.data.isNotEmpty) {
+        _savedAddresses.clear();
+
+        for (var e in response.data) {
+          _savedAddresses.add({
+            "id": e.id,
+            "label": _getLabelFromAddress(e.address),
+            "address": e.address,
+            "latitude": e.latitude,
+            "longitude": e.longitude,
+            "icon": _getIconForLabel(_getLabelFromAddress(e.address)),
+            "phone": e.userPhone ?? "",
+            "receiver_name": e.userName,
+            "status": e.status,
+          });
+        }
+
+        await _saveAllToPrefs();
+        notifyListeners();
+      }
+    } catch (e) {
+      _errorMessage = "Failed to fetch addresses";
+      debugPrint("Fetch addresses error: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  String _getLabelFromAddress(String address) {
+    // You can implement logic to determine label from address
+    // For now, default to "Other"
+    return "Other";
+  }
+
+  /// ADD ADDRESS - Saves to both local and backend
   Future<bool> addAddress(
     BuildContext context,
     Map<String, dynamic> address,
@@ -45,8 +89,7 @@ class AddressProvider with ChangeNotifier {
           (item['label'] ?? '')
               .toString()
               .trim()
-              .toLowerCase() ==
-          newLabel,
+              .toLowerCase() == newLabel,
     );
 
     if (alreadyExists) {
@@ -57,48 +100,139 @@ class AddressProvider with ChangeNotifier {
           ),
         ),
       );
-
       return false;
     }
 
-    _savedAddresses.insert(0, address);
+    // Save to backend first
+    try {
+      final status = address['label'] == 'Home' ? 1 : (address['label'] == 'Work' ? 2 : 0);
+      
+      final response = await AddressService.saveAddress(
+        address: address['address'],
+        lat: address['latitude'],
+        long: address['longitude'],
+        status: status,
+      );
 
-    await _saveAllToPrefs();
-
-    notifyListeners();
-
-    return true;
+      if (response != null && response.status) {
+        // Add backend ID to address
+        final addressWithId = Map<String, dynamic>.from(address);
+        addressWithId['id'] = response.data?.id;
+        
+        _savedAddresses.insert(0, addressWithId);
+        await _saveAllToPrefs();
+        notifyListeners();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Address saved successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        return true;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response?.message ?? 'Failed to save address'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return false;
+      }
+    } catch (e) {
+      debugPrint("Save address error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Network error. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
+    }
   }
 
-  /// DELETE ADDRESS
-  Future<void> deleteAddress(Map<String, dynamic> address) async {
-    _savedAddresses.remove(address);
-
-    await _saveAllToPrefs();
-
-    notifyListeners();
+  /// DELETE ADDRESS - Deletes from both local and backend
+  Future<bool> deleteAddress(BuildContext context, Map<String, dynamic> address) async {
+    final addressId = address['id'];
+    
+    if (addressId != null && addressId is int) {
+      try {
+        final response = await AddressService.deleteAddress(addressId);
+        
+        if (response != null) {
+          _savedAddresses.remove(address);
+          
+          // If deleted address was selected, clear selection
+          if (_selectedLocation != null && _selectedLocation!['id'] == addressId) {
+            _selectedLocation = null;
+            await _saveSelectedToPrefs(null);
+          }
+          
+          await _saveAllToPrefs();
+          notifyListeners();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Address deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          return true;
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete address'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return false;
+        }
+      } catch (e) {
+        debugPrint("Delete address error: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Network error. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return false;
+      }
+    } else {
+      // Local-only deletion (for addresses not yet synced)
+      _savedAddresses.remove(address);
+      await _saveAllToPrefs();
+      notifyListeners();
+      return true;
+    }
   }
 
   void setSelectedLocation(Map<String, dynamic> location) {
     _selectedLocation = location;
-
-    _saveToPrefs(location);
-
+    _saveSelectedToPrefs(location);
     notifyListeners();
   }
 
-  Future<void> _saveToPrefs(Map<String, dynamic> location) async {
+  void clearAddressData() async {
+    _selectedLocation = null;
+    _savedAddresses.clear();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('selected_location');
+    await prefs.remove('saved_addresses');
+    notifyListeners();
+  }
+
+  Future<void> _saveSelectedToPrefs(Map<String, dynamic>? location) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      final mapToSave = Map<String, dynamic>.from(location);
-
-      mapToSave.remove('icon');
-
-      await prefs.setString(
-        'selected_location',
-        jsonEncode(mapToSave),
-      );
+      
+      if (location != null) {
+        final mapToSave = Map<String, dynamic>.from(location);
+        mapToSave.remove('icon');
+        await prefs.setString('selected_location', jsonEncode(mapToSave));
+      } else {
+        await prefs.remove('selected_location');
+      }
     } catch (e) {
       debugPrint("Error saving selected location: $e");
     }
@@ -107,20 +241,12 @@ class AddressProvider with ChangeNotifier {
   Future<void> _saveAllToPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
-      final List<Map<String, dynamic>> listToSave =
-          _savedAddresses.map((addr) {
+      final List<Map<String, dynamic>> listToSave = _savedAddresses.map((addr) {
         final map = Map<String, dynamic>.from(addr);
-
         map.remove('icon');
-
         return map;
       }).toList();
-
-      await prefs.setString(
-        'saved_addresses',
-        jsonEncode(listToSave),
-      );
+      await prefs.setString('saved_addresses', jsonEncode(listToSave));
     } catch (e) {
       debugPrint("Error saving addresses list: $e");
     }
@@ -129,39 +255,24 @@ class AddressProvider with ChangeNotifier {
   Future<void> _loadFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
+      
       final selectedStr = prefs.getString('selected_location');
-
       if (selectedStr != null) {
-        final Map<String, dynamic> loadedMap =
-            jsonDecode(selectedStr);
-
-        loadedMap['icon'] =
-            _getIconForLabel(loadedMap['label']);
-
+        final Map<String, dynamic> loadedMap = jsonDecode(selectedStr);
+        loadedMap['icon'] = _getIconForLabel(loadedMap['label']);
         _selectedLocation = loadedMap;
       }
-
-      final savedListStr =
-          prefs.getString('saved_addresses');
-
+      
+      final savedListStr = prefs.getString('saved_addresses');
       if (savedListStr != null) {
-        final List<dynamic> decodedList =
-            jsonDecode(savedListStr);
-
+        final List<dynamic> decodedList = jsonDecode(savedListStr);
         _savedAddresses.clear();
-
         for (var item in decodedList) {
-          final Map<String, dynamic> addr =
-              Map<String, dynamic>.from(item);
-
-          addr['icon'] =
-              _getIconForLabel(addr['label']);
-
+          final Map<String, dynamic> addr = Map<String, dynamic>.from(item);
+          addr['icon'] = _getIconForLabel(addr['label']);
           _savedAddresses.add(addr);
         }
       }
-
       notifyListeners();
     } catch (e) {
       debugPrint("Error loading from prefs: $e");
@@ -172,13 +283,10 @@ class AddressProvider with ChangeNotifier {
     switch (label) {
       case 'Home':
         return Icons.home_outlined;
-
       case 'Work':
         return Icons.work_outline;
-
       case 'Other':
         return Icons.location_on_outlined;
-
       default:
         return Icons.location_on_outlined;
     }
@@ -186,46 +294,34 @@ class AddressProvider with ChangeNotifier {
 
   Future<void> setCurrentLocationAutomatically() async {
     try {
-      if (_selectedLocation != null) return;
-
-      bool serviceEnabled =
-          await Geolocator.isLocationServiceEnabled();
-
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint("Location service disabled");
         return;
       }
 
-      LocationPermission permission =
-          await Geolocator.checkPermission();
-
+      LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
-        permission =
-            await Geolocator.requestPermission();
+        permission = await Geolocator.requestPermission();
       }
 
-      if (permission ==
-              LocationPermission.deniedForever ||
+      if (permission == LocationPermission.deniedForever ||
           permission == LocationPermission.denied) {
         debugPrint("Location permission denied");
         return;
       }
 
-      Position position =
-          await Geolocator.getCurrentPosition(
+      Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(
+      List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       );
 
       Placemark place = placemarks.first;
-
-      String fullAddress =
-          "${place.street}, ${place.locality}, ${place.administrativeArea}";
+      String fullAddress = "${place.street}, ${place.locality}, ${place.administrativeArea}";
 
       final locationData = {
         'label': 'Current Location',
@@ -236,10 +332,9 @@ class AddressProvider with ChangeNotifier {
       };
 
       _selectedLocation = locationData;
-
-      await _saveToPrefs(locationData);
-
+      await _saveSelectedToPrefs(locationData);
       notifyListeners();
+      debugPrint("Current location updated successfully");
     } catch (e) {
       debugPrint("Current location error: $e");
     }

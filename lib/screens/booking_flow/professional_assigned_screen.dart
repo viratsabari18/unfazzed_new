@@ -200,19 +200,32 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     ui.FrameInfo fi = await codec.getNextFrame();
     return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
   }
+Future<void> _loadCustomIcons() async {
+  try {
+    final Uint8List markerIcon = await _getBytesFromAsset(
+      'lib/assets/images/rider_car.png',
+      130,
+    );
 
-  Future<void> _loadCustomIcons() async {
-    try {
-      final Uint8List markerIcon = await _getBytesFromAsset('lib/assets/images/rider_car.png', 100); 
-      if (mounted) {
-        setState(() {
-          _carIcon = BitmapDescriptor.fromBytes(markerIcon);
-        });
-      }
-    } catch (e) {
-      // Fallback already handled in build
+    debugPrint("Rider icon loaded successfully");
+
+    if (mounted) {
+      setState(() {
+        _carIcon = BitmapDescriptor.fromBytes(markerIcon);
+      });
+    }
+  } catch (e) {
+    debugPrint("Rider icon loading failed: $e");
+
+    if (mounted) {
+      setState(() {
+        _carIcon = BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueGreen,
+        );
+      });
     }
   }
+}
 
   void _startRealTimeTracking(String bookingId) {
     _movementTimer = Timer.periodic(const Duration(seconds: 3), (timer) { // Faster updates (3s)
@@ -734,6 +747,7 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
               // Rider Marker (Custom Car)
               Marker(
                 markerId: const MarkerId('rider'),
+                  rotation: 180, 
                 position: _currentRiderPos,
                 icon: _carIcon ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
                 infoWindow: const InfoWindow(title: 'Rider On the Way'),

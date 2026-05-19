@@ -29,17 +29,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Use the balance already stored in UserProvider for instant display
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     _currentWallet = userProvider.walletBalance;
-    _isWalletLoading = userProvider.walletBalance == 0.0; 
+    _isWalletLoading = userProvider.walletBalance == 0.0;
     _fetchWalletBalance();
   }
 
   Future<void> _fetchWalletBalance() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final history = await _paymentService.fetchWalletHistory(token: userProvider.apiToken);
-    
+    final history = await _paymentService.fetchWalletHistory(
+      token: userProvider.apiToken,
+    );
+
     if (mounted) {
       setState(() {
-        final newBalance = (history['available_balance'] ?? _currentWallet).toDouble();
+        final newBalance = (history['available_balance'] ?? _currentWallet)
+            .toDouble();
         _currentWallet = newBalance;
         userProvider.updateWalletBalance(newBalance);
         _isWalletLoading = false;
@@ -52,13 +55,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: Text(
           'Profile',
           style: GoogleFonts.poppins(
@@ -78,20 +78,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               context,
               title: 'General',
               items: [
-                _ProfileMenuItem(
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'Wallet History',
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    AppRoutes.walletHistory,
-                    arguments: widget.user ?? UserModel.mock(),
-                  ),
-                ),
+                // _ProfileMenuItem(
+                //   icon: Icons.account_balance_wallet_outlined,
+                //   title: 'Wallet History',
+                //   onTap: () => Navigator.pushNamed(
+                //     context,
+                //     AppRoutes.walletHistory,
+                //     arguments: widget.user ?? UserModel.mock(),
+                //   ),
+                // ),
                 _ProfileMenuItem(
                   icon: Icons.history_outlined,
                   title: 'Services Payment History',
                   onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.servicesPaymentHistory);
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.servicesPaymentHistory,
+                    );
                   },
                 ),
                 _ProfileMenuItem(
@@ -127,12 +130,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _ProfileMenuItem(
                   icon: Icons.message_outlined,
                   title: 'My reviews',
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.myReviews),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.myReviews),
                 ),
                 _ProfileMenuItem(
                   icon: Icons.help_outline,
                   title: 'Help Desk',
                   onTap: () => Navigator.pushNamed(context, AppRoutes.helpDesk),
+                ),
+                _ProfileMenuItem(
+                  icon: Icons.description_outlined,
+                  title: 'Terms And Conditions',
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.termsAndCondtions),
+                ),
+
+                _ProfileMenuItem(
+                  icon: Icons.privacy_tip_outlined,
+                  title: 'Privacy Policy',
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.privacyPolicy),
                 ),
               ],
             ),
@@ -204,9 +219,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       height: 70,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFEEEEEE), width: 1),
+                        border: Border.all(
+                          color: const Color(0xFFEEEEEE),
+                          width: 1,
+                        ),
                         image: DecorationImage(
-                          image: photoUrl != null 
+                          image: photoUrl != null
                               ? NetworkImage(photoUrl) as ImageProvider
                               : const AssetImage(UserMessages.profileImage),
                           fit: BoxFit.cover,
@@ -236,58 +254,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.grey,
+                      size: 16,
+                    ),
                   ],
                 ),
               ),
-              
-              const Divider(height: 1, color: Color(0xFFEEEEEE), indent: 20, endIndent: 20),
-              
+
+              const Divider(
+                height: 1,
+                color: Color(0xFFEEEEEE),
+                indent: 20,
+                endIndent: 20,
+              ),
+
               // Wallet Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF0ED),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.account_balance_wallet, color: AppColors.primaryRed, size: 24),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        'Wallet Balance',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    _isWalletLoading 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(
-                          '₹${_currentWallet.toStringAsFixed(0)}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryRed,
-                          ),
-                        ),
-                  ],
-                ),
-              ),
+              // Padding(
+              //   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              //   child: Row(
+              //     children: [
+              //       Container(
+              //         padding: const EdgeInsets.all(10),
+              //         decoration: BoxDecoration(
+              //           color: const Color(0xFFFFF0ED),
+              //           borderRadius: BorderRadius.circular(12),
+              //         ),
+              //         child: const Icon(Icons.account_balance_wallet, color: AppColors.primaryRed, size: 24),
+              //       ),
+              //       const SizedBox(width: 16),
+              //       Expanded(
+              //         child: Text(
+              //           'Wallet Balance',
+              //           style: GoogleFonts.poppins(
+              //             fontSize: 15,
+              //             fontWeight: FontWeight.w600,
+              //             color: Colors.black,
+              //           ),
+              //         ),
+              //       ),
+              //       _isWalletLoading
+              //         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              //         : Text(
+              //             '₹${_currentWallet.toStringAsFixed(0)}',
+              //             style: GoogleFonts.poppins(
+              //               fontSize: 18,
+              //               fontWeight: FontWeight.bold,
+              //               color: AppColors.primaryRed,
+              //             ),
+              //           ),
+              //     ],
+              //   ),
+              // ),
             ],
           ),
         );
-      }
+      },
     );
   }
 
-  Widget _buildMenuSection(BuildContext context, {required String title, required List<_ProfileMenuItem> items}) {
+  Widget _buildMenuSection(
+    BuildContext context, {
+    required String title,
+    required List<_ProfileMenuItem> items,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -322,14 +353,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return Column(
                 children: [
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 4,
+                    ),
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8F9FA),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(item.icon, color: AppColors.primaryRed, size: 22),
+                      child: Icon(
+                        item.icon,
+                        color: AppColors.primaryRed,
+                        size: 22,
+                      ),
                     ),
                     title: Text(
                       item.title,
@@ -339,11 +377,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: Colors.black,
                       ),
                     ),
-                    trailing: item.trailing ?? const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                    trailing:
+                        item.trailing ??
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.grey,
+                          size: 16,
+                        ),
                     onTap: item.onTap,
                   ),
                   if (index != items.length - 1)
-                    const Divider(height: 1, indent: 70, endIndent: 20, color: Color(0xFFEEEEEE)),
+                    const Divider(
+                      height: 1,
+                      indent: 70,
+                      endIndent: 20,
+                      color: Color(0xFFEEEEEE),
+                    ),
                 ],
               );
             }),
@@ -363,10 +412,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (mounted) {
             Provider.of<UserProvider>(context, listen: false).clearUser();
             // User Request: Keep addresses persistent across login/logout
-            // Provider.of<AddressProvider>(context, listen: false).clearAddressData(); 
+            // Provider.of<AddressProvider>(context, listen: false).clearAddressData();
             Navigator.pushNamedAndRemoveUntil(
-              context, 
-              AppRoutes.signIn, 
+              context,
+              AppRoutes.signIn,
               (route) => false,
             );
           }

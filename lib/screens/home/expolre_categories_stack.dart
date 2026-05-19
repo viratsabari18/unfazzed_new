@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/core/providers/dashboard_provider.dart';
+import 'package:zeerah/screens/home/coming_soon_section.dart';
 
 class ExpolreCategoriesStack extends StatelessWidget {
   const ExpolreCategoriesStack({super.key});
@@ -18,97 +19,61 @@ class ExpolreCategoriesStack extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<DashboardProvider>(
       builder: (context, dashboardProvider, _) {
-        final addressProvider =
-    Provider.of<AddressProvider>(context);
+        final addressProvider = Provider.of<AddressProvider>(context);
 
-final location = addressProvider.selectedLocation;
+        final location = addressProvider.selectedLocation;
 
-if (location == null) {
-  return const SizedBox.shrink();
-}
+        if (location == null) {
+          return const SizedBox.shrink();
+        }
         final subCategories = dashboardProvider.currentSubCategories;
-        
+
         // Map dynamic sub-categories to CategoryItem format for the carousel, deduplicating by title
         final List<CategoryItem> items = [];
         final Set<String> uniqueTitles = {};
-        
+
         for (var sc in subCategories) {
           final String title = sc['name'] ?? "";
-          
+
           // Filter out sub-categories that have zero services if the backend provides a count
           final dynamic rawCount = sc['services_count'] ?? sc['service_count'];
           if (rawCount != null) {
             final int count = int.tryParse(rawCount.toString()) ?? 0;
-            if (count == 0) continue; 
+            if (count == 0) continue;
           }
 
           if (title.isNotEmpty && !uniqueTitles.contains(title)) {
             uniqueTitles.add(title);
-            items.add(CategoryItem(
-              id: sc['id'],
-              title: title,
-              image: sc['image'] ?? "",
-              subtitle: sc['description'] ?? "Professional service at your doorstep",
-            ));
+            items.add(
+              CategoryItem(
+                id: sc['id'],
+                title: title,
+                image: sc['image'] ?? "",
+                subtitle:
+                    sc['description'] ??
+                    "Professional service at your doorstep",
+              ),
+            );
           }
         }
 
         if (dashboardProvider.isLoading && items.isEmpty) {
           return SizedBox(
             height: MediaQuery.of(context).size.height * 0.45,
-            child: const Center(child: CircularProgressIndicator(color: AppColors.primaryRed)),
+            child: const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryRed),
+            ),
           );
         }
 
-        if (dashboardProvider.categories.isEmpty && !dashboardProvider.isLoading) {
+        if (dashboardProvider.categories.isEmpty &&
+            !dashboardProvider.isLoading) {
           return const SizedBox.shrink();
         }
 
         if (items.isEmpty && !dashboardProvider.isLoading) {
           // Show a placeholder card if no items are found
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.45,
-                child: Center(
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.74,
-                    height: MediaQuery.of(context).size.height * 0.35,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.construction_outlined, size: 48, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          "Services Coming Soon",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "We're working on adding more services here",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          );
+          return ComingSoonSection();
         }
 
         return Column(
@@ -117,11 +82,13 @@ if (location == null) {
             SizedBox(
               height: MediaQuery.of(context).size.height * 0.45,
               child: EditorPickCarousel(
-                items: items, 
-                categoryName: dashboardProvider.categories.firstWhere(
-                  (c) => c['id'] == dashboardProvider.selectedCategoryId,
-                  orElse: () => {'name': ''}
-                )['name'] ?? "",
+                items: items,
+                categoryName:
+                    dashboardProvider.categories.firstWhere(
+                      (c) => c['id'] == dashboardProvider.selectedCategoryId,
+                      orElse: () => {'name': ''},
+                    )['name'] ??
+                    "",
               ),
             ),
             const SizedBox(height: 12),
@@ -172,7 +139,8 @@ class _EditorPickCarouselState extends State<EditorPickCarousel> {
   @override
   void didUpdateWidget(EditorPickCarousel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.items.length != widget.items.length || oldWidget.categoryName != widget.categoryName) {
+    if (oldWidget.items.length != widget.items.length ||
+        oldWidget.categoryName != widget.categoryName) {
       _initController();
     }
   }
@@ -212,8 +180,8 @@ class _EditorPickCarouselState extends State<EditorPickCarousel> {
             Positioned.fill(
               child: PageView.builder(
                 controller: _controller,
-                physics: widget.items.length <= 1 
-                    ? const NeverScrollableScrollPhysics() 
+                physics: widget.items.length <= 1
+                    ? const NeverScrollableScrollPhysics()
                     : const BouncingScrollPhysics(
                         parent: AlwaysScrollableScrollPhysics(),
                       ),
@@ -254,7 +222,7 @@ class _EditorPickCarouselState extends State<EditorPickCarousel> {
       final delta = vi - page;
       if (delta < -1.2 || delta > 3.2) continue;
       final realIndex = (((vi % n) + n) % n).toInt();
-      
+
       // For small collections, avoid showing the same item twice in the stack
       if (n < 5 && entries.any((e) => e.index == realIndex)) {
         // If we already have this index, only keep the one closer to the front (delta near 0)
@@ -265,7 +233,7 @@ class _EditorPickCarouselState extends State<EditorPickCarousel> {
         }
         continue;
       }
-      
+
       entries.add(_RenderEntry(index: realIndex, delta: delta));
     }
 
@@ -306,7 +274,6 @@ class _EditorPickCarouselState extends State<EditorPickCarousel> {
       xOffset = -cardWidth * _leftPeekFraction * t;
       opacity = (1.0 - 0.25 * t).clamp(0.0, 1.0);
     }
-   
 
     return Transform.translate(
       offset: Offset(xOffset, 0),
@@ -317,7 +284,11 @@ class _EditorPickCarouselState extends State<EditorPickCarousel> {
           child: SizedBox(
             width: cardWidth,
             height: cardHeight,
-            child: _ImageView(item: item, categoryName: widget.categoryName,subCategoryId: item.id,),
+            child: _ImageView(
+              item: item,
+              categoryName: widget.categoryName,
+              subCategoryId: item.id,
+            ),
           ),
         ),
       ),
@@ -333,9 +304,13 @@ class _RenderEntry {
 
 class _ImageView extends StatelessWidget {
   final CategoryItem item;
-  final String categoryName;  
-  final int subCategoryId;   
-  const _ImageView({required this.item, required this.categoryName, required this.subCategoryId});
+  final String categoryName;
+  final int subCategoryId;
+  const _ImageView({
+    required this.item,
+    required this.categoryName,
+    required this.subCategoryId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -362,7 +337,11 @@ class _ImageView extends StatelessWidget {
           left: 10,
           right: 10,
           bottom: 12,
-          child: _BookNowButton(item: item, categoryName: categoryName,subCategoryId: subCategoryId,),
+          child: _BookNowButton(
+            item: item,
+            categoryName: categoryName,
+            subCategoryId: subCategoryId,
+          ),
         ),
       ],
     );
@@ -398,9 +377,16 @@ class _ImageView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.image_not_supported_outlined, size: 48, color: Colors.white24),
+            Icon(
+              Icons.image_not_supported_outlined,
+              size: 48,
+              color: Colors.white24,
+            ),
             SizedBox(height: 8),
-            Text('Failed to load image', style: TextStyle(color: Colors.white38, fontSize: 12)),
+            Text(
+              'Failed to load image',
+              style: TextStyle(color: Colors.white38, fontSize: 12),
+            ),
           ],
         ),
       ),
@@ -420,14 +406,13 @@ class _ImageView extends StatelessWidget {
 class _BookNowButton extends StatefulWidget {
   final CategoryItem item;
   final String categoryName;
-   final int subCategoryId;  
+  final int subCategoryId;
 
   const _BookNowButton({
     Key? key,
     required this.item,
     required this.categoryName,
     required this.subCategoryId,
-
   }) : super(key: key);
 
   @override
@@ -450,10 +435,10 @@ class _BookNowButtonState extends State<_BookNowButton> {
       setState(() => _dragOffset = 0);
       Navigator.pushNamed(
         context,
-        AppRoutes.cleaningServices, 
+        AppRoutes.cleaningServices,
         arguments: {
-         'subcategoryName': widget.item.title,      
-          'subcategoryId': widget.subCategoryId,    
+          'subcategoryName': widget.item.title,
+          'subcategoryId': widget.subCategoryId,
           'parentCategoryName': widget.categoryName,
         },
       );
@@ -476,17 +461,33 @@ class _BookNowButtonState extends State<_BookNowButton> {
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(100),
-                border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
                 gradient: LinearGradient(
-                  colors: [const Color(0xFFC0A040).withOpacity(0.3), const Color(0xFF408080).withOpacity(0.3)],
+                  colors: [
+                    const Color(0xFFC0A040).withOpacity(0.3),
+                    const Color(0xFF408080).withOpacity(0.3),
+                  ],
                 ),
               ),
               child: Stack(
                 children: [
                   Center(
                     child: Opacity(
-                      opacity: (1 - (_dragOffset / (totalWidth - 60))).clamp(0.2, 1.0),
-                      child: const Text('Swipe to Book', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                      opacity: (1 - (_dragOffset / (totalWidth - 60))).clamp(
+                        0.2,
+                        1.0,
+                      ),
+                      child: const Text(
+                        'Swipe to Book',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                   Align(
@@ -494,20 +495,35 @@ class _BookNowButtonState extends State<_BookNowButton> {
                     child: Container(
                       width: 48,
                       height: 48,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.15)),
-                      child: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.15),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                   ),
                   Positioned(
                     left: _dragOffset,
                     child: GestureDetector(
-                      onHorizontalDragUpdate: (d) => _onDragUpdate(d, totalWidth),
+                      onHorizontalDragUpdate: (d) =>
+                          _onDragUpdate(d, totalWidth),
                       onHorizontalDragEnd: (d) => _onDragEnd(d, totalWidth),
                       child: Container(
                         width: 48,
                         height: 48,
-                        decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF131B1B)),
-                        child: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF131B1B),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ),

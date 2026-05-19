@@ -38,4 +38,7 @@ class AppRoutes {
   static const String addBank = "/addBank";
   static const String bookingDetail = "/bookingDetail";
   static const String myReviews = "/myReviews";
+
+  static const String termsAndCondtions = '/termsandcondition';
+   static const String privacyPolicy = '/privacyPolicy';
 }

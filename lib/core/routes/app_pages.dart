@@ -16,7 +16,9 @@ import 'package:zeerah/screens/booking_flow/service_verification_screen.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/booking_home_page.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/bookig_sevice_progress_home.dart';
 import 'package:zeerah/screens/landing/landing_screen.dart';
+import 'package:zeerah/screens/profile/privacy_policy.dart';
 import 'package:zeerah/screens/profile/profile_screen.dart';
+import 'package:zeerah/screens/profile/terms_and_condtion.dart';
 import 'package:zeerah/screens/profile/wallet_history_screen.dart';
 import 'package:zeerah/screens/profile/help_desk_screen.dart';
 import 'package:zeerah/screens/profile/create_support_ticket_screen.dart';
@@ -218,5 +220,7 @@ class AppPages {
       return BookingDetailScreen(bookingId: bookingId);
     },
     AppRoutes.myReviews: (context) => const MyReviewsScreen(),
+    AppRoutes.termsAndCondtions:(context)=>const TermsAndCondtion(),
+    AppRoutes.privacyPolicy:(context)=>const PrivacyPolicy()
   };
 }

@@ -68,6 +68,7 @@ class ServiceData {
   String? translations;
   dynamic rejectReason;
   String? serviceRequestStatus;
+  double? serviceRating;  // Added this field
 
   ServiceData({
     this.id,
@@ -104,6 +105,7 @@ class ServiceData {
     this.translations,
     this.rejectReason,
     this.serviceRequestStatus,
+    this.serviceRating,  // Added this parameter
   });
 
   factory ServiceData.fromJson(Map<String, dynamic> json) {
@@ -150,6 +152,11 @@ class ServiceData {
       translations: json['translations'],
       rejectReason: json['reject_reason'],
       serviceRequestStatus: json['service_request_status'],
+      serviceRating: json['service_rating'] != null 
+          ? (json['service_rating'] is int 
+              ? (json['service_rating'] as int).toDouble() 
+              : json['service_rating']) 
+          : null,  // Added this line
     );
   }
 
@@ -190,6 +197,7 @@ class ServiceData {
       "translations": translations,
       "reject_reason": rejectReason,
       "service_request_status": serviceRequestStatus,
+      "service_rating": serviceRating,  // Added this line
     };
   }
 }

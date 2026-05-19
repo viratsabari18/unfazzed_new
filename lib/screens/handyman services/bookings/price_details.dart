@@ -2,9 +2,13 @@ import 'package:zeerah/core/common/app_exports.dart';
 
 class PriceDetails extends StatefulWidget {
   final double totalAmount;
-  
+  final double discountAmount;
+  final double discountPercent;
+
   const PriceDetails({
     required this.totalAmount,
+    required this.discountAmount,
+    required this.discountPercent,
     super.key,
   });
 
@@ -36,24 +40,34 @@ class _PriceDetailsState extends State<PriceDetails> {
             ),
             child: Column(
               children: [
-                _priceRow(context, UserMessages.price, '₹ ${widget.totalAmount.toStringAsFixed(2)}', isRed: false),
+                _priceRow(
+                  context,
+                  UserMessages.price,
+                  '₹ ${widget.totalAmount.toStringAsFixed(2)}',
+                  isRed: false,
+                ),
                 _divider(context),
                 _priceRow(
                   context,
-                  UserMessages.discount,
-                  '- ₹ 0.00',
+                 'discount (${widget.discountPercent.toInt()}%)',
+                  '- ₹ ${widget.discountAmount.toStringAsFixed(2)}',
                   labelColor: AppColors.discountRed,
                   isRed: true,
                 ),
                 _divider(context),
-                _priceRow(context, UserMessages.subtotal, '₹ ${widget.totalAmount.toStringAsFixed(2)}', isRed: false),
-                _divider(context),
-                _priceRow(context, UserMessages.tax, '₹ 0.00', isRed: true),
+                _priceRow(
+                  context,
+                  UserMessages.subtotal,
+                '₹ ${(widget.totalAmount - widget.discountAmount).toStringAsFixed(2)}',
+                  isRed: false,
+                ),
+                // _divider(context),
+                // _priceRow(context, UserMessages.tax, '₹ 0.00', isRed: true),
                 _divider(context),
                 _priceRow(
                   context,
                   UserMessages.totalAmount,
-                  '₹ ${widget.totalAmount.toStringAsFixed(2)}',
+                '₹ ${(widget.totalAmount - widget.discountAmount).toStringAsFixed(2)}',
                   isRed: false,
                   isBold: true,
                 ),
@@ -150,7 +164,10 @@ class _PriceDetailsState extends State<PriceDetails> {
   }) {
     final valueColor = isRed ? AppColors.discountRed : AppColors.darkGrayText;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: Insets.sm, vertical: AppSizes.h(context, 13)),
+      padding: EdgeInsets.symmetric(
+        horizontal: Insets.sm,
+        vertical: AppSizes.h(context, 13),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -176,10 +193,10 @@ class _PriceDetailsState extends State<PriceDetails> {
   }
 
   Widget _divider(BuildContext context) => Divider(
-        height: 1,
-        thickness: 1,
-        color: AppColors.naturalWhite.withOpacity(0.6),
-        indent: Insets.sm,
-        endIndent: Insets.sm,
-      );
+    height: 1,
+    thickness: 1,
+    color: AppColors.naturalWhite.withOpacity(0.6),
+    indent: Insets.sm,
+    endIndent: Insets.sm,
+  );
 }

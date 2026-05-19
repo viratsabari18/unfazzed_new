@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:zeerah/core/config/api_config.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:zeerah/core/common/app_exports.dart';
+import 'package:zeerah/core/config/api_config.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/services/auth_service.dart';
-import 'package:zeerah/core/services/fcm_service.dart';
 
 class OtpVerification extends StatefulWidget {
   final String verificationId;
@@ -23,15 +26,26 @@ class OtpVerification extends StatefulWidget {
 
 class _OtpVerificationState extends State<OtpVerification> {
   final int otpLength = 6;
+  final int resendCooldownSeconds = 30;
+
   final AuthService _authService = AuthService();
 
   late List<TextEditingController> controllers;
   late List<FocusNode> focusNodes;
+
+  late String currentVerificationId;
+
   bool isLoading = false;
+  bool isResendEnabled = true;
+  int remainingCooldownSeconds = 0;
+  Timer? _resendCooldownTimer;
 
   @override
   void initState() {
     super.initState();
+
+    currentVerificationId = widget.verificationId;
+
     controllers = List.generate(otpLength, (index) => TextEditingController());
     focusNodes = List.generate(otpLength, (index) => FocusNode());
   }
@@ -41,9 +55,12 @@ class _OtpVerificationState extends State<OtpVerification> {
     for (var c in controllers) {
       c.dispose();
     }
+
     for (var f in focusNodes) {
       f.dispose();
     }
+
+    _resendCooldownTimer?.cancel();
     super.dispose();
   }
 
@@ -65,102 +82,221 @@ class _OtpVerificationState extends State<OtpVerification> {
     return controllers.map((e) => e.text).join();
   }
 
-  Future<void> _handleVerifyOtp() async {
-    String otp = getOtp();
-    if (otp.length != 6) {
+  void startResendCooldown() {
+    setState(() {
+      isResendEnabled = false;
+      remainingCooldownSeconds = resendCooldownSeconds;
+    });
+
+    _resendCooldownTimer?.cancel();
+    _resendCooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (remainingCooldownSeconds > 0) {
+            remainingCooldownSeconds--;
+          } else {
+            isResendEnabled = true;
+            timer.cancel();
+          }
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _resendOtp() async {
+    // Check if resend is enabled
+    if (!isResendEnabled) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(UserMessages.enterVaildOtp)),
+        SnackBar(
+          content: Text(
+            "Please wait ${remainingCooldownSeconds} seconds before resending OTP",
+          ),
+          duration: const Duration(seconds: 2),
+        ),
       );
       return;
     }
 
-    setState(() => isLoading = true);
-    
+    setState(() {
+      isLoading = true;
+    });
+
+    await _authService.verifyPhoneNumber(
+      phoneNumber: widget.phoneNumber,
+
+      onCodeSent: (String newVerificationId) {
+        setState(() {
+          currentVerificationId = newVerificationId;
+          isLoading = false;
+        });
+
+        // Clear all OTP fields when resending
+        for (var controller in controllers) {
+          controller.clear();
+        }
+
+        // Set focus to first OTP field
+        focusNodes[0].requestFocus();
+
+        // Start the cooldown timer
+        startResendCooldown();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("OTP Resent Successfully"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      },
+
+      onVerificationFailed: (FirebaseAuthException e) {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                e.message ?? "OTP resend failed. Please try again.",
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _handleVerifyOtp() async {
+    String otp = getOtp();
+
+    if (otp.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Enter valid OTP"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
     final userCredential = await _authService.signInWithPhoneNumber(
-      widget.verificationId, 
+      currentVerificationId,
       otp,
     );
-    
+
     if (userCredential != null && userCredential.user != null) {
       if (mounted) {
         final userProvider = Provider.of<UserProvider>(context, listen: false);
+
         userProvider.setUser(userCredential.user);
-        
+
         bool forceProfileCompletion = false;
 
-        // Backend API Check
         try {
           final url = Uri.parse("${ApiConfig.apiBaseUrl}/otp-login");
+
           final response = await http.post(
             url,
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
-              
             },
             body: json.encode({'contact_number': widget.phoneNumber}),
           );
-          
+
           if (response.statusCode == 200) {
             final data = json.decode(response.body);
+
             if (data['status'] == true && data['data'] != null) {
-              // Always save API token if present
               final apiToken = data['data']['api_token'];
-              if (apiToken != null && apiToken.isNotEmpty) {
-                await userProvider.setApiToken(apiToken);
-                debugPrint("Token SAVED: $apiToken");
-              }
-              
-              final backendId = data['data']['employee_id']?.toString() ?? data['data']['id']?.toString();
+
+    if (apiToken != null && apiToken.isNotEmpty) {
+  await userProvider.setApiToken(apiToken);
+
+  final prefs = await SharedPreferences.getInstance();
+
+  await prefs.setString("token", apiToken);
+
+  final savedToken = prefs.getString("token");
+
+  debugPrint("TOKEN SAVED SUCCESSFULLY : $apiToken");
+  debugPrint("CHECK SAVED TOKEN : $savedToken");
+}
+
+              final backendId =
+                  data['data']['employee_id']?.toString() ??
+                  data['data']['id']?.toString();
+
               if (backendId != null) {
-                // Background task: Register FCM Token (UserProvider also handles this internally)
-                userProvider.setBackendUserId(backendId); 
+                userProvider.setBackendUserId(backendId);
               }
 
               if (data['data']['first_name'] != null) {
                 final firstName = data['data']['first_name'];
                 final lastName = data['data']['last_name'] ?? '';
-                
-                // Background task: Update profile info without blocking the UI
+
                 userProvider.updateProfile(
-                  firstName: firstName, 
-                  lastName: lastName, 
-                  email: data['data']['email'] ?? ''
-                ).catchError((e) => debugPrint("Profile background update error: $e"));
+                  firstName: firstName,
+                  lastName: lastName,
+                  email: data['data']['email'] ?? '',
+                );
               }
-            } else {
-              debugPrint("API returned status false: ${response.body}");
             }
           } else if (response.statusCode == 406) {
-             debugPrint("API 406: User needs to complete profile.");
-             forceProfileCompletion = true;
+            forceProfileCompletion = true;
           }
         } catch (e) {
           debugPrint("Backend API Error: $e");
         }
-        
+
         if (mounted) {
-          setState(() => isLoading = false);
-          showOtpSuccessDialog(context, forceProfileCompletion: forceProfileCompletion);
+          setState(() {
+            isLoading = false;
+          });
+
+          showOtpSuccessDialog(
+            context,
+            forceProfileCompletion: forceProfileCompletion,
+          );
         }
       }
     } else {
       if (mounted) {
-        setState(() => isLoading = false);
+        setState(() {
+          isLoading = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Invalid OTP. Please try again.")),
+          const SnackBar(
+            content: Text("Invalid OTP. Please try again."),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
 
-  void showOtpSuccessDialog(BuildContext context, {bool forceProfileCompletion = false}) {
+  void showOtpSuccessDialog(
+    BuildContext context, {
+    bool forceProfileCompletion = false,
+  }) {
     final w = AppSizes.width(context);
     final h = AppSizes.height(context);
-    
-    // Check if user already has a profile (displayName is not empty)
+
     final user = Provider.of<UserProvider>(context, listen: false).user;
-    final bool hasProfile = !forceProfileCompletion && user?.displayName != null && user!.displayName!.isNotEmpty;
+
+    final bool hasProfile =
+        !forceProfileCompletion &&
+        user?.displayName != null &&
+        user!.displayName!.isNotEmpty;
 
     showDialog(
       context: context,
@@ -190,32 +326,33 @@ class _OtpVerificationState extends State<OtpVerification> {
                     shape: BoxShape.circle,
                   ),
                   child: const Center(
-                    child: Icon(
-                      Icons.check,
-                      color: Colors.red,
-                      size: 50,
-                      weight: 700,
-                    ),
+                    child: Icon(Icons.check, color: Colors.red, size: 50),
                   ),
                 ),
+
                 SizedBox(height: h * 0.025),
+
                 Text(
-                  UserMessages.otpVerified,
+                  "OTP Verified",
                   style: TextStyles.h2.copyWith(
                     color: AppColors.naturalBlack,
                     fontSize: w * 0.055,
                   ),
                 ),
+
                 SizedBox(height: h * 0.012),
+
                 Text(
-                  UserMessages.phoneNumberVerified,
+                  "Phone number verified successfully",
                   textAlign: TextAlign.center,
                   style: TextStyles.bodySmall.copyWith(
                     color: AppColors.naturalBlack,
                     fontSize: w * 0.035,
                   ),
                 ),
+
                 SizedBox(height: h * 0.025),
+
                 SizedBox(
                   width: double.infinity,
                   height: h * 0.065,
@@ -229,20 +366,20 @@ class _OtpVerificationState extends State<OtpVerification> {
                     onPressed: () {
                       if (hasProfile) {
                         Navigator.pushNamedAndRemoveUntil(
-                          context, 
+                          context,
                           AppRoutes.landingPage,
                           (route) => false,
                         );
                       } else {
                         Navigator.pushNamedAndRemoveUntil(
-                          context, 
+                          context,
                           AppRoutes.completeProfile,
                           (route) => false,
                         );
                       }
                     },
                     child: Text(
-                      UserMessages.continueMsg,
+                      "Continue",
                       style: TextStyles.button.copyWith(
                         color: AppColors.naturalBlack,
                         fontWeight: FontWeight.bold,
@@ -277,13 +414,11 @@ class _OtpVerificationState extends State<OtpVerification> {
         style: const TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w600,
-          height: 1,
           color: Colors.black,
         ),
         decoration: const InputDecoration(
           counterText: "",
           border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
         ),
         onChanged: (value) => handleOtpChange(value, index),
       ),
@@ -299,7 +434,6 @@ class _OtpVerificationState extends State<OtpVerification> {
     double spacing = Insets.xs * (otpLength - 1);
     double availableWidth = w - horizontalPadding - spacing;
     double boxWidth = availableWidth / otpLength;
-
     boxWidth = boxWidth.clamp(45.0, 75.0);
 
     return Scaffold(
@@ -317,13 +451,16 @@ class _OtpVerificationState extends State<OtpVerification> {
 
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                    child: const Icon(
+                      Icons.arrow_back_ios,
+                      color: Colors.white,
+                    ),
                   ),
 
                   SizedBox(height: h * 0.03),
 
                   Text(
-                    UserMessages.logIn,
+                    "Login",
                     style: TextStyles.h2.copyWith(
                       color: Colors.white,
                       fontSize: w * 0.06,
@@ -369,7 +506,7 @@ class _OtpVerificationState extends State<OtpVerification> {
                       ),
                       onPressed: _handleVerifyOtp,
                       child: Text(
-                        UserMessages.veriflyOtp,
+                        "Verify OTP",
                         style: TextStyles.button.copyWith(
                           color: AppColors.naturalBlack,
                           fontWeight: FontWeight.bold,
@@ -381,20 +518,30 @@ class _OtpVerificationState extends State<OtpVerification> {
 
                   SizedBox(height: h * 0.02),
 
-                  RichText(
-                    text: TextSpan(
-                      style: TextStyles.bodySmall.copyWith(
-                        color: Colors.white70,
-                        fontSize: w * 0.035,
-                      ),
+                  Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        TextSpan(text: UserMessages.doNotReciveYourCode),
-                        TextSpan(
-                          text: UserMessages.resendOtp,
+                        Text(
+                          "Didn't receive code? ",
                           style: TextStyles.bodySmall.copyWith(
-                            color: AppColors.primaryYellow,
-                            fontWeight: FontWeight.w600,
+                            color: Colors.white70,
                             fontSize: w * 0.035,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: isResendEnabled ? _resendOtp : null,
+                          child: Text(
+                            isResendEnabled
+                                ? "Resend OTP"
+                                : "Resend OTP (${remainingCooldownSeconds}s)",
+                            style: TextStyles.bodySmall.copyWith(
+                              color: isResendEnabled
+                                  ? AppColors.primaryYellow
+                                  : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                              fontSize: w * 0.035,
+                            ),
                           ),
                         ),
                       ],
@@ -403,16 +550,17 @@ class _OtpVerificationState extends State<OtpVerification> {
 
                   SizedBox(height: h * 0.08),
 
-                  Center(
-                    child: Image.asset(
-                      UserMessages.veriflyOtpImage,
-                      height: h * 0.28,
-                      width: w * 0.6,
-                    ),
-                  ),
+                  // Center(
+                  //   child: Image.asset(
+                  //     UserMessages.veriflyOtpImage,
+                  //     height: h * 0.28,
+                  //     width: w * 0.6,
+                  //   ),
+                  // ),
                 ],
               ),
             ),
+
             if (isLoading)
               Container(
                 color: Colors.black.withOpacity(0.3),

@@ -364,20 +364,20 @@ class _BookingHistoryState extends State<BookingHistory> {
                                                             .blinkingRed,
                                                       ),
                                                     ),
-                                                  if (status ==
-                                                      BookingStatus.inProgress)
-                                                    BlinkingText(
-                                                      text: UserMessages
-                                                          .timeRemaining,
-                                                      style: TextStyle(
-                                                        fontSize: AppSizes.w(
-                                                          context,
-                                                          11,
-                                                        ),
-                                                        color: AppColors
-                                                            .blinkingGreen,
-                                                      ),
-                                                    ),
+                                                  // if (status ==
+                                                  //     BookingStatus.inProgress)
+                                                  //   BlinkingText(
+                                                  //     text: UserMessages
+                                                  //         .timeRemaining,
+                                                  //     style: TextStyle(
+                                                  //       fontSize: AppSizes.w(
+                                                  //         context,
+                                                  //         11,
+                                                  //       ),
+                                                  //       color: AppColors
+                                                  //           .blinkingGreen,
+                                                  //     ),
+                                                  //   ),
                                                   Builder(
                                                     builder: (context) {
                                                       final double price =
@@ -676,7 +676,21 @@ class _BookingHistoryState extends State<BookingHistory> {
             ),
           },
         );
-      } else if (currentStatus == 'accepted' ||
+      }else if (currentStatus == 'pending_approval' ||
+    currentStatus == 'pending approval') {
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => BookingServiceProgressHome(
+        serviceDurationInSeconds: 3600,
+        bookingData: data,
+        startTime: DateTime.now(),
+        price: price,
+      ),
+    ),
+  );
+} else if (currentStatus == 'accepted' ||
           currentStatus == 'arrived' ||
           currentStatus == 'reached') {
         // Handyman arrived — OTP verification
@@ -713,17 +727,17 @@ class _BookingHistoryState extends State<BookingHistory> {
             ),
           },
         );
-      } else if (currentStatus == 'in_progress' ||
-          currentStatus == 'inprogress' ||
-          currentStatus == 'started' ||
-          currentStatus == 'work_started' ||
-          currentStatus == 'pending_approval' ||
-          currentStatus == 'pending approval') {
+} else if (currentStatus == 'in_progress' ||
+    currentStatus == 'inprogress' ||
+    currentStatus == 'started' ||
+    currentStatus == 'work_started' ||
+    currentStatus == 'pending_approval' ||
+    currentStatus == 'pending approval') {
         // Service in progress — timer screen
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => BookingServiceProgressHome(
+            builder: (_) => BookingServiceProgressHome( 
               serviceDurationInSeconds: 3600,
               bookingData: data,
               startTime: DateTime.now(),
