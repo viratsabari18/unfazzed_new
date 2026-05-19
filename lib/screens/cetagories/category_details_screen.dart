@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:zeerah/controllers/service%20_list_controller.dart';
 
-
 import 'package:zeerah/core/config/api_config.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
@@ -141,22 +140,31 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
           }
 
           // Calculate min and max prices for filter
-          if (_minPrice == 0 && _maxPrice == 10000 && controller.serviceList.isNotEmpty) {
-            final prices = controller.serviceList.map((s) => s.price?.toDouble() ?? 0).toList();
+          if (_minPrice == 0 &&
+              _maxPrice == 10000 &&
+              controller.serviceList.isNotEmpty) {
+            final prices = controller.serviceList
+                .map((s) => s.price?.toDouble() ?? 0)
+                .toList();
             _minPrice = prices.reduce((a, b) => a < b ? a : b);
             _maxPrice = prices.reduce((a, b) => a > b ? a : b);
             _priceRange = RangeValues(_minPrice, _maxPrice);
           }
 
           // Filter and sort services
-          List<ServiceData> filteredServices = _filterAndSortServices(controller.serviceList);
+          List<ServiceData> filteredServices = _filterAndSortServices(
+            controller.serviceList,
+          );
 
           return Column(
             children: [
               // Search Bar (Conditional)
               if (_isSearchVisible)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
@@ -175,8 +183,15 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                           autofocus: true,
                           decoration: InputDecoration(
                             hintText: 'Search ${widget.subcategoryName}...',
-                            hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-                            prefixIcon: const Icon(Icons.search, size: 20, color: Colors.grey),
+                            hintStyle: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              size: 20,
+                              color: Colors.grey,
+                            ),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear, size: 20),
@@ -194,7 +209,10 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                             ),
                             filled: true,
                             fillColor: Colors.grey.shade100,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                           ),
                           onChanged: (value) {
                             setState(() {
@@ -211,7 +229,10 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                             _searchQuery = '';
                           });
                         },
-                        child: const Text('Cancel', style: TextStyle(color: AppColors.primaryRed)),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: AppColors.primaryRed),
+                        ),
                       ),
                     ],
                   ),
@@ -249,7 +270,7 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: _isFilterVisible 
+                          color: _isFilterVisible
                               ? AppColors.primaryRed.withOpacity(0.1)
                               : Colors.white,
                           borderRadius: BorderRadius.circular(14),
@@ -268,8 +289,8 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: _isFilterVisible 
-                                    ? AppColors.primaryRed 
+                                color: _isFilterVisible
+                                    ? AppColors.primaryRed
                                     : Colors.black87,
                               ),
                             ),
@@ -277,8 +298,8 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                             Icon(
                               Icons.tune,
                               size: 16,
-                              color: _isFilterVisible 
-                                  ? AppColors.primaryRed 
+                              color: _isFilterVisible
+                                  ? AppColors.primaryRed
                                   : Colors.black87,
                             ),
                           ],
@@ -292,7 +313,10 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
               // Filter Panel (Conditional)
               if (_isFilterVisible)
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -362,17 +386,23 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                           children: [
                             Text(
                               '₹${_priceRange.start.round()}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             ),
                             Text(
                               '₹${_priceRange.end.round()}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Sort By
                       const Text(
                         'Sort By',
@@ -388,11 +418,17 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                         runSpacing: 8,
                         children: [
                           _buildSortChip('Default', 'default'),
-                          _buildSortChip('Price: Low to High', 'price_low_to_high'),
-                          _buildSortChip('Price: High to Low', 'price_high_to_low'),
+                          _buildSortChip(
+                            'Price: Low to High',
+                            'price_low_to_high',
+                          ),
+                          _buildSortChip(
+                            'Price: High to Low',
+                            'price_high_to_low',
+                          ),
                         ],
                       ),
-                      
+
                       // Apply Filter Button
                       const SizedBox(height: 16),
                       SizedBox(
@@ -413,7 +449,10 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                           ),
                           child: const Text(
                             'Apply Filters',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -422,15 +461,24 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                 ),
 
               // Results Count
-              if (_searchQuery.isNotEmpty || _priceRange.start > _minPrice || _priceRange.end < _maxPrice || _sortBy != 'default')
+              if (_searchQuery.isNotEmpty ||
+                  _priceRange.start > _minPrice ||
+                  _priceRange.end < _maxPrice ||
+                  _sortBy != 'default')
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         '${filteredServices.length} results found',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -480,7 +528,10 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                                 setState(() {
                                   _searchQuery = '';
                                   _searchController.clear();
-                                  _priceRange = RangeValues(_minPrice, _maxPrice);
+                                  _priceRange = RangeValues(
+                                    _minPrice,
+                                    _maxPrice,
+                                  );
                                   _sortBy = 'default';
                                 });
                               },
@@ -491,12 +542,13 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                       )
                     : GridView.builder(
                         padding: EdgeInsets.all(Insets.md),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 0.72,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.72,
+                            ),
                         itemCount: filteredServices.length,
                         itemBuilder: (context, index) {
                           final service = filteredServices[index];
@@ -1166,6 +1218,34 @@ class _ServiceCardState extends State<_ServiceCard> {
                     },
                   ),
                 ),
+                Positioned(
+                  bottom: 15,
+                  right: 15,
+                  child: GestureDetector(
+                    onTap: () {
+                      // Details action
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryRed,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white,
+                        size: 10,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1193,6 +1273,39 @@ class _ServiceCardState extends State<_ServiceCard> {
                         ),
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+
+                /// ROW 2: Price (Left) and View Details (Right)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "₹${widget.service.price ?? 0}",
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    // GestureDetector(
+                    //   onTap: () {
+                    //     Navigator.pushNamed(
+                    //       context,
+                    //       AppRoutes.serviceDetails,
+                    //       arguments: widget.service,
+                    //     );
+                    //   },
+                    //   child: Text(
+                    //     "view details",
+                    //     style: TextStyle(
+                    //       fontSize: 11,
+                    //       color: Colors.grey.shade600,
+                    //       decoration: TextDecoration.underline,
+                    //     ),
+                    //   ),
+                    // ),
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.lightImpact();
@@ -1233,45 +1346,12 @@ class _ServiceCardState extends State<_ServiceCard> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text(
-                          "Book",
+                          "Book Now",
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 9,
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-
-                /// ROW 2: Price (Left) and View Details (Right)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "₹${widget.service.price ?? 0}",
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.serviceDetails,
-                          arguments: widget.service,
-                        );
-                      },
-                      child: Text(
-                        "view details",
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade600,
-                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
