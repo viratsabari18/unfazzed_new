@@ -32,12 +32,15 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
   bool _isSaving = false;
   late String _selectedAddressType;
 
-  @override
-  void initState() {
-    super.initState();
-    _houseController.addListener(_validateForm);
-    _selectedAddressType = widget.addressType;
-  }
+@override
+void initState() {
+  super.initState();
+
+  _houseController.addListener(_validateForm);
+
+  _selectedAddressType =
+      widget.addressType.isNotEmpty ? widget.addressType : 'Other';
+}
 
   @override
   void dispose() {
@@ -54,7 +57,14 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
   }
 
   Future<void> _confirmAddress() async {
-    if (!_isFormValid) return;
+  if (!_isFormValid || _selectedAddressType.isEmpty) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Please fill all required fields"),
+    ),
+  );
+  return;
+}
     
     setState(() => _isSaving = true);
     
@@ -104,14 +114,27 @@ class _EnterAddressBottomSheetState extends State<EnterAddressBottomSheet> {
       // Save to provider (will sync with backend)
       final success = await addressProvider.addAddress(context, newAddress);
       
-      if (success && mounted) {
-        // Also set as currently selected location
-        addressProvider.setSelectedLocation(newAddress);
-        
-        // Navigate back twice (to close bottom sheet then the location screen)
-        Navigator.pop(context); // Close bottom sheet
-        Navigator.pop(context); // Go back to previous screen
-      }
+ if (success && mounted) {
+  // Set selected location
+  addressProvider.setSelectedLocation(newAddress);
+
+  // Show success message first
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Address saved successfully"),
+      backgroundColor: Colors.green,
+      duration: Duration(seconds: 2),
+    ),
+  );
+
+  // Small delay so snackbar can appear properly
+  await Future.delayed(const Duration(milliseconds: 500));
+
+  if (!mounted) return;
+
+  // Close bottomsheet
+  Navigator.pop(context, true);
+}
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
