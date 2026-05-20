@@ -47,11 +47,13 @@ class ExpoloreCategories extends StatelessWidget {
             SizedBox(height: Insets.sm),
 
             SizedBox(
-              height: AppSizes.h(context,150),
+              height: AppSizes.h(context, 120),
+
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.symmetric(horizontal: Insets.xs),
+                padding: EdgeInsets.zero,
                 itemCount: categories.length,
+
                 itemBuilder: (context, index) {
                   final item = categories[index];
 
@@ -61,13 +63,11 @@ class ExpoloreCategories extends StatelessWidget {
                   return GestureDetector(
                     onTap: () =>
                         dashboardProvider.selectCategory(item['id']),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: _CategoryItem(
-                        title: item["name"] ?? "",
-                        image: item["image"] ?? "",
-                        isSelected: isSelected,
-                      ),
+
+                    child: _CategoryItem(
+                      title: item["name"] ?? "",
+                      image: item["image"] ?? "",
+                      isSelected: isSelected,
                     ),
                   );
                 },
@@ -93,115 +93,115 @@ class _CategoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
+    return Container(
+      width: AppSizes.w(context, 95),
 
-      width: AppSizes.w(context, 102),
-
-      margin: EdgeInsets.symmetric(horizontal: Insets.xxs),
-
-      decoration: BoxDecoration(
-        color: Colors.white,
-
-        borderRadius: BorderRadius.circular(20),
-
-     border: Border.all(
-  color: isSelected
-      ? Colors.black
-      : Colors.transparent,
-  width: 1.5,
-),
-
-    boxShadow: [
-  BoxShadow(
-    color: isSelected
-        ? Colors.black.withOpacity(0.40)
-        : Colors.transparent,
-
-    blurRadius: 10,
-
-    spreadRadius: isSelected ? 1 : 0,
- 
-  ),
-],
-      ),
+      margin: EdgeInsets.zero,
 
       child: Column(
         children: [
-          /// IMAGE
-          Padding(
-            padding:  EdgeInsets.symmetric(horizontal: 4,vertical:4),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              
-              child: SizedBox(
-                height: AppSizes.h(context, 92),
-
-                width: double.infinity,
-
-                child: image.startsWith('http')
-                    ? CachedNetworkImage(
-                        imageUrl: image,
-                        fit: BoxFit.cover,
-
-                        placeholder: (context, url) => Center(
-                          child: SizedBox(
-                            height: 16,
-                            width: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.red.shade300,
-                            ),
-                          ),
-                        ),
-
-                        errorWidget: (context, url, error) =>
-                            const Icon(Icons.broken_image),
-                      )
-                    : Image.asset(
-                        image,
-                        fit: BoxFit.cover,
-
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.broken_image),
-                      ),
-              ),
-            ),
-          ),
-
-          /// TITLE
+          /// IMAGE WITH GAP
           Expanded(
             child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: Insets.xs,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
 
-              child: Center(
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
 
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
 
-                  style: TextStyle(
-                    fontSize: AppSizes.w(context, 13),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(
+                        isSelected ? 0.15 : 0.05,
+                      ),
 
-                    fontWeight: isSelected
-                        ? FontWeight.w900
-                        : FontWeight.w600,
+                      blurRadius: isSelected ? 10 : 5,
 
-                    color: isSelected
-                        ? const Color(0xFFD92D20)
-                        : const Color(0xFF444444),
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
 
-                    height: 1.2,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+
+                    child: image.startsWith('http')
+                        ? CachedNetworkImage(
+                       
+                            imageUrl: image,
+                            fit: BoxFit.cover,
+
+                            placeholder: (context, url) => Center(
+                              child: SizedBox(
+                                height: 16,
+                                width: 16,
+
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.red.shade300,
+                                ),
+                              ),
+                            ),
+
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.broken_image),
+                          )
+                        : Image.asset(
+                            image,
+                            fit: BoxFit.cover,
+
+                            errorBuilder:
+                                (context, error, stackTrace) =>
+                                    const Icon(Icons.broken_image),
+                          ),
                   ),
                 ),
               ),
             ),
           ),
-          SizedBox(height: 4,)
+
+          const SizedBox(height: 8),
+
+          /// TEXT
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+
+            style: TextStyle(
+              fontSize: AppSizes.w(context, 13),
+
+              fontWeight:
+                  isSelected ? FontWeight.w700 : FontWeight.w500,
+
+              color: isSelected
+                  ? const Color(0xFFD92D20)
+                  : Colors.grey.shade600,
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          /// CONNECTED TABBAR LINE
+          Container(
+            height: isSelected?3:0.3,
+            width: double.infinity,
+
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? const Color(0xFFD92D20)
+                  : Colors.grey.shade300,
+
+              borderRadius: BorderRadius.circular(100),
+            ),
+          ),
         ],
       ),
     );

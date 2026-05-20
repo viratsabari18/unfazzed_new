@@ -202,24 +202,15 @@ class _LandingScreenState
                                         22,
                                       ),
 
-                                      gradient:
-                                          const LinearGradient(
-                                        begin:
-                                            Alignment.topLeft,
-                                        end:
-                                            Alignment.bottomRight,
-                                        colors: [
-                                          Color(
-                                            0xFF0B2A89,
-                                          ),
-                                          Color(
-                                            0xFF1239C4,
-                                          ),
-                                          Color(
-                                            0xFF081C68,
-                                          ),
-                                        ],
-                                      ),
+                                    gradient: const LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [
+    Color(0xFF00C853),
+    Color(0xFF00E676),
+    Color(0xFF00B248),
+  ],
+),
 
                                       border:
                                           Border.all(
@@ -235,7 +226,7 @@ class _LandingScreenState
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors
-                                              .blue
+                                              .green
                                               .withOpacity(
                                             0.18,
                                           ),
@@ -261,39 +252,39 @@ class _LandingScreenState
                                           Stack(
                                         children: [
                                           // LEFT CURVE
-                                          Positioned(
-                                            left:
-                                                -14,
-                                            top:
-                                                -2,
+                                          // Positioned(
+                                          //   left:
+                                          //       -14,
+                                          //   top:
+                                          //       -2,
 
-                                            child:
-                                                Container(
-                                              width:
-                                                  40,
-                                              height:
-                                                  50,
+                                          //   child:
+                                          //       Container(
+                                          //     width:
+                                          //         40,
+                                          //     height:
+                                          //         50,
 
-                                              decoration:
-                                                  BoxDecoration(
-                                                border:
-                                                    Border.all(
-                                                  color: Colors
-                                                      .white
-                                                      .withOpacity(
-                                                    0.7,
-                                                  ),
-                                                  width:
-                                                      2,
-                                                ),
+                                          //     decoration:
+                                          //         BoxDecoration(
+                                          //       border:
+                                          //           Border.all(
+                                          //         color: Colors
+                                          //             .white
+                                          //             .withOpacity(
+                                          //           0.7,
+                                          //         ),
+                                          //         width:
+                                          //             2,
+                                          //       ),
 
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                  50,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
+                                          //       borderRadius:
+                                          //           BorderRadius.circular(
+                                          //         50,
+                                          //       ),
+                                          //     ),
+                                          //   ),
+                                          // ),
 
                                           // SHINE
                                           Positioned(
@@ -329,43 +320,41 @@ class _LandingScreenState
                                             ),
                                           ),
 
-                                          // TEXT
-                                          Center(
-                                            child:
-                                                Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                        Center(
+  child: Row(
+    mainAxisAlignment:
+        MainAxisAlignment.center,
+    crossAxisAlignment:
+        CrossAxisAlignment.end,
 
-                                              children: [
-                                               
+    children: [
+      Text(
+        "Support",
 
-                                                Text(
-                                                  "Support",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: AppSizes.w(
+            context,
+            16,
+          ),
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
 
-                                                  style:
-                                                      TextStyle(
-                                                    color:
-                                                        Colors.white,
+      const SizedBox(height: 4),
 
-                                                    fontSize:
-                                                        AppSizes.w(
-                                                      context,
-                                                      15,
-                                                    ),
-
-                                                    fontWeight:
-                                                        FontWeight.w900,
-
-                                                    letterSpacing:
-                                                        0.5,
-                                                  ),
-                                                ),
-
-                                            
-                                              ],
-                                            ),
-                                          ),
+    Transform.rotate(
+  angle: -0.7, // adjust angle here
+  child: const Icon(
+    Icons.arrow_forward,
+    size: 25,
+    color: Colors.white,
+  ),
+),
+    ],
+  ),
+),
                                         ],
                                       ),
                                     ),

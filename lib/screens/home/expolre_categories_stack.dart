@@ -56,6 +56,14 @@ class ExpolreCategoriesStack extends StatelessWidget {
             );
           }
         }
+        if (dashboardProvider.isSubCategoryLoading) {
+  return SizedBox(
+    height: MediaQuery.of(context).size.height * 0.45,
+    child: const Center(
+      child: CircularProgressIndicator(color:Colors.red),
+    ),
+  );
+}
 
         if (dashboardProvider.isLoading && items.isEmpty) {
           return SizedBox(

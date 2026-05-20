@@ -161,15 +161,26 @@ Future<void> fetchCategories() async {
     notifyListeners();
   }
 }
-  Future<void> selectCategory(int categoryId) async {
-    if (_selectedCategoryId == categoryId) return;
-    _selectedCategoryId = categoryId;
-    notifyListeners();
+bool _isSubCategoryLoading = false;
 
-    if (!_subCategoriesMap.containsKey(categoryId)) {
-      await fetchSubCategories(categoryId);
-    }
-  }
+bool get isSubCategoryLoading => _isSubCategoryLoading;
+
+Future<void> selectCategory(int categoryId) async {
+  if (_selectedCategoryId == categoryId) return;
+
+  _selectedCategoryId = categoryId;
+
+  // clear old data instantly
+  _subCategoriesMap[categoryId] = [];
+
+  _isSubCategoryLoading = true;
+  notifyListeners();
+
+  await fetchSubCategories(categoryId);
+
+  _isSubCategoryLoading = false;
+  notifyListeners();
+}
 
   void searchCategory(String query) {
     if (query.isEmpty) return;
@@ -183,45 +194,57 @@ Future<void> fetchCategories() async {
     }
   }
 
-  Future<void> fetchSubCategories(int categoryId) async {
-    try {
-      String url = "$subCategoryUrl?category_id=$categoryId";
-      if (_latitude != null && _longitude != null) {
-        url += "&latitude=$_latitude&longitude=$_longitude";
-      }
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        debugPrint("📊 DashboardProvider: SubCategory Data for Category $categoryId -> ${response.body}");
-        final List<dynamic> subCatData = data['data'];
-        final subCats = subCatData.map((item) {
-          final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item);
-          String imageUrl = itemMap['category_image'] ?? "";
-          if (imageUrl.contains("127.0.0.1:8000")) {
-            imageUrl = imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
-          }
-          return {
-            ...itemMap,
-            'id': itemMap['id'],
-            'name': itemMap['name'],
-            'image': imageUrl,
-            'description': itemMap['description'] ?? "Professional service at your doorstep",
-          };
-        }).toList();
+ Future<void> fetchSubCategories(int categoryId) async {
+  try {
+    String url = "$subCategoryUrl?category_id=$categoryId";
 
-        _subCategoriesMap[categoryId] = subCats;
-        notifyListeners();
-
-        // High-fidelity Optimization: Pre-cache images for the current category
-        if (subCats.isNotEmpty) {
-          _precacheImages(subCats);
-        }
-      }
-    } catch (e) {
-      debugPrint("Error fetching sub-categories: $e");
+    if (_latitude != null && _longitude != null) {
+      url += "&latitude=$_latitude&longitude=$_longitude";
     }
-  }
 
+    debugPrint("SUB CATEGORY URL : $url");
+
+    final response = await http.get(Uri.parse(url));
+
+    debugPrint("SUB CATEGORY RESPONSE : ${response.body}");
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+
+      final List<dynamic> subCatData = data['data'] ?? [];
+
+      final subCats = subCatData.map((item) {
+        final Map<String, dynamic> itemMap =
+            Map<String, dynamic>.from(item);
+
+        String imageUrl = itemMap['category_image'] ?? "";
+
+        if (imageUrl.contains("127.0.0.1:8000")) {
+          imageUrl = imageUrl.replaceAll(
+            "http://127.0.0.1:8000",
+            baseUrl,
+          );
+        }
+
+        return {
+          ...itemMap,
+          'id': itemMap['id'],
+          'name': itemMap['name'],
+          'image': imageUrl,
+          'description':
+              itemMap['description'] ??
+              "Professional service at your doorstep",
+        };
+      }).toList();
+
+      _subCategoriesMap[categoryId] = subCats;
+
+      notifyListeners();
+    }
+  } catch (e) {
+    debugPrint("ERROR FETCHING SUB CATEGORY : $e");
+  }
+}
   void _precacheImages(List<Map<String, dynamic>> items) {
     for (var item in items) {
       final String? imageUrl = item['image'];
