@@ -13,6 +13,7 @@ import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/models/service_list_model.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 class ProfessionalAssignedScreen extends StatefulWidget {
   final dynamic service;
@@ -45,6 +46,7 @@ class _ProfessionalAssignedScreenState extends State<ProfessionalAssignedScreen>
   late BookingState _simulatedState;
   BitmapDescriptor? _carIcon;
   List<LatLng> _routePoints = [];
+  LatLng? _lastPolylineFetchPosition;
   int _currentStep = 0;
   bool _isLoadingLocation = true;
   bool _isWaitingForBackendArrival = false;
@@ -84,9 +86,8 @@ final Map<String, double> _dummyRatingsCache = {};
       _bookingId = bData['booking_detail']?['id']?.toString() ?? 
                   bData['id']?.toString();
     }
-    
-    _determinePosition(); 
-    
+ 
+     _setBookingLocation();
     if (_bookingId != null) {
        _startRealTimeTracking(_bookingId!);
        _fetchAndRedirect(); // CRITICAL: Start polling status
@@ -95,6 +96,34 @@ final Map<String, double> _dummyRatingsCache = {};
        _startMovementSimulation(); 
     }
   }
+
+  void _setBookingLocation() {
+  try {
+    final bData = widget.bookingData is List
+        ? (widget.bookingData as List).first
+        : widget.bookingData;
+
+    final bookingDetail = bData['booking_detail'];
+
+    final lat = double.tryParse(
+      bookingDetail?['latitude']?.toString() ?? '',
+    );
+
+    final lng = double.tryParse(
+      bookingDetail?['longitude']?.toString() ?? '',
+    );
+
+    if (lat != null && lng != null) {
+      _userLocation = LatLng(lat, lng);
+
+      debugPrint(
+        "BOOKING LOCATION => $lat , $lng",
+      );
+    }
+  } catch (e) {
+    debugPrint("Booking location error: $e");
+  }
+}
   // Add this helper method to your state class
 double _getRatingWithFallback(dynamic handyman, dynamic provider) {
   final rating = (handyman?['handyman_rating'] ??
@@ -147,7 +176,7 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     try {
       Position position = await Geolocator.getCurrentPosition();
       setState(() {
-        _userLocation = LatLng(position.latitude, position.longitude);
+        // _userLocation = LatLng(position.latitude, position.longitude);
         if (_bookingId == null) {
           _generateRoadSnappedRoute();
         }
@@ -187,6 +216,61 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     _currentRiderPos = _routePoints[0];
     _currentStep = 0;
   }
+
+Future<void> _getRoadPolyline(
+  LatLng start,
+  LatLng end,
+) async {
+  try {
+    PolylinePoints polylinePoints = PolylinePoints();
+
+    PolylineResult result =
+        await polylinePoints.getRouteBetweenCoordinates(
+      googleApiKey:
+          "AIzaSyAW3nH7YUQnZVx09h1wB9fBbwE6CpT8iRE",
+
+      request: PolylineRequest(
+        origin: PointLatLng(
+          start.latitude,
+          start.longitude,
+        ),
+        destination: PointLatLng(
+          end.latitude,
+          end.longitude,
+        ),
+        mode: TravelMode.driving,
+      ),
+    );
+
+    debugPrint(
+      "Polyline points => ${result.points.length}",
+    );
+
+    if (result.points.isNotEmpty) {
+      List<LatLng> polylineCoordinates = [];
+
+      for (var point in result.points) {
+        polylineCoordinates.add(
+          LatLng(
+            point.latitude,
+            point.longitude,
+          ),
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+  _routePoints.clear();
+  _routePoints.addAll(polylineCoordinates);
+});
+      }
+    }
+  } catch (e) {
+    debugPrint(
+      "Road polyline error => $e",
+    );
+  }
+}
 
   @override
   void dispose() {
@@ -228,7 +312,7 @@ Future<void> _loadCustomIcons() async {
 }
 
   void _startRealTimeTracking(String bookingId) {
-    _movementTimer = Timer.periodic(const Duration(seconds: 3), (timer) { // Faster updates (3s)
+    _movementTimer = Timer.periodic(const Duration(seconds: 15), (timer) { // Faster updates (3s)
       if (mounted && !_isWaitingForBackendArrival) {
         _fetchRiderLocation(bookingId);
       }
@@ -264,11 +348,12 @@ Future<void> _loadCustomIcons() async {
             double distance = Geolocator.distanceBetween(
               lat, lng, _userLocation.latitude, _userLocation.longitude
             );
+
             
             if (mounted) {
               setState(() {
                 _currentRiderPos = newPos;
-                _routePoints = [newPos, _userLocation]; // Direct line path
+
                 
                 // User request: 1km = 3 minutes
                 double distanceInKm = distance / 1000;
@@ -283,10 +368,47 @@ Future<void> _loadCustomIcons() async {
                   _simulatedState = BookingState.onTheWay;
                 }
               });
-              
-              if (distance > 50) {
-                mapController.animateCamera(CameraUpdate.newLatLng(newPos));
-              }
+bool shouldRefreshRoute = false;
+
+if (_lastPolylineFetchPosition == null) {
+  shouldRefreshRoute = true;
+} else {
+  double movedDistance = Geolocator.distanceBetween(
+    _lastPolylineFetchPosition!.latitude,
+    _lastPolylineFetchPosition!.longitude,
+    newPos.latitude,
+    newPos.longitude,
+  );
+
+  if (movedDistance > 80) {
+    shouldRefreshRoute = true;
+  }
+}
+
+if (shouldRefreshRoute) {
+  _lastPolylineFetchPosition = newPos;
+
+  await _getRoadPolyline(
+    newPos,
+    _userLocation,
+  );
+}         
+             if (distance > 50) {
+  LatLngBounds bounds = LatLngBounds(
+    southwest: LatLng(
+      min(newPos.latitude, _userLocation.latitude),
+      min(newPos.longitude, _userLocation.longitude),
+    ),
+    northeast: LatLng(
+      max(newPos.latitude, _userLocation.latitude),
+      max(newPos.longitude, _userLocation.longitude),
+    ),
+  );
+
+  mapController.animateCamera(
+    CameraUpdate.newLatLngBounds(bounds, 80),
+  );
+}
             }
           }
         }
@@ -720,6 +842,9 @@ Future<void> _loadCustomIcons() async {
   }
 
   Widget _buildMapHeader(BuildContext context, String time) {
+    debugPrint(
+  "MAP POLYLINE POINTS => ${_routePoints.length}",
+);
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
@@ -727,6 +852,13 @@ Future<void> _loadCustomIcons() async {
           height: 300,
           width: double.infinity,
           child: GoogleMap(
+            myLocationEnabled: true,
+myLocationButtonEnabled: true,
+zoomControlsEnabled:true,
+zoomGesturesEnabled: true,
+scrollGesturesEnabled: true,
+rotateGesturesEnabled: true,
+tiltGesturesEnabled: true,
             initialCameraPosition: CameraPosition(
               target: _userLocation,
               zoom: 15.0,
@@ -735,14 +867,21 @@ Future<void> _loadCustomIcons() async {
               mapController = controller;
               mapController.setMapStyle(_mapStyle);
             },
-            polylines: {
-               Polyline(
-                polylineId: const PolylineId('route'),
-                color: const Color(0xFFD90000), // Bold Red path
-                width: 5,
-                points: _routePoints.sublist(_currentStep),
-              ),
-            },
+polylines: _routePoints.isEmpty
+    ? {}
+    : {
+        Polyline(
+          polylineId: const PolylineId('route'),
+          color: Colors.blue,
+          width: 6,
+          geodesic: false,
+          jointType: JointType.round,
+          startCap: Cap.roundCap,
+          endCap: Cap.roundCap,
+          points: _routePoints,
+        ),
+      },
+            
             markers: {
               // Rider Marker (Custom Car)
               Marker(
