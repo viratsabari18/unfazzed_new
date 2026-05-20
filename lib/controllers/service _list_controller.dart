@@ -18,9 +18,21 @@ class ServiceListController extends ChangeNotifier {
   double? latitude;
   double? longitude;
 
-  void setSubcategory(int id) {
-    subcategoryId = id;
-  }
+void setSubcategory(int id) {
+  // Prevent unnecessary reload
+  if (subcategoryId == id) return;
+
+  subcategoryId = id;
+
+  // VERY IMPORTANT
+  // Clear old services immediately
+  serviceList.clear();
+
+  // Reset pagination
+  offset = 0;
+
+  notifyListeners();
+}
 
   void setLocation(double? lat, double? lng) {
     debugPrint("📱 ServiceListController: Setting Location -> Lat: $lat, Lng: $lng");
@@ -30,6 +42,8 @@ class ServiceListController extends ChangeNotifier {
 
 
   Future<void> fetchServices({bool isLoadMore = false}) async {
+    if (isLoading) return;
+
     if (subcategoryId == null) {
       errorMessage = "Subcategory ID is not set";
       notifyListeners();
@@ -84,13 +98,25 @@ class ServiceListController extends ChangeNotifier {
         ServiceListModel model = ServiceListModel.fromJson(jsonData);
 
         if (model.data != null && model.data!.isNotEmpty) {
-          if (isLoadMore) {
-            serviceList.addAll(model.data!);
-          } else {
-            serviceList = model.data!;
-          }
-          offset += limit; // next page
-          errorMessage = null;
+         // REMOVE DUPLICATES
+  final uniqueMap = <int, ServiceData>{};
+
+  for (var item in model.data!) {
+    if (item.id != null) {
+      uniqueMap[item.id!] = item;
+    }
+  }
+
+  final uniqueServices = uniqueMap.values.toList();
+
+  if (isLoadMore) {
+    serviceList.addAll(uniqueServices);
+  } else {
+    serviceList = uniqueServices;
+  }
+
+  offset += limit;
+  errorMessage = null;
         } else {
           if (!isLoadMore) {
             serviceList = [];

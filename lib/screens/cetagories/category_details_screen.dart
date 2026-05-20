@@ -118,10 +118,8 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
             "📱 CategoryDetailsScreen: Selected Location -> Lat: $lat, Lng: $lng",
           );
 
-          if ((controller.serviceList.isEmpty ||
-                  controller.subcategoryId != widget.subcategoryId ||
-                  controller.latitude != lat) &&
-              !controller.isLoading) {
+     if (controller.subcategoryId != widget.subcategoryId &&
+    !controller.isLoading) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               controller.setSubcategory(widget.subcategoryId);
               controller.setLocation(lat, lng);

@@ -17,7 +17,7 @@ class ExpolreCategoriesStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DashboardProvider>(
+    return Consumer<DashboardProvider>( 
       builder: (context, dashboardProvider, _) {
         final addressProvider = Provider.of<AddressProvider>(context);
 
