@@ -431,38 +431,38 @@ class _ServiceTypeState extends State<ServiceType> {
 
           SizedBox(height: AppSizes.h(context, 16)),
 
-          /// 📝 Description Title
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: Insets.sm),
-            child: Text(
-              UserMessages.descriptionTitle,
-              style: TextStyle(
-                fontSize: AppSizes.w(context, 16),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          // /// 📝 Description Title
+          // Padding(
+          //   padding: EdgeInsets.symmetric(horizontal: Insets.sm),
+          //   child: Text(
+          //     UserMessages.descriptionTitle,
+          //     style: TextStyle(
+          //       fontSize: AppSizes.w(context, 16),
+          //       fontWeight: FontWeight.w600,
+          //     ),
+          //   ),
+          // ),
 
-          SizedBox(height: AppSizes.h(context, 8)),
+          // SizedBox(height: AppSizes.h(context, 8)),
 
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: Insets.sm),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(Insets.xsm),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: TextField(
-              controller: descriptionController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: UserMessages.enterDescription,
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.all(Insets.xsm),
-              ),
-            ),
-          ),
+          // Container(
+          //   margin: EdgeInsets.symmetric(horizontal: Insets.sm),
+          //   decoration: BoxDecoration(
+          //     borderRadius: BorderRadius.circular(Insets.xsm),
+          //     border: Border.all(color: Colors.grey.shade300),
+          //   ),
+          //   child: TextField(
+          //     controller: descriptionController,
+          //     maxLines: 4,
+          //     decoration: InputDecoration(
+          //       hintText: UserMessages.enterDescription,
+          //       border: InputBorder.none,
+          //       contentPadding: EdgeInsets.all(Insets.xsm),
+          //     ),
+          //   ),
+          // ),
           
-          SizedBox(height: AppSizes.h(context, 20)),
+          // SizedBox(height: AppSizes.h(context, 20)),
         ],
       ),
     );

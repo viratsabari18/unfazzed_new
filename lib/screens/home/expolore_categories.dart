@@ -12,15 +12,15 @@ class ExpoloreCategories extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<DashboardProvider>(
       builder: (context, dashboardProvider, _) {
-           final addressProvider =   Provider.of<AddressProvider>(context);
+        final addressProvider = Provider.of<AddressProvider>(context);
 
-  final location = addressProvider.selectedLocation;
+        final location = addressProvider.selectedLocation;
 
-  if (location == null) {
-    return const SizedBox.shrink();
-  }
+        if (location == null) {
+          return const SizedBox.shrink();
+        }
 
-  final categories = dashboardProvider.categories;
+        final categories = dashboardProvider.categories;
 
         if (dashboardProvider.isLoading && categories.isEmpty) {
           return const SizedBox.shrink();
@@ -43,21 +43,27 @@ class ExpoloreCategories extends StatelessWidget {
                 ),
               ),
             ),
+
+            SizedBox(height: Insets.sm),
+
             SizedBox(
-              height: AppSizes.h(context, 130),
+              height: AppSizes.h(context, 140),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.symmetric(horizontal: Insets.xsm),
+                padding: EdgeInsets.symmetric(horizontal: Insets.xs),
                 itemCount: categories.length,
                 itemBuilder: (context, index) {
                   final item = categories[index];
-                  final isSelected = dashboardProvider.selectedCategoryId == item['id'];
-                  
+
+                  final isSelected =
+                      dashboardProvider.selectedCategoryId == item['id'];
+
                   return GestureDetector(
-                    onTap: () => dashboardProvider.selectCategory(item['id']),
+                    onTap: () =>
+                        dashboardProvider.selectCategory(item['id']),
                     child: _CategoryItem(
-                      title: item["name"]!,
-                      image: item["image"]!,
+                      title: item["name"] ?? "",
+                      image: item["image"] ?? "",
                       isSelected: isSelected,
                     ),
                   );
@@ -84,54 +90,82 @@ class _CategoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: Insets.xxs),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            height: AppSizes.h(context, 80),
-            width: AppSizes.w(context, 80),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.primaryYellow : AppColors.naturalWhite,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.naturalBlack.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(Insets.xs),
-              child: image.startsWith('http')
-                  ? CachedNetworkImage(
-                      imageUrl: image,
-                      httpHeaders: const {},
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => const CircularProgressIndicator(strokeWidth: 2),
-                      errorWidget: (context, url, error) => const Icon(Icons.broken_image),
-                    )
-                  : Image.asset(
-                      image,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image),
-                    ),
-            ),
+    return Container(
+      width: AppSizes.w(context, 110),
+      margin: EdgeInsets.symmetric(horizontal: Insets.xxs),
+   
+
+      decoration: BoxDecoration(
+        color: isSelected
+            ? const Color(0xFFFFF1F1)
+            : AppColors.naturalWhite,
+
+        borderRadius: BorderRadius.circular(22),
+
+        border: Border.all(
+          color: isSelected
+              ? Colors.red
+              : Colors.grey,
+          width: isSelected? 2:1,
+        ),
+
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          SizedBox(height: Insets.xxs),
-          SizedBox(
-            width: AppSizes.w(context, 85),
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: AppSizes.w(context, 10),
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: AppColors.naturalBlack,
+        ],
+      ),
+
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+      ClipRRect(
+  borderRadius: const BorderRadius.only(
+    topLeft: Radius.circular(20),
+    topRight: Radius.circular(20),
+  ),
+  child: Container(
+    height: AppSizes.h(context, 90),
+    width: double.infinity,
+    color: Colors.grey.shade100,
+    child: image.startsWith('http')
+        ? CachedNetworkImage(
+            imageUrl: image,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
+            ),
+            errorWidget: (context, url, error) =>
+                const Icon(Icons.broken_image),
+          )
+        : Image.asset(
+            image,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.broken_image),
+          ),
+  ),
+),
+          
+
+          Expanded(
+            child: Center(
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+
+                style: TextStyle(
+                  fontSize: AppSizes.w(context, 13),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.naturalBlack,
+                  height: 1.2,
+                ),
               ),
             ),
           ),
