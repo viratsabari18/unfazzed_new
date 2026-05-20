@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               // const SliverToBoxAdapter(child: SearchBox()),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              // const SliverToBoxAdapter(child: SizedBox(height: 10)),
               const SliverToBoxAdapter(child: ExpoloreCategories()),
               const SliverToBoxAdapter(child: ExpolreCategoriesStack()),
               SliverToBoxAdapter(child: ReliableAndTrustworthySection()),

@@ -47,7 +47,7 @@ class ExpoloreCategories extends StatelessWidget {
             SizedBox(height: Insets.sm),
 
             SizedBox(
-              height: AppSizes.h(context, 140),
+              height: AppSizes.h(context,150),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.symmetric(horizontal: Insets.xs),
@@ -61,10 +61,13 @@ class ExpoloreCategories extends StatelessWidget {
                   return GestureDetector(
                     onTap: () =>
                         dashboardProvider.selectCategory(item['id']),
-                    child: _CategoryItem(
-                      title: item["name"] ?? "",
-                      image: item["image"] ?? "",
-                      isSelected: isSelected,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: _CategoryItem(
+                        title: item["name"] ?? "",
+                        image: item["image"] ?? "",
+                        isSelected: isSelected,
+                      ),
                     ),
                   );
                 },
@@ -90,85 +93,115 @@ class _CategoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: AppSizes.w(context, 110),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+
+      width: AppSizes.w(context, 102),
+
       margin: EdgeInsets.symmetric(horizontal: Insets.xxs),
-   
 
       decoration: BoxDecoration(
-        color: isSelected
-            ? const Color(0xFFFFF1F1)
-            : AppColors.naturalWhite,
+        color: Colors.white,
 
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
 
-        border: Border.all(
-          color: isSelected
-              ? Colors.red
-              : Colors.grey,
-          width: isSelected? 2:1,
-        ),
+     border: Border.all(
+  color: isSelected
+      ? Colors.black
+      : Colors.transparent,
+  width: 1.5,
+),
 
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    boxShadow: [
+  BoxShadow(
+    color: isSelected
+        ? Colors.black.withOpacity(0.40)
+        : Colors.transparent,
+
+    blurRadius: 10,
+
+    spreadRadius: isSelected ? 1 : 0,
+ 
+  ),
+],
       ),
 
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-      ClipRRect(
-  borderRadius: const BorderRadius.only(
-    topLeft: Radius.circular(20),
-    topRight: Radius.circular(20),
-  ),
-  child: Container(
-    height: AppSizes.h(context, 90),
-    width: double.infinity,
-    color: Colors.grey.shade100,
-    child: image.startsWith('http')
-        ? CachedNetworkImage(
-            imageUrl: image,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => const Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
+          /// IMAGE
+          Padding(
+            padding:  EdgeInsets.symmetric(horizontal: 4,vertical:4),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              
+              child: SizedBox(
+                height: AppSizes.h(context, 92),
+
+                width: double.infinity,
+
+                child: image.startsWith('http')
+                    ? CachedNetworkImage(
+                        imageUrl: image,
+                        fit: BoxFit.cover,
+
+                        placeholder: (context, url) => Center(
+                          child: SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.red.shade300,
+                            ),
+                          ),
+                        ),
+
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.broken_image),
+                      )
+                    : Image.asset(
+                        image,
+                        fit: BoxFit.cover,
+
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.broken_image),
+                      ),
               ),
             ),
-            errorWidget: (context, url, error) =>
-                const Icon(Icons.broken_image),
-          )
-        : Image.asset(
-            image,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) =>
-                const Icon(Icons.broken_image),
           ),
-  ),
-),
-          
 
+          /// TITLE
           Expanded(
-            child: Center(
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: Insets.xs,
+              ),
 
-                style: TextStyle(
-                  fontSize: AppSizes.w(context, 13),
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.naturalBlack,
-                  height: 1.2,
+              child: Center(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+
+                  style: TextStyle(
+                    fontSize: AppSizes.w(context, 13),
+
+                    fontWeight: isSelected
+                        ? FontWeight.w900
+                        : FontWeight.w600,
+
+                    color: isSelected
+                        ? const Color(0xFFD92D20)
+                        : const Color(0xFF444444),
+
+                    height: 1.2,
+                  ),
                 ),
               ),
             ),
           ),
+          SizedBox(height: 4,)
         ],
       ),
     );
