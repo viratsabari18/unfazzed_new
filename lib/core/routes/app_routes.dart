@@ -1,7 +1,7 @@
 class AppRoutes {
   static const splash = '/';
   static const signIn = '/sign-in';
-  static const landingPage = 'landingPage';
+  static const landingPage = '/landingPage';
   static const otpVerifly = '/otpverifly';
   static const completeProfile = '/completeProfile';
   static const homePage = '/homepage';

@@ -480,7 +480,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
       'key': key,
       'amount': (totalAmount * 100)
           .toInt(), // amount in the smallest currency unit
-      'name': 'Zeerah Services',
+      'name': 'Unfazzed Services LLP',
       'description': detail?['service_name'] ?? 'Service Payment',
       'timeout': 300, // in seconds
       'prefill': {

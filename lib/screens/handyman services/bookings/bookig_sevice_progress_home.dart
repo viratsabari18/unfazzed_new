@@ -27,44 +27,50 @@ class _BookingServiceProgressHomeState extends State<BookingServiceProgressHome>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryRed,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.naturalWhite),
-          onPressed: () => Navigator.of(context).pop(),
+     appBar: AppBar(
+  leading: IconButton(
+    icon: const Icon(
+      Icons.arrow_back,
+      color: AppColors.naturalWhite,
+    ),
+    onPressed: () => Navigator.of(context).pop(),
+  ),
+  elevation: 0,
+  toolbarHeight: AppSizes.h(context, 60),
+  centerTitle: true,
+  backgroundColor: AppColors.primaryRed,
+
+  title: Builder(
+    builder: (context) {
+      final bData = widget.bookingData is List
+          ? (widget.bookingData as List).first
+          : widget.bookingData;
+
+      final rawDetail = bData?['booking_detail'];
+
+      final detail = rawDetail is List
+          ? (rawDetail.isNotEmpty ? rawDetail.first : {})
+          : rawDetail;
+
+      final status = detail?['status']
+              ?.toString()
+              .toLowerCase()
+              .trim() ??
+          "";
+
+      return Text(
+        status == 'pending_approval' ||
+                status == 'completed'
+            ? "Service Completed"
+            : UserMessages.serviceInProgress,
+        style: TextStyle(
+          color: AppColors.naturalWhite,
+          fontSize: AppSizes.w(context, 20),
         ),
-        elevation: 0,
-        toolbarHeight: AppSizes.h(context, 60),
-        centerTitle: true,
-        backgroundColor: AppColors.primaryRed,
-        title: Text(
-  (() {
-    final bData = widget.bookingData is List
-        ? (widget.bookingData as List).first
-        : widget.bookingData;
-
-    final rawDetail = bData?['booking_detail'];
-    final detail = rawDetail is List
-        ? (rawDetail.isNotEmpty ? rawDetail.first : {})
-        : rawDetail;
-
-    final status = detail?['status']
-        ?.toString()
-        .toLowerCase()
-        .trim();
-
-    if (status == 'pending_approval' ||
-        status == 'completed') {
-      return "Service Completed";
-    }
-
-    return UserMessages.serviceInProgress;
-  })(),
-  style: TextStyle(
-    color: AppColors.naturalWhite,
-    fontSize: AppSizes.w(context, 20),
+      );
+    },
   ),
 ),
-      ),
       body: Column(
         children: [
           const SizedBox(height: 16),
