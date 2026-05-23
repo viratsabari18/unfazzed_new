@@ -802,7 +802,7 @@ _startStatusPolling();
                             SizedBox(width: AppSizes.w(context, 16)),
                             Expanded(
                               child: GestureDetector(
-                                onTap: () {
+                                onTap: () async {
                                   final bData = _currentBookingData is List
                                       ? (_currentBookingData as List).first
                                       : _currentBookingData;
@@ -835,42 +835,68 @@ _startStatusPolling();
                                             : {})
                                       : rawService;
 
-                                  Navigator.pushNamed(
-                                    context,
-                                    AppRoutes.chatHomeScreen,
-                                    arguments: {
-                                      'name':
-                                          handyman?['display_name'] ??
-                                          provider?['display_name'] ??
-                                          detail?['provider_name'] ??
-                                          "Professional",
-                                      'image':
-                                          handyman?['profile_image'] ??
-                                          service?['provider_image'] ??
-                                          provider?['profile_image'] ??
-                                          provider?['employee_image'] ??
-                                          provider?['provider_image'] ??
-                                          detail?['provider_image'] ??
-                                          "lib/assets/images/rider_image.png",
-                                      'phone':
-                                          (handyman?['contact_number'] ??
-                                                  provider?['contact_number'])
-                                              ?.toString(),
-                                      'booking_id': detail?['id']?.toString(),
-                                      'provider_uid':
-                                          handyman?['uid']?.toString() ??
-                                          provider?['uid']?.toString(),
-                                      'handyman_uid':
-                                          handyman?['uid']?.toString() ??
-                                          provider?['uid']?.toString(),
-                                      'handyman_id':
-                                          handyman?['uid']?.toString() ??
-                                          provider?['uid']?.toString() ??
-                                          handyman?['id']?.toString() ??
-                                          provider?['id']?.toString() ??
-                                          detail?['provider_id']?.toString(),
-                                    },
-                                  );
+                                final prefs = await SharedPreferences.getInstance();
+
+final backendUserId =
+    prefs.getString('backend_user_id') ?? '';
+
+final handymanUserType =
+    handyman?['user_type']
+        ?.toString()
+        .toLowerCase();
+
+final isRealHandyman =
+    handyman != null &&
+    handyman['id'] != null &&
+    handymanUserType == 'handyman';
+
+final targetId = isRealHandyman
+    ? 'handyman_${handyman['id']}'
+    : 'provider_${provider['id']}';
+
+debugPrint("=========== CHAT TARGET DEBUG ===========");
+
+debugPrint("HANDYMAN => $handyman");
+
+debugPrint("HANDYMAN USER TYPE => $handymanUserType");
+
+debugPrint("IS REAL HANDYMAN => $isRealHandyman");
+
+debugPrint("TARGET ID => $targetId");
+
+debugPrint("=========================================");
+
+Navigator.pushNamed(
+  context,
+  AppRoutes.chatHomeScreen,
+  arguments: {
+    'name':
+        handyman?['display_name'] ??
+        provider?['display_name'] ??
+        detail?['provider_name'] ??
+        "Professional",
+
+    'image':
+        handyman?['profile_image'] ??
+        service?['provider_image'] ??
+        provider?['profile_image'] ??
+        "lib/assets/images/rider_image.png",
+
+    'phone':
+        (handyman?['contact_number'] ??
+                provider?['contact_number'])
+            ?.toString(),
+
+    'booking_id': detail?['id']?.toString(),
+
+    // sender
+    'my_chat_id': 'user_$backendUserId',
+
+    // receiver
+    'provider_uid': targetId,
+'is_handyman_chat': isRealHandyman,
+  },
+);
                                 },
                                 child: Container(
                                   height: AppSizes.h(context, 45),

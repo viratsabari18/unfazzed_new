@@ -184,7 +184,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
         .toDouble();
 
     // Final total is the serviceFee (which includes options/addons) minus discount plus any extra charges
-    final double totalAmount = serviceFee - discountAmount + extraChargesTotal;
+    final double totalAmount = serviceFee  + extraChargesTotal;
 
     return Scaffold(
       backgroundColor: AppColors.reviewBgColor,
@@ -289,12 +289,12 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                       return billRow(title, "+ ₹$value", AppColors.neonGreen);
                     }).toList(),
 
-                    if (discountAmount > 0)
-                      billRow(
-                        UserMessages.coupon,
-                        "- ₹${discountAmount.toStringAsFixed(0)}",
-                        AppColors.softBlue,
-                      ),
+                    // if (discountAmount > 0)
+                    //   billRow(
+                    //     UserMessages.coupon,
+                    //     "- ₹${discountAmount.toStringAsFixed(0)}",
+                    //     AppColors.softBlue,
+                    //   ),
 
                     SizedBox(height: AppSizes.h(context, 12)),
                     Row(
@@ -425,7 +425,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final double discountAmount = (serviceFee * discountPercent) / 100;
     final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
         .toDouble();
-    final double totalAmount = serviceFee - discountAmount + extraChargesTotal;
+    final double totalAmount = serviceFee  + extraChargesTotal;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -469,7 +469,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final double discountAmount = (serviceFee * discountPercent) / 100;
     final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
         .toDouble();
-    final double totalAmount = serviceFee - discountAmount + extraChargesTotal;
+    final double totalAmount = serviceFee  + extraChargesTotal;
 
     final value = _selectedGateway['value'];
     final key = value?['razor_key'] ?? "rzp_test_SlXdLiPsjndXjm";
@@ -518,7 +518,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final double discountAmount = (serviceFee * discountPercent) / 100;
     final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
         .toDouble();
-    final double totalAmount = serviceFee - discountAmount + extraChargesTotal;
+    final double totalAmount = serviceFee  + extraChargesTotal;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -583,7 +583,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final double discountAmount = (serviceFee * discountPercent) / 100;
     final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
         .toDouble();
-    final double totalAmount = serviceFee - discountAmount + extraChargesTotal;
+    final double totalAmount = serviceFee  + extraChargesTotal;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);

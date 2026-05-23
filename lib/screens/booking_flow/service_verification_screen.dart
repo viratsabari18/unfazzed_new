@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zeerah/core/config/api_config.dart';
 import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
@@ -605,7 +606,7 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
         const SizedBox(width: 16),
         Expanded(
           child: GestureDetector(
-            onTap: () {
+            onTap: () async{
               final bData = widget.bookingData is List ? (widget.bookingData as List).first : widget.bookingData;
               
               final rawHandyman = bData?['handyman_data'];
@@ -620,23 +621,88 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
               final rawService = bData?['service'];
               final service = rawService is List ? (rawService.isNotEmpty ? rawService.first : {}) : rawService;
 
-              Navigator.pushNamed(
-                context, 
-                AppRoutes.chatHomeScreen,
-                arguments: {
-                  'name': handyman?['display_name'] ?? provider?['display_name'] ?? detail?['provider_name'] ?? "Professional",
-                  'image': handyman?['profile_image'] ?? service?['provider_image'] ?? provider?['profile_image'] ?? "lib/assets/images/rider_image.png",
-                  'phone': (handyman?['contact_number'] ?? provider?['contact_number'])?.toString(),
-                  'booking_id': detail?['id']?.toString(),
-                  'provider_uid': handyman?['uid']?.toString() ?? provider?['uid']?.toString(),
-                  'handyman_uid': handyman?['uid']?.toString() ?? provider?['uid']?.toString(),
-                  'handyman_id': handyman?['uid']?.toString() ?? 
-                                 provider?['uid']?.toString() ??
-                                 handyman?['id']?.toString() ?? 
-                                 provider?['id']?.toString() ?? 
-                                 detail?['provider_id']?.toString(),
-                },
-              );
+             final prefs = await SharedPreferences.getInstance();
+
+final backendUserId =
+    prefs.getString('backend_user_id') ?? '';
+
+final handymanUserType =
+    handyman?['user_type']
+        ?.toString()
+        .toLowerCase()
+        .trim();
+
+final isRealHandyman =
+    handyman != null &&
+    handyman['id'] != null &&
+    handymanUserType != null &&
+    handymanUserType.isNotEmpty &&
+    handymanUserType == 'handyman';
+
+final targetId = isRealHandyman
+    ? 'handyman_${handyman['id']}'
+    : 'provider_${provider['id']}';
+
+debugPrint("=========== CHAT TARGET DEBUG ===========");
+
+debugPrint("HANDYMAN => $handyman");
+
+debugPrint("HANDYMAN USER TYPE => $handymanUserType");
+
+debugPrint("IS REAL HANDYMAN => $isRealHandyman");
+
+debugPrint("TARGET ID => $targetId");
+
+debugPrint("=========================================");
+debugPrint("=========== CHAT OPEN DEBUG ===========");
+
+debugPrint("BOOKING ID => ${detail?['id']}");
+
+debugPrint("CUSTOMER ID => $backendUserId");
+
+debugPrint("PROVIDER ID => ${provider?['id']}");
+
+debugPrint("HANDYMAN DATA => $handyman");
+
+debugPrint("HANDYMAN USER TYPE => $handymanUserType");
+
+debugPrint("IS REAL HANDYMAN => $isRealHandyman");
+
+debugPrint("TARGET ID => $targetId");
+
+debugPrint("=======================================");
+
+Navigator.pushNamed(
+  context,
+  AppRoutes.chatHomeScreen,
+  arguments: {
+    'name':
+        handyman?['display_name'] ??
+        provider?['display_name'] ??
+        detail?['provider_name'] ??
+        "Professional",
+
+    'image':
+        handyman?['profile_image'] ??
+        service?['provider_image'] ??
+        provider?['profile_image'] ??
+        "lib/assets/images/rider_image.png",
+
+    'phone':
+        (handyman?['contact_number'] ??
+                provider?['contact_number'])
+            ?.toString(),
+
+    'booking_id': detail?['id']?.toString(),
+
+    // sender
+    'my_chat_id': 'user_$backendUserId',
+
+    // receiver
+    'provider_uid': targetId,
+'is_handyman_chat': isRealHandyman,
+  },
+);
             },
             child: _buildActionButton(
               icon: Icons.chat_bubble_outline,

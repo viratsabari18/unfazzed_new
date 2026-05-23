@@ -1,8 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zeerah/core/common/app_exports.dart';
 
 class MessageScreen extends StatefulWidget {
@@ -13,9 +12,36 @@ class MessageScreen extends StatefulWidget {
 }
 
 class _MessageScreenState extends State<MessageScreen> {
-  final String _myUid = FirebaseAuth.instance.currentUser?.uid ?? 'user';
+String _myUid = '';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+    bool _isLoading = true;  
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+_loadMyChatId();
+
+  }
+
+  Future<void> _loadMyChatId() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  _myUid =
+      prefs.getString('my_chat_id') ?? '';
+
+  debugPrint("========== MESSAGE SCREEN ==========");
+  debugPrint("MY CHAT ID => $_myUid");
+  debugPrint("====================================");
+
+   if (mounted) {
+      setState(() {
+        _isLoading = false;  // 🔴 ADD THIS
+      });
+    }
+}
 
   String _formatTime(Timestamp? ts) {
     if (ts == null) return '';
@@ -38,7 +64,13 @@ class _MessageScreenState extends State<MessageScreen> {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ));
-
+ 
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -96,7 +128,15 @@ class _MessageScreenState extends State<MessageScreen> {
                   ? sortedDocs 
                   : sortedDocs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
-                      final name = (data['providerName'] ?? '').toString().toLowerCase();
+       final name = (
+
+    data['name'] ??
+
+    data['providerName'] ??
+
+    ''
+
+).toString().toLowerCase();
                       return name.contains(_searchQuery.toLowerCase());
                     }).toList();
 
@@ -169,25 +209,52 @@ class _MessageScreenState extends State<MessageScreen> {
   }
 
   Widget _buildChatItem(BuildContext context, Map<String, dynamic> chat) {
-    final String name = chat['providerName'] ?? "Professional";
+final String name =
+
+    chat['name'] ??
+
+    chat['providerName'] ??
+
+    "Professional";
+
+final String image =
+
+    chat['image'] ??
+
+    chat['providerImage'] ??
+
+    "";
     final String lastMsg = chat['lastMessage'] ?? "";
     final String time = _formatTime(chat['lastTimestamp'] as Timestamp?);
     final String bookingId = chat['bookingId']?.toString() ?? "";
-    final String image = chat['providerImage'] ?? "";
+
 
     return InkWell(
       onTap: () {
         Navigator.pushNamed(
           context,
           AppRoutes.chatHomeScreen,
-          arguments: {
-            'booking_id': bookingId,
-            'name': name,
-            'image': image,
-            'provider_id': chat['participants'].firstWhere((id) => id != _myUid),
-            'provider_uid': chat['participants'].firstWhere((id) => id != _myUid),
-            'handyman_uid': chat['participants'].firstWhere((id) => id != _myUid),
-          },
+arguments: {
+
+  'booking_id': bookingId,
+
+  // CURRENT USER
+  'my_chat_id': _myUid,
+
+  // TARGET USER
+  'provider_uid': chat['targetUid'],
+
+  'target_chat_id': chat['targetUid'],
+
+  // UI
+  'name': name,
+
+  'image': image,
+
+  // TYPE
+  'is_handyman_chat':
+      chat['chatType'] == 'handyman',
+}
         );
       },
       child: Padding(

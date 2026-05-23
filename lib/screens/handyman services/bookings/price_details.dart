@@ -49,7 +49,7 @@ class _PriceDetailsState extends State<PriceDetails> {
                 _divider(context),
                 _priceRow(
                   context,
-                 'discount (${widget.discountPercent.toInt()}%)',
+                  'discount (${widget.discountPercent.toInt()}%)',
                   '- ₹ ${widget.discountAmount.toStringAsFixed(2)}',
                   labelColor: AppColors.discountRed,
                   isRed: true,
@@ -58,7 +58,7 @@ class _PriceDetailsState extends State<PriceDetails> {
                 _priceRow(
                   context,
                   UserMessages.subtotal,
-                '₹ ${(widget.totalAmount - widget.discountAmount).toStringAsFixed(2)}',
+                  '₹ ${widget.totalAmount.toStringAsFixed(2)}',
                   isRed: false,
                 ),
                 // _divider(context),
@@ -67,7 +67,7 @@ class _PriceDetailsState extends State<PriceDetails> {
                 _priceRow(
                   context,
                   UserMessages.totalAmount,
-                '₹ ${(widget.totalAmount - widget.discountAmount).toStringAsFixed(2)}',
+                  '₹ ${widget.totalAmount.toStringAsFixed(2)}',
                   isRed: false,
                   isBold: true,
                 ),
