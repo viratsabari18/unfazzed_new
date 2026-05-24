@@ -34,39 +34,58 @@ class ServiceInProgress extends StatefulWidget {
 }
 
 class _ServiceInProgressState extends State<ServiceInProgress> {
-  late Timer _timer;
+  Timer? _timer;
   late int totalSeconds;
   bool isCompleted = false;
   dynamic _currentBookingData;
 
+  DateTime? _savedCompletionTime;
+  bool _completionAlreadyHandled = false;
+  bool _pendingApprovalSaved = false;
+
   @override
   void initState() {
     super.initState();
-_currentBookingData = widget.bookingData;
-totalSeconds = widget.serviceDuration;
+    _currentBookingData = widget.bookingData;
+    totalSeconds = widget.serviceDuration;
 
-final bData = _currentBookingData is List
-    ? (_currentBookingData as List).first
-    : _currentBookingData;
+    final bData = _currentBookingData is List
+        ? (_currentBookingData as List).first
+        : _currentBookingData;
 
-final rawDetail = bData?['booking_detail'];
-final detail = rawDetail is List
-    ? (rawDetail.isNotEmpty ? rawDetail.first : {})
-    : rawDetail;
+    final rawDetail = bData?['booking_detail'];
+    final detail = rawDetail is List
+        ? (rawDetail.isNotEmpty ? rawDetail.first : {})
+        : rawDetail;
 
-final status = detail?['status']
-    ?.toString()
-    .toLowerCase()
-    .trim();
+    final status = detail?['status']?.toString().toLowerCase().trim();
 
-if (status == 'pending_approval' ||
-    status == 'pending approval' ||
-    status == 'completed') {
-  isCompleted = true;
-}
+    if (status == 'pending_approval' ||
+        status == 'pending approval' ||
+        status == 'completed') {
+      isCompleted = true;
+    }
 
-_startTimer();
-_startStatusPolling();
+    _startTimer();
+    _startStatusPolling();
+  }
+
+  String? getBookingId(dynamic data) {
+    if (data == null) return null;
+
+    final bData = data is List ? data.first : data;
+
+    final rawDetail = bData?['booking_detail'];
+
+    final detail = rawDetail is List
+        ? (rawDetail.isNotEmpty ? rawDetail.first : null)
+        : rawDetail;
+
+    final id = detail?['id']?.toString() ?? bData?['id']?.toString();
+
+    debugPrint("EXTRACTED BOOKING ID => $id");
+
+    return id;
   }
 
   Timer? _statusPollingTimer;
@@ -84,8 +103,7 @@ _startStatusPolling();
       final bData = widget.bookingData is List
           ? (widget.bookingData as List).first
           : widget.bookingData;
-      bookingId =
-          bData['booking_detail']?['id']?.toString() ?? bData['id']?.toString();
+      bookingId = bookingId = getBookingId(_currentBookingData);
     }
 
     if (bookingId == null) return;
@@ -125,55 +143,126 @@ _startStatusPolling();
           });
         }
 
-        if (currentStatus == 'completed') {
-          _handleServiceCompletion(stopPolling: true);
-        } else if (currentStatus == 'pending_approval') {
-          _handleServiceCompletion(stopPolling: false);
-        }
+     if (currentStatus == 'completed') {
+  if (!_completionAlreadyHandled) {
+    _completionAlreadyHandled = true;
+
+    _handleServiceCompletion(
+      stopPolling: true,
+    );
+  }
+} else if (currentStatus ==
+    'pending_approval') {
+  if (!_pendingApprovalSaved) {
+    _pendingApprovalSaved = true;
+
+    _handleServiceCompletion(
+      stopPolling: false,
+    );
+  }
+}
       }
     } catch (_) {}
   }
 
   void _startTimer() async {
     final prefs = await SharedPreferences.getInstance();
-
+    await prefs.reload();
+    debugPrint("============== START TIMER ==============");
+    debugPrint("IS COMPLETED => $isCompleted");
+    debugPrint("BOOKING DATA => $_currentBookingData");
     String? bookingId;
+    debugPrint("BOOKING ID => $bookingId");
+    if (_currentBookingData != null) {
+      final bData = _currentBookingData is List
+          ? (_currentBookingData as List).first
+          : _currentBookingData;
 
-    if (widget.bookingData != null) {
-      final bData = widget.bookingData is List
-          ? (widget.bookingData as List).first
-          : widget.bookingData;
-
-      bookingId =
-          bData['booking_detail']?['id']?.toString() ?? bData['id']?.toString();
+      bookingId = getBookingId(widget.bookingData);
+      debugPrint("FINAL BOOKING ID USED => $bookingId");
     }
 
     if (bookingId == null) return;
 
-    // UNIQUE KEY FOR EACH BOOKING
-    final storageKey = 'service_start_time_$bookingId';
+    final startKey = 'service_start_time_$bookingId';
+    final endKey = 'service_end_time_$bookingId';
+    final totalKey = 'service_total_time_$bookingId';
+    debugPrint("START KEY => $startKey");
+    debugPrint("END KEY => $endKey");
+    debugPrint("TOTAL KEY => $totalKey");
 
-    String? savedStartTime = prefs.getString(storageKey);
+    String? savedStartTime = prefs.getString(startKey);
+    String? savedEndTime = prefs.getString(endKey);
 
     DateTime startTime;
 
     if (savedStartTime != null) {
+      debugPrint("USING OLD START TIME");
       startTime = DateTime.parse(savedStartTime);
     } else {
-      // FIRST TIME ONLY
       startTime = widget.startTime ?? DateTime.now();
-
-      await prefs.setString(storageKey, startTime.toIso8601String());
+      debugPrint("CREATING NEW START TIME => $startTime");
+      await prefs.setString(startKey, startTime.toIso8601String());
     }
 
+    // IF SERVICE ALREADY COMPLETED/PENDING APPROVAL
+    if (isCompleted) {
+      // use saved total time
+      debugPrint("ENTERED COMPLETED BLOCK");
+      final rawAllPrefs = prefs.getKeys();
+
+      debugPrint("========= ALL PREFS =========");
+
+      for (final key in rawAllPrefs) {
+        debugPrint("$key => ${prefs.get(key)}");
+      }
+
+      debugPrint("=============================");
+
+      final dynamic rawTotalValue = prefs.get(totalKey);
+
+      debugPrint("RAW TOTAL VALUE => $rawTotalValue");
+      debugPrint("RAW TOTAL TYPE => ${rawTotalValue.runtimeType}");
+
+      final savedTotal = rawTotalValue is int
+          ? rawTotalValue
+          : int.tryParse(rawTotalValue.toString());
+
+      debugPrint("PARSED TOTAL => $savedTotal");
+
+      if (savedTotal != null && savedTotal > 0) {
+        debugPrint("USING SAVED TOTAL => $savedTotal");
+
+        totalSeconds = savedTotal;
+      } else {
+        DateTime endTime;
+        debugPrint("SAVED TOTAL INVALID");
+        if (savedEndTime != null) {
+          endTime = DateTime.parse(savedEndTime);
+        } else {
+          endTime = DateTime.now();
+          await prefs.setString(endKey, endTime.toIso8601String());
+        }
+
+        totalSeconds = endTime.difference(startTime).inSeconds;
+
+        await prefs.setInt(totalKey, totalSeconds);
+        debugPrint("NEW TOTAL SAVED => $totalSeconds");
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+
+      return;
+    }
+
+    // RUNNING TIMER
     totalSeconds = DateTime.now().difference(startTime).inSeconds;
 
     if (mounted) {
       setState(() {});
     }
-    if (isCompleted) {
-  return;
-}
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted || isCompleted) return;
@@ -186,8 +275,8 @@ _startStatusPolling();
 
   Future<void> _handleServiceCompletion({bool stopPolling = true}) async {
     // Stop timer
-    if (_timer.isActive) {
-      _timer.cancel();
+    if (_timer != null && _timer!.isActive) {
+      _timer!.cancel();
     }
 
     // Stop polling if needed
@@ -212,9 +301,61 @@ _startStatusPolling();
     }
 
     if (bookingId != null) {
-      await prefs.remove('service_start_time_$bookingId');
-    }
+DateTime endTime;
 
+final existingEndTime =
+    prefs.getString(
+      'service_end_time_$bookingId',
+    );
+
+if (existingEndTime != null) {
+  endTime = DateTime.parse(
+    existingEndTime,
+  );
+
+  debugPrint(
+    "USING OLD END TIME => $endTime",
+  );
+} else {
+  endTime = DateTime.now();
+
+  debugPrint(
+    "CREATING NEW END TIME => $endTime",
+  );
+}
+
+      final startTimeString = prefs.getString('service_start_time_$bookingId');
+
+      int finalSeconds = totalSeconds;
+
+      if (startTimeString != null) {
+        final startTime = DateTime.parse(startTimeString);
+
+        finalSeconds = endTime.difference(startTime).inSeconds;
+      }
+
+      totalSeconds = finalSeconds;
+
+if (existingEndTime == null) {
+  await prefs.setString(
+    'service_end_time_$bookingId',
+    endTime.toIso8601String(),
+  );
+}
+
+    final alreadySaved =
+    prefs.getInt(
+      'service_total_time_$bookingId',
+    );
+
+if (alreadySaved == null ||
+    alreadySaved <= 0) {
+  await prefs.setInt(
+    'service_total_time_$bookingId',
+    finalSeconds,
+  );
+}
+    }
     // Mark completed
     if (mounted && !isCompleted) {
       final now = DateTime.now();
@@ -262,7 +403,7 @@ _startStatusPolling();
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     _statusPollingTimer?.cancel();
     super.dispose();
   }
@@ -835,68 +976,77 @@ _startStatusPolling();
                                             : {})
                                       : rawService;
 
-                                final prefs = await SharedPreferences.getInstance();
+                                  final prefs =
+                                      await SharedPreferences.getInstance();
 
-final backendUserId =
-    prefs.getString('backend_user_id') ?? '';
+                                  final backendUserId =
+                                      prefs.getString('backend_user_id') ?? '';
 
-final handymanUserType =
-    handyman?['user_type']
-        ?.toString()
-        .toLowerCase();
+                                  final handymanUserType =
+                                      handyman?['user_type']
+                                          ?.toString()
+                                          .toLowerCase();
 
-final isRealHandyman =
-    handyman != null &&
-    handyman['id'] != null &&
-    handymanUserType == 'handyman';
+                                  final isRealHandyman =
+                                      handyman != null &&
+                                      handyman['id'] != null &&
+                                      handymanUserType == 'handyman';
 
-final targetId = isRealHandyman
-    ? 'handyman_${handyman['id']}'
-    : 'provider_${provider['id']}';
+                                  final targetId = isRealHandyman
+                                      ? 'handyman_${handyman['id']}'
+                                      : 'provider_${provider['id']}';
 
-debugPrint("=========== CHAT TARGET DEBUG ===========");
+                                  debugPrint(
+                                    "=========== CHAT TARGET DEBUG ===========",
+                                  );
 
-debugPrint("HANDYMAN => $handyman");
+                                  debugPrint("HANDYMAN => $handyman");
 
-debugPrint("HANDYMAN USER TYPE => $handymanUserType");
+                                  debugPrint(
+                                    "HANDYMAN USER TYPE => $handymanUserType",
+                                  );
 
-debugPrint("IS REAL HANDYMAN => $isRealHandyman");
+                                  debugPrint(
+                                    "IS REAL HANDYMAN => $isRealHandyman",
+                                  );
 
-debugPrint("TARGET ID => $targetId");
+                                  debugPrint("TARGET ID => $targetId");
 
-debugPrint("=========================================");
+                                  debugPrint(
+                                    "=========================================",
+                                  );
 
-Navigator.pushNamed(
-  context,
-  AppRoutes.chatHomeScreen,
-  arguments: {
-    'name':
-        handyman?['display_name'] ??
-        provider?['display_name'] ??
-        detail?['provider_name'] ??
-        "Professional",
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.chatHomeScreen,
+                                    arguments: {
+                                      'name':
+                                          handyman?['display_name'] ??
+                                          provider?['display_name'] ??
+                                          detail?['provider_name'] ??
+                                          "Professional",
 
-    'image':
-        handyman?['profile_image'] ??
-        service?['provider_image'] ??
-        provider?['profile_image'] ??
-        "lib/assets/images/rider_image.png",
+                                      'image':
+                                          handyman?['profile_image'] ??
+                                          service?['provider_image'] ??
+                                          provider?['profile_image'] ??
+                                          "lib/assets/images/rider_image.png",
 
-    'phone':
-        (handyman?['contact_number'] ??
-                provider?['contact_number'])
-            ?.toString(),
+                                      'phone':
+                                          (handyman?['contact_number'] ??
+                                                  provider?['contact_number'])
+                                              ?.toString(),
 
-    'booking_id': detail?['id']?.toString(),
+                                      'booking_id': detail?['id']?.toString(),
 
-    // sender
-    'my_chat_id': 'user_$backendUserId',
+                                      // sender
+                                      'my_chat_id': 'user_$backendUserId',
 
-    // receiver
-    'provider_uid': targetId,
-'is_handyman_chat': isRealHandyman,
-  },
-);
+                                      // receiver
+                                      'provider_uid': targetId,
+                                      'is_handyman_chat': isRealHandyman,
+                                    },
+                                  );
                                 },
                                 child: Container(
                                   height: AppSizes.h(context, 45),
@@ -980,15 +1130,59 @@ Navigator.pushNamed(
                                                   context,
                                                   listen: false,
                                                 );
-                                            final time =
+                                            DateTime? time;
+
+                                            final prefsData =
+                                                Provider.of<UserProvider>(
+                                                  context,
+                                                  listen: false,
+                                                );
+
+                                            time =
                                                 widget.completionTime ??
-                                                userProvider.serviceEndTime;
-                                            if (time != null) {
+                                                prefsData.serviceEndTime;
+
+                                            if (time == null) {
+                                              final bookingId = getBookingId(
+                                                _currentBookingData,
+                                              );
+
+                                              if (bookingId != null) {
+                                                final prefs =
+                                                    SharedPreferences.getInstance();
+
+                                                prefs.then((sp) {
+                                                  final saved = sp.getString(
+                                                    'service_end_time_$bookingId',
+                                                  );
+
+                                                  debugPrint(
+                                                    "UI SAVED END TIME => $saved",
+                                                  );
+
+                                                  if (saved != null &&
+                                                      mounted) {
+                                                    final parsed =
+                                                        DateTime.parse(saved);
+
+                                                    setState(() {
+                                                      _savedCompletionTime =
+                                                          parsed;
+                                                    });
+                                                  }
+                                                });
+                                              }
+                                            }
+                                            final finalTime =
+                                                time ?? _savedCompletionTime;
+
+                                            if (finalTime != null) {
                                               return DateFormat(
                                                 'hh:mm a',
-                                              ).format(time);
+                                              ).format(finalTime);
                                             }
-                                            return "2:40 PM"; // Fallback
+
+                                            return "--:--"; // Fallback
                                           }(),
                                           style: TextStyle(
                                             color: AppColors.naturalBlack,
@@ -1087,7 +1281,11 @@ Navigator.pushNamed(
                         ],
                       ),
 
-                      SizedBox(height: AppSizes.h(context, 30)),
+                      SizedBox(height: AppSizes.h(context, 15)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _buildActionButtonRow(),
+                      ),
                     ],
                   ),
                 ),
@@ -1095,6 +1293,49 @@ Navigator.pushNamed(
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtonRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => Navigator.pushNamed(context, AppRoutes.helpDesk),
+            child: _buildFooterButton(
+              Icons.support_agent,
+              "Contact Support",
+              Colors.black,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFooterButton(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
     );
   }

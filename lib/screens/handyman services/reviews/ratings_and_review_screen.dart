@@ -19,33 +19,72 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
   final List<int> tips = [50, 100, 200];
   bool _isSubmitting = false;
 
+  // Data fields
   Map<String, dynamic>? _bookingData;
   Map<String, dynamic>? _provider;
   Map<String, dynamic>? _handyman;
   Map<String, dynamic>? _detail;
   Map<String, dynamic>? _service;
+  
+  // Extracted fields for easy access
+  String? _bookingId;
+  String? _handymanId;
+  String? _serviceId;
+  String? _serviceName;
+  String? _handymanName;
+  String? _handymanImage;
+  double _handymanRating = 0.0;
+  int _handymanJobs = 0;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _extractArguments();
+  }
+
+  void _extractArguments() {
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null) {
-      final rawBooking = args['booking_data'];
-      final bData = rawBooking is List ? (rawBooking.isNotEmpty ? rawBooking.first : {}) : rawBooking;
-      _bookingData = bData;
-      
-      final rawDetail = bData?['booking_detail'];
-      _detail = rawDetail is List ? (rawDetail.isNotEmpty ? rawDetail.first : {}) : rawDetail;
-      
-      final rawProvider = bData?['provider_data'];
-      _provider = rawProvider is List ? (rawProvider.isNotEmpty ? rawProvider.first : {}) : rawProvider;
+    if (args == null) return;
 
-      final rawHandyman = bData?['handyman_data'];
-      _handyman = rawHandyman is List ? (rawHandyman.isNotEmpty ? rawHandyman.first : {}) : rawHandyman;
+    // Extract booking data
+    final rawBooking = args['booking_data'];
+    _bookingData = rawBooking is List 
+        ? (rawBooking.isNotEmpty ? rawBooking.first : null) 
+        : rawBooking;
+    
+    // Extract detail
+    final rawDetail = args['detail'] ?? _bookingData?['booking_detail'];
+    _detail = rawDetail is List 
+        ? (rawDetail.isNotEmpty ? rawDetail.first : null) 
+        : rawDetail;
+    
+    // Extract provider
+    final rawProvider = args['provider'] ?? _bookingData?['provider_data'];
+    _provider = rawProvider is List 
+        ? (rawProvider.isNotEmpty ? rawProvider.first : null) 
+        : rawProvider;
 
-      final rawService = bData?['service'];
-      _service = rawService is List ? (rawService.isNotEmpty ? rawService.first : {}) : rawService;
-    }
+    // Extract handyman
+    final rawHandyman = args['handyman'] ?? _bookingData?['handyman_data'];
+    _handyman = rawHandyman is List 
+        ? (rawHandyman.isNotEmpty ? rawHandyman.first : null) 
+        : rawHandyman;
+
+    // Extract service
+    final rawService = args['service'] ?? _bookingData?['service'];
+    _service = rawService is List 
+        ? (rawService.isNotEmpty ? rawService.first : null) 
+        : rawService;
+
+    // Extract individual fields from arguments or derived data
+    _bookingId = args['booking_id']?.toString() ?? _detail?['id']?.toString() ?? _bookingData?['id']?.toString();
+    _handymanId = args['handyman_id']?.toString() ?? _handyman?['id']?.toString() ?? _provider?['id']?.toString();
+    _serviceId = args['service_id']?.toString() ?? _detail?['service_id']?.toString() ?? _service?['id']?.toString();
+    _serviceName = args['service_name']?.toString() ?? _detail?['service_name']?.toString() ?? _service?['name']?.toString() ?? _bookingData?['service_name']?.toString() ?? "Service";
+    _handymanName = args['handyman_name']?.toString() ?? _handyman?['display_name']?.toString() ?? _handyman?['first_name']?.toString() ?? _provider?['display_name']?.toString() ?? _detail?['provider_name']?.toString() ?? "Service Provider";
+    _handymanImage = args['handyman_image']?.toString() ?? _handyman?['profile_image']?.toString() ?? _provider?['profile_image']?.toString();
+    _handymanRating = (args['handyman_rating'] ?? _handyman?['providers_service_rating'] ?? _provider?['providers_service_rating'] ?? 0.0).toDouble();
+    _handymanJobs = (args['handyman_jobs'] ?? _handyman?['total_services_booked'] ?? _provider?['total_services_booked'] ?? 0).toInt();
   }
 
   Widget buildStar(int index) {
@@ -88,7 +127,6 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
     );
   }
 
- 
   String getRatingText(int rating) {
     switch (rating) {
       case 1:
@@ -109,16 +147,16 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
   Future<void> submitReview() async {
     final String reviewText = reviewController.text.trim();
     if (reviewText.isEmpty) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please write a review")));
-       return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please write a review"))
+      );
+      return;
     }
 
-    final bookingId = _detail?['id'];
-    final handymanId = _handyman?['id'] ?? _provider?['id'];
-    final serviceId = _detail?['service_id'];
-
-    if (bookingId == null || handymanId == null || serviceId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Missing booking information")));
+    if (_bookingId == null || _handymanId == null || _serviceId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Missing booking information. Please try again."))
+      );
       return;
     }
 
@@ -128,6 +166,10 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final apiToken = userProvider.apiToken;
       
+      if (apiToken == null || apiToken.isEmpty) {
+        throw Exception("Authentication token missing");
+      }
+      
       final url = Uri.parse('${ApiConfig.apiBaseUrl}/save-handyman-rating');
       final response = await http.post(
         url,
@@ -135,32 +177,42 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $apiToken',
-          
         },
         body: json.encode({
-          "booking_id": bookingId,
-          "handyman_id": handymanId,
-          "service_id": serviceId,
+          "booking_id": _bookingId,
+          "handyman_id": _handymanId,
+          "service_id": _serviceId,
           "rating": selectedRating.toDouble(),
           "review": reviewText,
         }),
       );
 
-      if (response.statusCode == 200) {
+      debugPrint("📤 Review submission response: ${response.statusCode}");
+      debugPrint("📤 Response body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Review submitted successfully!")));
-          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Thank you for your review!"))
+          );
+          // Navigate back to booking history or landing page
+          Navigator.popAndPushNamed(context, AppRoutes.bookingHistory);
         }
       } else {
-        debugPrint("Review failed: ${response.body}");
+        final errorData = json.decode(response.body);
+        final errorMsg = errorData['message'] ?? "Failed to submit review";
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: ${response.statusCode}")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMsg))
+          );
         }
       }
     } catch (e) {
-      debugPrint("Error submitting review: $e");
+      debugPrint("❌ Error submitting review: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("An error occurred")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Network error. Please try again."))
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -177,13 +229,13 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.reviewBgColor,
-      resizeToAvoidBottomInset: false, 
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: AppColors.naturalWhite,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppColors.primaryRed),
-          onPressed: () => Navigator.popAndPushNamed(context, AppRoutes.landingPage)
+          onPressed: () => Navigator.pop(context)
         ),
         centerTitle: true,
         title: Text(
@@ -197,76 +249,69 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
       body: SafeArea(
         child: Column(
           children: [
-        
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.all(Insets.sm),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-        
+                    // Provider/Handyman Info Row
                     Row(
                       children: [
                         CircleAvatar(
                           radius: AppSizes.w(context, 28),
                           backgroundColor: Colors.grey.shade300,
-                          backgroundImage: () {
-                            final img = _handyman?['profile_image'] ?? _service?['provider_image'] ?? _provider?['profile_image'];
-                            return (img != null && img.toString().startsWith('http'))
-                                ? NetworkImage(
-                                    img.toString(),
-                                    headers: const {},
-                                  )
-                                : null;
-                          }(),
-                          child: () {
-                            final img = _handyman?['profile_image'] ?? _service?['provider_image'] ?? _provider?['profile_image'];
-                            return (img == null || !img.toString().startsWith('http'))
-                                ? const Icon(Icons.person, color: AppColors.naturalBlack)
-                                : null;
-                          }(),
+                          backgroundImage: _handymanImage != null && _handymanImage!.startsWith('http')
+                              ? NetworkImage(_handymanImage!)
+                              : null,
+                          child: _handymanImage == null || !_handymanImage!.startsWith('http')
+                              ? const Icon(Icons.person, color: AppColors.naturalBlack)
+                              : null,
                         ),
                         SizedBox(width: Insets.xsm),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _handyman?['display_name']?.toString() ?? _provider?['display_name']?.toString() ?? _detail?['provider_name']?.toString() ?? "",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: AppSizes.w(context, 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _handymanName ?? "Service Provider",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: AppSizes.w(context, 16),
+                                ),
                               ),
-                            ),
-                            SizedBox(height: AppSizes.h(context, 4)),
-                            Text(
-                              _detail?['service_name'] ?? UserMessages.professionalType,
-                              style: TextStyle(
-                                fontSize: AppSizes.w(context, 13),
-                                color: AppColors.naturalBlack.withOpacity(0.54),
+                              SizedBox(height: AppSizes.h(context, 4)),
+                              Text(
+                                _serviceName ?? "Professional Service",
+                                style: TextStyle(
+                                  fontSize: AppSizes.w(context, 13),
+                                  color: AppColors.naturalBlack.withOpacity(0.54),
+                                ),
                               ),
-                            ),
-                            SizedBox(height: AppSizes.h(context, 4)),
-                            Text(
-                              "Rating: ${_handyman?['providers_service_rating'] ?? _provider?['providers_service_rating'] ?? 0.0} (${_handyman?['total_services_booked'] ?? _provider?['total_services_booked'] ?? 0} jobs)",
-                              style: TextStyle(
-                                fontSize: AppSizes.w(context, 12),
-                                color: AppColors.naturalBlack.withOpacity(0.54),
+                              SizedBox(height: AppSizes.h(context, 4)),
+                              Text(
+                                "Rating: ${_handymanRating.toStringAsFixed(1)} ($_handymanJobs jobs)",
+                                style: TextStyle(
+                                  fontSize: AppSizes.w(context, 12),
+                                  color: AppColors.naturalBlack.withOpacity(0.54),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
-        
+
                     SizedBox(height: AppSizes.h(context, 20)),
-        
+
+                    // Star Rating
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(5, (index) => buildStar(index)),
                     ),
-        
+
                     SizedBox(height: AppSizes.h(context, 12)),
-        
+
                     Center(
                       child: Text(
                         getRatingText(selectedRating),
@@ -276,19 +321,21 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
                         ),
                       ),
                     ),
-        
+
                     SizedBox(height: AppSizes.h(context, 20)),
-        
+
+                    // Review Label
                     Text(
-                      "${UserMessages.writeA}${UserMessages.review}",
+                      "${UserMessages.writeA} ${UserMessages.review}",
                       style: TextStyle(
                         color: AppColors.reviewGreen,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-        
+
                     SizedBox(height: AppSizes.h(context, 8)),
-        
+
+                    // Review TextField
                     Container(
                       height: AppSizes.h(context, 120),
                       decoration: BoxDecoration(
@@ -307,30 +354,10 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
                         ),
                       ),
                     ),
-        
-                    SizedBox(height: AppSizes.h(context, 20)),
-        
-             
-                    Text(
-                      UserMessages.tipYourProfessional,
-                      style: TextStyle(
-                        color: AppColors.discountRed,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-        
-                    SizedBox(height: AppSizes.h(context, 10)),
-        
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [...tips.map((e) => tipChip(e)), tipChip(0)],
-                      ),
-                    ),
-        
+
                     SizedBox(height: AppSizes.h(context, 24)),
-        
-            
+
+                    // Submit Button
                     GestureDetector(
                       onTap: _isSubmitting ? null : submitReview,
                       child: Container(
@@ -353,49 +380,12 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
                         ),
                       ),
                     ),
-        
+
                     SizedBox(height: AppSizes.h(context, 14)),
-        
-         
-                    GestureDetector(
-                      onTap: () {
-                        print(UserMessages.bookAgainTapped);
-                      },
-                      child: Container(
-                        height: AppSizes.h(context, 55),
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: AppColors.naturalWhite,
-                          borderRadius: BorderRadius.circular(Insets.sm),
-                          border: Border.all(color: AppColors.primaryRed),
-                          boxShadow: [
-                            BoxShadow(
-                              spreadRadius: 0,
-                              blurRadius: AppSizes.w(context, 8),
-                              color: AppColors.naturalBlack.withAlpha(70),
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Text(
-                            UserMessages.bookAgain,
-                            style: TextStyle(
-                              color: AppColors.primaryRed,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-        
-              
                   ],
                 ),
               ),
             ),
-        
-          
           ],
         ),
       ),

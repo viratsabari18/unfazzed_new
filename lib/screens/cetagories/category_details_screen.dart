@@ -43,6 +43,58 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
   double _maxPrice = 10000;
   String _sortBy = 'default'; // default, price_low_to_high, price_high_to_low
 
+@override
+void initState() {
+  super.initState();
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    final controller =
+        Provider.of<ServiceListController>(
+      context,
+      listen: false,
+    );
+
+    final addressProvider =
+        Provider.of<AddressProvider>(
+      context,
+      listen: false,
+    );
+
+    final loc = addressProvider.selectedLocation;
+
+    final lat = double.tryParse(
+      loc?['latitude']?.toString() ?? '',
+    );
+
+    final lng = double.tryParse(
+      loc?['longitude']?.toString() ?? '',
+    );
+
+    debugPrint(
+      "📍 FETCHING SERVICES => "
+      "SUBCATEGORY: ${widget.subcategoryId} "
+      "LAT: $lat LNG: $lng",
+    );
+
+controller.clearServices();
+
+_minPrice = 0;
+_maxPrice = 10000;
+_priceRange = const RangeValues(0, 10000);
+
+_searchQuery = '';
+_searchController.clear();
+
+_sortBy = 'default';
+
+controller.setSubcategory(
+  widget.subcategoryId,
+);
+    controller.setLocation(lat, lng);
+
+    await controller.fetchServices();
+  });
+}
   void toggleSearch() {
     setState(() {
       _isSearchVisible = !_isSearchVisible;
@@ -84,7 +136,7 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                 size: 18,
                 color: AppColors.naturalBlack87,
               ),
-              onPressed: () => Navigator.pop(context),
+        onPressed: () => Navigator.pop(context),
             ),
           ),
         ),
@@ -118,29 +170,37 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
             "📱 CategoryDetailsScreen: Selected Location -> Lat: $lat, Lng: $lng",
           );
 
-     if (controller.subcategoryId != widget.subcategoryId &&
-    !controller.isLoading) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              controller.setSubcategory(widget.subcategoryId);
-              controller.setLocation(lat, lng);
-              controller.fetchServices();
-            });
-          }
 
-          if (controller.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryRed),
-            );
-          }
 
-          if (controller.serviceList.isEmpty) {
-            return Center(child: Text(UserMessages.noServicesFound));
-          }
+       if (controller.isLoading) {
+  return const Center(
+    child: CircularProgressIndicator(
+      color: AppColors.primaryRed,
+    ),
+  );
+}
+if (controller.isLoading &&
+    controller.serviceList.isEmpty) {
+  return const Center(
+    child: CircularProgressIndicator(
+      color: AppColors.primaryRed,
+    ),
+  );
+}
 
-          // Calculate min and max prices for filter
-          if (_minPrice == 0 &&
-              _maxPrice == 10000 &&
-              controller.serviceList.isNotEmpty) {
+/// SHOW EMPTY ONLY AFTER API COMPLETES
+if (!controller.isLoading &&
+    !controller.isPaginationLoading &&
+    controller.errorMessage != null &&
+    controller.serviceList.isEmpty) {
+  return Center(
+    child: Text(
+     " controller.errorMessage ?? ,"
+    ),
+  );
+}
+
+    if (controller.serviceList.isNotEmpty) {
             final prices = controller.serviceList
                 .map((s) => s.price?.toDouble() ?? 0)
                 .toList();
@@ -359,46 +419,46 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      RangeSlider(
-                        values: _priceRange,
-                        min: _minPrice,
-                        max: _maxPrice,
-                        divisions: 100,
-                        labels: RangeLabels(
-                          '₹${_priceRange.start.round()}',
-                          '₹${_priceRange.end.round()}',
-                        ),
-                        activeColor: AppColors.primaryRed,
-                        inactiveColor: Colors.grey.shade300,
-                        onChanged: (RangeValues values) {
-                          setState(() {
-                            _priceRange = values;
-                          });
-                        },
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '₹${_priceRange.start.round()}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            Text(
-                              '₹${_priceRange.end.round()}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+         
+                      // RangeSlider(
+                      //   values: _priceRange,
+                      //   min: _minPrice,
+                      //   max: _maxPrice,
+                      //   divisions: 100,
+                      //   labels: RangeLabels(
+                      //     '₹${_priceRange.start.round()}',
+                      //     '₹${_priceRange.end.round()}',
+                      //   ),
+                      //   activeColor: AppColors.primaryRed,
+                      //   inactiveColor: Colors.grey.shade300,
+                      //   onChanged: (RangeValues values) {
+                      //     setState(() {
+                      //       _priceRange = values;
+                      //     });
+                      //   },
+                      // ),
+                      // Padding(
+                      //   padding: const EdgeInsets.symmetric(horizontal: 8),
+                      //   child: Row(
+                      //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      //     children: [
+                      //       Text(
+                      //         '₹${_priceRange.start.round()}',
+                      //         style: const TextStyle(
+                      //           fontSize: 12,
+                      //           color: Colors.grey,
+                      //         ),
+                      //       ),
+                      //       Text(
+                      //         '₹${_priceRange.end.round()}',
+                      //         style: const TextStyle(
+                      //           fontSize: 12,
+                      //           color: Colors.grey,
+                      //         ),
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ),
                       const SizedBox(height: 16),
 
                       // Sort By
@@ -550,7 +610,10 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                         itemCount: filteredServices.length,
                         itemBuilder: (context, index) {
                           final service = filteredServices[index];
-                          return _ServiceCard(service: service);
+                         return _ServiceCard(
+  key: UniqueKey(),
+  service: service,
+);
                         },
                       ),
               ),
@@ -611,19 +674,26 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
 class _ServiceCard extends StatefulWidget {
   final ServiceData service;
 
-  const _ServiceCard({required this.service});
+  const _ServiceCard({
+    Key? key,
+    required this.service,
+  }) : super(key: key);
 
   @override
   State<_ServiceCard> createState() => _ServiceCardState();
 }
 
 class _ServiceCardState extends State<_ServiceCard> {
+
+  bool _isDisposed = false;
   double? _lowestPrice;
   bool _isFetchingPrice = false;
   bool _hasOptionsOrAddons = false;
 
   // Add-ons data
   List<dynamic> _addOnServices = [];
+
+
   bool _isLoadingAddOns = false;
 
   @override
@@ -632,80 +702,141 @@ class _ServiceCardState extends State<_ServiceCard> {
     _fetchLowestPriceAndAddOns();
   }
 
-  Future<void> _fetchLowestPriceAndAddOns() async {
-    if (mounted)
-      setState(() {
-        _isFetchingPrice = true;
-        _isLoadingAddOns = true;
-      });
 
-    try {
-      final url = Uri.parse('${ApiConfig.apiBaseUrl}/service-detail');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'service_id': widget.service.id}),
-      );
-      debugPrint("========== FULL API RESPONSE ==========");
-      debugPrint(response.body);
-      debugPrint("======================================");
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final serviceDetail = data['service_detail'];
-        final List<dynamic> bhkOptions =
-            serviceDetail?['service_options'] ?? [];
-        final List<dynamic> addOnServices = data['serviceaddon'] ?? [];
+Future<void> _fetchLowestPriceAndAddOns() async {
+  final currentServiceId = widget.service.id;
+if (!mounted || _isDisposed) return;
 
-        double? minPrice;
+  setState(() {
+    _isFetchingPrice = true;
+    _isLoadingAddOns = true;
+  });
 
-        // Check options
-        for (var opt in bhkOptions) {
-          final p = double.tryParse(opt['price'].toString());
-          if (p != null) {
-            if (minPrice == null || p < minPrice) {
-              minPrice = p;
-            }
-          }
-        }
+  try {
+    final url = Uri.parse('${ApiConfig.apiBaseUrl}/service-detail');
 
-        // Check add-ons
-        for (var addon in addOnServices) {
-          final p = double.tryParse(addon['price'].toString());
-          if (p != null) {
-            if (minPrice == null || p < minPrice) {
-              minPrice = p;
-            }
-          }
-        }
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'service_id': currentServiceId,
+      }),
+    );
+    if (!mounted || _isDisposed) {
+  debugPrint(
+    "🚫 IGNORING OLD SERVICE DETAIL RESPONSE => $currentServiceId",
+  );
+  return;
+}
 
-        if (mounted) {
-          setState(() {
-            _lowestPrice = minPrice;
-            _hasOptionsOrAddons =
-                bhkOptions.isNotEmpty || addOnServices.isNotEmpty;
-            _addOnServices = addOnServices;
-            _isFetchingPrice = false;
-            _isLoadingAddOns = false;
-          });
-        }
-      } else {
-        if (mounted)
-          setState(() {
-            _isFetchingPrice = false;
-            _isLoadingAddOns = false;
-          });
-      }
-    } catch (e) {
-      debugPrint("Error fetching data: $e");
-      if (mounted)
-        setState(() {
-          _isFetchingPrice = false;
-          _isLoadingAddOns = false;
-        });
+    debugPrint("========== FULL API RESPONSE ==========");
+    debugPrint(response.body);
+    debugPrint("======================================");
+
+    // VERY IMPORTANT
+    // Ignore old response
+   if (!mounted || _isDisposed) return;
+
+    if (currentServiceId != widget.service.id) {
+      return;
     }
-  }
 
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+
+      final serviceDetail = data['service_detail'];
+
+      final List<dynamic> bhkOptions =
+          serviceDetail?['service_options'] ?? [];
+
+      final List<dynamic> addOnServices =
+          data['serviceaddon'] ?? [];
+
+      double? minPrice;
+
+      // Check options
+      for (var opt in bhkOptions) {
+        final p = double.tryParse(
+          opt['price'].toString(),
+        );
+
+        if (p != null) {
+          if (minPrice == null || p < minPrice) {
+            minPrice = p;
+          }
+        }
+      }
+
+      // Check add-ons
+      for (var addon in addOnServices) {
+        final p = double.tryParse(
+          addon['price'].toString(),
+        );
+
+        if (p != null) {
+          if (minPrice == null || p < minPrice) {
+            minPrice = p;
+          }
+        }
+      }
+
+if (!mounted || _isDisposed) return;
+
+      if (currentServiceId != widget.service.id) {
+        return;
+      }
+
+      setState(() {
+        _lowestPrice = minPrice;
+
+        _hasOptionsOrAddons =
+            bhkOptions.isNotEmpty ||
+            addOnServices.isNotEmpty;
+
+        _addOnServices = addOnServices;
+
+        _isFetchingPrice = false;
+        _isLoadingAddOns = false;
+      });
+    } else {
+      if (!mounted || _isDisposed) return;
+
+      if (currentServiceId != widget.service.id) {
+        return;
+      }
+
+      setState(() {
+        _isFetchingPrice = false;
+        _isLoadingAddOns = false;
+      });
+    }
+  } catch (e) {
+    debugPrint("Error fetching data: $e");
+
+    if (!mounted || _isDisposed) return;
+
+    if (currentServiceId != widget.service.id) {
+      return;
+    }
+
+    setState(() {
+      _isFetchingPrice = false;
+      _isLoadingAddOns = false;
+    });
+  }
+}
+
+@override
+void dispose() {
+  _isDisposed = true;
+
+  debugPrint(
+    "❌ DISPOSE SERVICE CARD => ${widget.service.id}",
+  );
+
+  super.dispose();
+}
   void _showAddOnsBottomSheet() {
     final Set<int> selectedAddOnIndices = {};
 
@@ -1070,7 +1201,7 @@ class _ServiceCardState extends State<_ServiceCard> {
                       ],
                     ),
                   ),
-                  SizedBox(height: MediaQuery.of(context).padding.bottom),
+                 const SizedBox(height: 8),
                 ],
               ),
             );
@@ -1221,7 +1352,7 @@ class _ServiceCardState extends State<_ServiceCard> {
                   right: 15,
                   child: GestureDetector(
                     onTap: () {
-                      // Details action
+                      Navigator.pushNamed(context,AppRoutes.serviceDetails,arguments: widget.service);
                     },
                     child: Container(
                       padding: const EdgeInsets.all(8),

@@ -18,31 +18,39 @@ class ServiceListController extends ChangeNotifier {
   double? latitude;
   double? longitude;
 
-void setSubcategory(int id) {
-  // Prevent unnecessary reload
-  if (subcategoryId == id) return;
+  int _requestId = 0;
 
+void setSubcategory(int id) {
+  // ALWAYS reset everything
   subcategoryId = id;
 
-  // VERY IMPORTANT
-  // Clear old services immediately
+  // cancel old requests
+  _requestId++;
+
+  // reset state
+  offset = 0;
   serviceList.clear();
 
-  // Reset pagination
-  offset = 0;
+  errorMessage = null;
+
+  isLoading = false;
+  isPaginationLoading = false;
 
   notifyListeners();
 }
+void setLocation(double? lat, double? lng) {
+  latitude = lat;
+  longitude = lng;
 
-  void setLocation(double? lat, double? lng) {
-    debugPrint("📱 ServiceListController: Setting Location -> Lat: $lat, Lng: $lng");
-    latitude = lat;
-    longitude = lng;
-  }
-
+  debugPrint(
+    "📍 UPDATED LOCATION => LAT: $latitude LNG: $longitude",
+  );
+}
 
   Future<void> fetchServices({bool isLoadMore = false}) async {
-    if (isLoading) return;
+
+    final int currentRequestId = ++_requestId;
+if (isLoading && !isLoadMore) return;
 
     if (subcategoryId == null) {
       errorMessage = "Subcategory ID is not set";
@@ -84,8 +92,16 @@ void setSubcategory(int id) {
         },
       );
 
+      if (currentRequestId != _requestId) {
+  debugPrint("❌ OLD API RESPONSE IGNORED");
+  return;
+}
+
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
+        if (currentRequestId != _requestId) {
+  return;
+}
         
         debugPrint("API Response: ${jsonData.toString()}");
         
@@ -120,7 +136,7 @@ void setSubcategory(int id) {
         } else {
           if (!isLoadMore) {
             serviceList = [];
-            errorMessage = "No services found";
+     
           }
         }
       } else {
@@ -130,12 +146,17 @@ void setSubcategory(int id) {
       }
     } catch (e) {
       errorMessage = "Error: $e";
+      if (currentRequestId != _requestId) {
+  return;
+}
       debugPrint("ERROR: $e");
-    } finally {
-      isLoading = false;
-      isPaginationLoading = false;
-      notifyListeners();
-    }
+    }finally {
+  if (currentRequestId == _requestId) {
+    isLoading = false;
+    isPaginationLoading = false;
+    notifyListeners();
+  }
+}
   }
 
 
@@ -143,6 +164,18 @@ void setSubcategory(int id) {
     offset = 0;
     await fetchServices();
   }
+
+void clearServices() {
+  serviceList.clear();
+
+  offset = 0;
+
+  errorMessage = null;
+
+  isLoading = false;
+  isPaginationLoading = false;
+
+}
 
   Future<void> loadMoreServices() async {
     if (!isPaginationLoading && serviceList.isNotEmpty) {

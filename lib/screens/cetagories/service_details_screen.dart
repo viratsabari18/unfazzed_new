@@ -93,7 +93,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
               ),
             ],
           ),
-      bottomNavigationBar: _buildBottomBar(),
+      // bottomNavigationBar: _buildBottomBar(),
     );
   }
 
@@ -456,50 +456,50 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     return widget.service.price?.toString() ?? "0";
   }
 
-  Widget _buildBottomBar() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Price from", style: TextStyle(color: Colors.black54, fontSize: 12)),
-                  Text(
-                    "₹${_getDisplayPrice()}",
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-                  ),
-                ],
-              ),
-            ),
-            GestureDetector(
-              onTap: () {
-                HapticFeedback.heavyImpact();
-                // Navigate to configuration
-                Navigator.pushNamed(context, AppRoutes.bookingConfig, arguments: widget.service);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF263238),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Book Now',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _buildBottomBar() {
+  //   return Container(
+  //     padding: const EdgeInsets.all(20),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+  //     ),
+  //     child: SafeArea(
+  //       child: Row(
+  //         children: [
+  //           Expanded(
+  //             child: Column(
+  //               mainAxisSize: MainAxisSize.min,
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 const Text("Price from", style: TextStyle(color: Colors.black54, fontSize: 12)),
+  //                 Text(
+  //                   "₹${_getDisplayPrice()}",
+  //                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //           GestureDetector(
+  //             onTap: () {
+  //               HapticFeedback.heavyImpact();
+  //               // Navigate to configuration
+  //               Navigator.pushNamed(context, AppRoutes.bookingConfig, arguments: widget.service);
+  //             },
+  //             child: Container(
+  //               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+  //               decoration: BoxDecoration(
+  //                 color: const Color(0xFF263238),
+  //                 borderRadius: BorderRadius.circular(12),
+  //               ),
+  //               child: const Text(
+  //                 'Book Now',
+  //                 style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 }

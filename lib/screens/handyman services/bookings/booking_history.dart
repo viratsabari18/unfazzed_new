@@ -320,7 +320,9 @@ class _BookingHistoryState extends State<BookingHistory> {
                                                           : "Completed";
                                                     }
 
-                                                    return statusLabel;
+                                                    return statusLabel.isNotEmpty
+                                                        ? statusLabel
+                                                        : status.value;
                                                   }(),
                                                   style: TextStyle(
                                                     fontSize: AppSizes.w(
@@ -486,34 +488,154 @@ class _BookingHistoryState extends State<BookingHistory> {
                                       ),
                                     ),
                                     SizedBox(width: Insets.xs),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          (status == BookingStatus.cancelled ||
-                                                  status ==
-                                                      BookingStatus.rejected)
-                                              ? "Cancelled"
-                                              : (handyman?['display_name']
-                                                        ?.toString() ??
-                                                    item['provider_name']
-                                                        ?.toString() ??
-                                                    "Finding..."),
-                                        ),
-                                        SizedBox(
-                                          height: AppSizes.h(context, 4),
-                                        ),
-                                        if (status != BookingStatus.cancelled &&
-                                            status != BookingStatus.rejected)
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
                                           Text(
-                                            UserMessages.handyman,
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: Colors.grey[600],
-                                            ),
+                                            (status ==
+                                                        BookingStatus
+                                                            .cancelled ||
+                                                    status ==
+                                                        BookingStatus.rejected)
+                                                ? "Cancelled"
+                                                : (handyman?['display_name']
+                                                          ?.toString() ??
+                                                      item['provider_name']
+                                                          ?.toString() ??
+                                                      "Finding..."),
                                           ),
-                                      ],
+                                          SizedBox(
+                                            height: AppSizes.h(context, 4),
+                                          ),
+                                          if (status !=
+                                                  BookingStatus.cancelled &&
+                                              status != BookingStatus.rejected)
+                                            Text(
+                                              UserMessages.handyman,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                     if (status == BookingStatus.completed)
+                               
+                                    // In the _BookingHistoryState class, update the TextButton onPressed:
+                                    TextButton(
+                                      onPressed: () {
+                                        // Prepare all data needed for rating and review
+                                        final bookingId = item['id']
+                                            ?.toString();
+                                        final bookingDetail =
+                                            item['booking_detail'];
+                                        final handymanData =
+                                            item['handyman_data'];
+                                        final providerData =
+                                            item['provider_data'];
+                                        final serviceData = item['service'];
+
+                                        // Extract handyman info
+                                        Map<String, dynamic>? handyman;
+                                        if (handymanData is List &&
+                                            handymanData.isNotEmpty) {
+                                          handyman = Map<String, dynamic>.from(
+                                            handymanData.first,
+                                          );
+                                        } else if (handymanData is Map) {
+                                          handyman = Map<String, dynamic>.from(
+                                            handymanData,
+                                          );
+                                        }
+
+                                        // Extract provider info
+                                        Map<String, dynamic>? provider;
+                                        if (providerData is List &&
+                                            providerData.isNotEmpty) {
+                                          provider = Map<String, dynamic>.from(
+                                            providerData.first,
+                                          );
+                                        } else if (providerData is Map) {
+                                          provider = Map<String, dynamic>.from(
+                                            providerData,
+                                          );
+                                        }
+
+                                        // Extract service info
+                                        Map<String, dynamic>? service;
+                                        if (serviceData is List &&
+                                            serviceData.isNotEmpty) {
+                                          service = Map<String, dynamic>.from(
+                                            serviceData.first,
+                                          );
+                                        } else if (serviceData is Map) {
+                                          service = Map<String, dynamic>.from(
+                                            serviceData,
+                                          );
+                                        }
+
+                                        // Extract booking detail
+                                        Map<String, dynamic>? detail;
+                                        if (bookingDetail is List &&
+                                            bookingDetail.isNotEmpty) {
+                                          detail = Map<String, dynamic>.from(
+                                            bookingDetail.first,
+                                          );
+                                        } else if (bookingDetail is Map) {
+                                          detail = Map<String, dynamic>.from(
+                                            bookingDetail,
+                                          );
+                                        }
+
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.ratingsAndReview,
+                                          arguments: {
+                                            'booking_data': item,
+                                            'booking_id': bookingId,
+                                            'detail': detail,
+                                            'handyman': handyman,
+                                            'provider': provider,
+                                            'service': service,
+                                            'service_name':
+                                                detail?['service_name'] ??
+                                                service?['name'] ??
+                                                item['service_name'],
+                                            'handyman_id':
+                                                handyman?['id'] ??
+                                                provider?['id'],
+                                            'handyman_name':
+                                                handyman?['display_name'] ??
+                                                handyman?['first_name'] ??
+                                                provider?['display_name'] ??
+                                                'Service Provider',
+                                            'handyman_image':
+                                                handyman?['profile_image'] ??
+                                                provider?['profile_image'],
+                                            'handyman_rating':
+                                                handyman?['providers_service_rating'] ??
+                                                provider?['providers_service_rating'] ??
+                                                0.0,
+                                            'handyman_jobs':
+                                                handyman?['total_services_booked'] ??
+                                                provider?['total_services_booked'] ??
+                                                0,
+                                            'service_id':
+                                                detail?['service_id'] ??
+                                                service?['id'],
+                                          },
+                                        );
+                                      },
+                                      child: const Text(
+                                        "Rate & Review",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.primaryRed,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -676,21 +798,20 @@ class _BookingHistoryState extends State<BookingHistory> {
             ),
           },
         );
-      }else if (currentStatus == 'pending_approval' ||
-    currentStatus == 'pending approval') {
-
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => BookingServiceProgressHome(
-        serviceDurationInSeconds: 3600,
-        bookingData: data,
-        startTime: DateTime.now(),
-        price: price,
-      ),
-    ),
-  );
-} else if (currentStatus == 'accepted' ||
+      } else if (currentStatus == 'pending_approval' ||
+          currentStatus == 'pending approval') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BookingServiceProgressHome(
+              serviceDurationInSeconds: 3600,
+              bookingData: data,
+              startTime: DateTime.now(),
+              price: price,
+            ),
+          ),
+        );
+      } else if (currentStatus == 'accepted' ||
           currentStatus == 'arrived' ||
           currentStatus == 'reached') {
         // Handyman arrived — OTP verification
@@ -727,17 +848,17 @@ class _BookingHistoryState extends State<BookingHistory> {
             ),
           },
         );
-} else if (currentStatus == 'in_progress' ||
-    currentStatus == 'inprogress' ||
-    currentStatus == 'started' ||
-    currentStatus == 'work_started' ||
-    currentStatus == 'pending_approval' ||
-    currentStatus == 'pending approval') {
+      } else if (currentStatus == 'in_progress' ||
+          currentStatus == 'inprogress' ||
+          currentStatus == 'started' ||
+          currentStatus == 'work_started' ||
+          currentStatus == 'pending_approval' ||
+          currentStatus == 'pending approval') {
         // Service in progress — timer screen
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => BookingServiceProgressHome( 
+            builder: (_) => BookingServiceProgressHome(
               serviceDurationInSeconds: 3600,
               bookingData: data,
               startTime: DateTime.now(),
