@@ -27,6 +27,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleRazorPaySuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handleRazorPayError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+
     _fetchGateways();
   }
 
@@ -160,6 +161,9 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final detail = bookingData?['booking_detail'];
     final service = bookingData?['service'];
 
+    print(   
+        service?['attchments']?[0]);
+
     // Data extraction
     final serviceName =
         detail?['service_name'] ??
@@ -167,6 +171,8 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
         UserMessages.fullHomeCleaning;
     final serviceImage =
         service?['attchments']?[0] ?? UserMessages.fullHouseCleaningImage;
+
+    
     final serviceDate = detail?['booking_date'] ?? UserMessages.serviceDateTime;
 
     // Priority: 1. Passed in args, 2. Booking detail price, 3. Base service price

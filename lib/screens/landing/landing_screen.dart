@@ -85,14 +85,18 @@ class _LandingScreenState extends State<LandingScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Colors.white.withOpacity(0.45),
-                      Colors.white.withOpacity(0.10),
+                      Colors.white.withOpacity(0.32),
+
+                      const Color(0xFFEFFFFF).withOpacity(0.18),
+
+                      const Color(0xFFD6F5FF).withOpacity(0.12),
+
+                      Colors.white.withOpacity(0.06),
+
+                      const Color(0xFFC8FFF4).withOpacity(0.10),
                     ],
                   ),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.45),
-                    width: 1,
-                  ),
+                  border: Border.all(color: Colors.white, width: 1),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.06),
@@ -113,9 +117,13 @@ class _LandingScreenState extends State<LandingScreen> {
                         AnimatedPositioned(
                           duration: const Duration(milliseconds: 260),
                           curve: Curves.easeOutCubic,
-                          left: currentIndex * itemWidth + AppSizes.w(context, 9),
+                          left:
+                              currentIndex * itemWidth + AppSizes.w(context, 9),
                           top: AppSizes.h(context, 9),
-                          child: _GlassPill(width: pillWidth, height: pillHeight),
+                          child: _GlassPill(
+                            width: pillWidth,
+                            height: pillHeight,
+                          ),
                         ),
                         // Nav items row
                         Row(
@@ -150,7 +158,9 @@ class _LandingScreenState extends State<LandingScreen> {
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.green.withOpacity(0.18),
+                                            color: Colors.green.withOpacity(
+                                              0.18,
+                                            ),
                                             blurRadius: 10,
                                             offset: const Offset(0, 4),
                                           ),
@@ -168,10 +178,13 @@ class _LandingScreenState extends State<LandingScreen> {
                                                 width: 50,
                                                 height: 10,
                                                 decoration: BoxDecoration(
-                                                  borderRadius: BorderRadius.circular(50),
+                                                  borderRadius:
+                                                      BorderRadius.circular(50),
                                                   gradient: LinearGradient(
                                                     colors: [
-                                                      Colors.white.withOpacity(0.35),
+                                                      Colors.white.withOpacity(
+                                                        0.35,
+                                                      ),
                                                       Colors.transparent,
                                                     ],
                                                   ),
@@ -180,15 +193,21 @@ class _LandingScreenState extends State<LandingScreen> {
                                             ),
                                             Center(
                                               child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.end,
                                                 children: [
                                                   Text(
                                                     "Support",
                                                     style: TextStyle(
                                                       color: Colors.white,
-                                                      fontSize: AppSizes.w(context, 16),
-                                                      fontWeight: FontWeight.w900,
+                                                      fontSize: AppSizes.w(
+                                                        context,
+                                                        16,
+                                                      ),
+                                                      fontWeight:
+                                                          FontWeight.w900,
                                                       letterSpacing: 0.5,
                                                     ),
                                                   ),
@@ -224,7 +243,9 @@ class _LandingScreenState extends State<LandingScreen> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       AnimatedScale(
-                                        duration: const Duration(milliseconds: 220),
+                                        duration: const Duration(
+                                          milliseconds: 220,
+                                        ),
                                         scale: isSelected ? 1 : 0.86,
                                         child: Icon(
                                           icons[index],
@@ -236,10 +257,14 @@ class _LandingScreenState extends State<LandingScreen> {
                                       ),
                                       SizedBox(height: AppSizes.h(context, 2)),
                                       AnimatedDefaultTextStyle(
-                                        duration: const Duration(milliseconds: 220),
+                                        duration: const Duration(
+                                          milliseconds: 220,
+                                        ),
                                         style: TextStyle(
                                           fontSize: AppSizes.w(context, 10),
-                                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
                                           color: isSelected
                                               ? Colors.black
                                               : Colors.black.withOpacity(0.40),
@@ -276,7 +301,8 @@ class _GlassPill extends StatefulWidget {
   State<_GlassPill> createState() => _GlassPillState();
 }
 
-class _GlassPillState extends State<_GlassPill> with SingleTickerProviderStateMixin {
+class _GlassPillState extends State<_GlassPill>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _shimmer;
 
   @override
@@ -310,11 +336,12 @@ class _GlassPillState extends State<_GlassPill> with SingleTickerProviderStateMi
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.45),
-                Colors.white.withOpacity(0.10),
+                const Color(0xFFFFFFFF).withOpacity(0.22),
+                const Color(0xFFD9F3FF).withOpacity(0.10),
+                const Color(0xFFFFFFFF).withOpacity(0.04),
               ],
             ),
-            border: Border.all(color: Colors.white.withOpacity(0.45), width: 1),
+            border: Border.all(color: Colors.white, width: 1),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.05),

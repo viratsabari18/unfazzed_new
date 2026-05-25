@@ -102,6 +102,7 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
     );
   }
 
+
   Widget tipChip(int value) {
     final bool isSelected = selectedTip == value;
 

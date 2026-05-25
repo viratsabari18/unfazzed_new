@@ -18,6 +18,7 @@ class BookingHomePage extends StatefulWidget {
   final double totalAmount;
   final double discountAmount;
   final double discountPercent;
+  final double fullAmount;
   final Map<String, dynamic>? selectedOption;
   final List<Map<String, dynamic>> selectedAddOns;
 
@@ -25,6 +26,7 @@ class BookingHomePage extends StatefulWidget {
     required this.service,
     this.totalAmount = 0.0,
     this.discountAmount = 0.0,
+    this.fullAmount = 0.0,
     this.discountPercent = 0.0,
     this.selectedOption,
     this.selectedAddOns = const [],
@@ -217,6 +219,7 @@ class _BookingHomePageState extends State<BookingHomePage> {
                       totalAmount: widget.totalAmount,
                       discountAmount: widget.discountAmount,
                       discountPercent: widget.discountPercent,
+                      fullAmount: widget.fullAmount,
                     ),
                   ],
                 ),

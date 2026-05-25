@@ -1173,6 +1173,7 @@ void dispose() {
                                     discountAmount: discountAmount,
                                     discountPercent: serviceDiscount,
                                     selectedOption: null,
+                                    fullAmount: fullAmount,
                                     selectedAddOns: getSelectedAddOns(),
                                   );
                                 },
@@ -1450,6 +1451,8 @@ void dispose() {
                               0;
                           final discountAmount =
                               (subtotal * discountPercent) / 100;
+
+                          print("Subtotal: $subtotal");
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -1458,6 +1461,7 @@ void dispose() {
                                 discountAmount: discountAmount,
                                 discountPercent: discountPercent,
                                 totalAmount: subtotal - discountAmount,
+                                fullAmount: subtotal,
                                 selectedOption: null,
                                 selectedAddOns: [],
                               ),

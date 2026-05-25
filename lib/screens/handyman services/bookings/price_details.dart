@@ -4,11 +4,13 @@ class PriceDetails extends StatefulWidget {
   final double totalAmount;
   final double discountAmount;
   final double discountPercent;
+  final double fullAmount;
 
   const PriceDetails({
     required this.totalAmount,
     required this.discountAmount,
     required this.discountPercent,
+    required this.fullAmount,
     super.key,
   });
 
@@ -43,17 +45,19 @@ class _PriceDetailsState extends State<PriceDetails> {
                 _priceRow(
                   context,
                   UserMessages.price,
-                  '₹ ${widget.totalAmount.toStringAsFixed(2)}',
+                  '₹ ${widget.fullAmount.toStringAsFixed(2)}',
                   isRed: false,
                 ),
-                _divider(context),
-                _priceRow(
-                  context,
-                  'discount (${widget.discountPercent.toInt()}%)',
-                  '- ₹ ${widget.discountAmount.toStringAsFixed(2)}',
-                  labelColor: AppColors.discountRed,
-                  isRed: true,
-                ),
+                if (widget.discountAmount > 0) ...[
+                  _divider(context),
+                  _priceRow(
+                    context,
+                    'discount (${widget.discountPercent.toInt()}%)',
+                    '- ₹ ${widget.discountAmount.toStringAsFixed(2)}',
+                    labelColor: AppColors.discountRed,
+                    isRed: true,
+                  ),
+                ],
                 _divider(context),
                 _priceRow(
                   context,

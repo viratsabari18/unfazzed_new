@@ -949,7 +949,7 @@ class _ProfessionalAssignedScreenState
               backgroundColor: Colors.white,
               child: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.landingPage)
               ),
             ),
           ),

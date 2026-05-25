@@ -46,6 +46,140 @@ class _BookingHistoryState extends State<BookingHistory> {
     }
   }
 
+  Future<void> _navigateToPayment(BuildContext context, Map item) async {
+    final bookingId = item['id']?.toString();
+
+    if (bookingId == null) return;
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      final url = Uri.parse(
+        '${ApiConfig.apiBaseUrl}/booking-detail?booking_id=$bookingId',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ${userProvider.apiToken}',
+        },
+      );
+
+      Map<dynamic, dynamic> data = item;
+
+      if (response.statusCode == 200) {
+        final raw = json.decode(response.body);
+
+        data = raw is List
+            ? Map<String, dynamic>.from(raw.first)
+            : Map<String, dynamic>.from(raw);
+      }
+
+      Navigator.pushNamed(
+        context,
+        AppRoutes.paymentsHome,
+        arguments: {
+          'booking_data': data,
+          'price':
+              item['total_amount']?.toString() ?? item['price']?.toString(),
+        },
+      );
+    } catch (e) {
+      debugPrint("Payment navigation error: $e");
+    }
+  }
+
+  Future<void> _navigateToRatingScreen(BuildContext context, Map item) async {
+    final bookingId = item['id']?.toString();
+
+    if (bookingId == null) return;
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      final url = Uri.parse(
+        '${ApiConfig.apiBaseUrl}/booking-detail?booking_id=$bookingId',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ${userProvider.apiToken}',
+        },
+      );
+
+      Map<dynamic, dynamic> data = item;
+
+      if (response.statusCode == 200) {
+        final raw = json.decode(response.body);
+
+        data = raw is List
+            ? Map<String, dynamic>.from(raw.first)
+            : Map<String, dynamic>.from(raw);
+      }
+
+      // Extract booking detail
+      final rawDetail = data['booking_detail'];
+      final detail = rawDetail is List
+          ? (rawDetail.isNotEmpty ? rawDetail.first : {})
+          : (rawDetail ?? {});
+
+      // Extract handyman
+      final rawHandyman = data['handyman_data'];
+      final handyman = rawHandyman is List
+          ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
+          : (rawHandyman ?? {});
+
+      // Extract provider
+      final rawProvider = data['provider_data'];
+      final provider = rawProvider is List
+          ? (rawProvider.isNotEmpty ? rawProvider.first : {})
+          : (rawProvider ?? {});
+
+      // Extract service
+      final rawService = data['service'];
+      final service = rawService is List
+          ? (rawService.isNotEmpty ? rawService.first : {})
+          : (rawService ?? {});
+
+      Navigator.pushNamed(
+        context,
+        AppRoutes.ratingsAndReview,
+        arguments: {
+          'booking_data': data,
+          'booking_id': bookingId,
+          'detail': detail,
+          'handyman': handyman,
+          'provider': provider,
+          'service': service,
+          'service_name':
+              detail['service_name'] ?? service['name'] ?? item['service_name'],
+          'handyman_id': handyman['id'] ?? provider['id'],
+          'handyman_name':
+              handyman['display_name'] ??
+              handyman['first_name'] ??
+              provider['display_name'] ??
+              'Service Provider',
+          'handyman_image':
+              handyman['profile_image'] ?? provider['profile_image'],
+          'handyman_rating':
+              handyman['providers_service_rating'] ??
+              provider['providers_service_rating'] ??
+              0.0,
+          'handyman_jobs':
+              handyman['total_services_booked'] ??
+              provider['total_services_booked'] ??
+              0,
+          'service_id': detail['service_id'] ?? service['id'],
+        },
+      );
+    } catch (e) {
+      debugPrint("Rating navigation error: $e");
+    }
+  }
+
   Color getOuterColor(BookingStatus status) {
     switch (status) {
       case BookingStatus.pending:
@@ -192,16 +326,7 @@ class _BookingHistoryState extends State<BookingHistory> {
 
                               // PAYMENT PENDING
                               if (paymentId == null) {
-                                Navigator.pushNamed(
-                                  context,
-                                  AppRoutes.paymentsHome,
-                                  arguments: {
-                                    'booking_data': item,
-                                    'price':
-                                        item['total_amount']?.toString() ??
-                                        item['price']?.toString(),
-                                  },
-                                );
+                                _navigateToPayment(context, item);
                               } else {
                                 // PAYMENT COMPLETED
                                 Navigator.pushNamed(
@@ -320,7 +445,8 @@ class _BookingHistoryState extends State<BookingHistory> {
                                                           : "Completed";
                                                     }
 
-                                                    return statusLabel.isNotEmpty
+                                                    return statusLabel
+                                                            .isNotEmpty
                                                         ? statusLabel
                                                         : status.value;
                                                   }(),
@@ -522,121 +648,24 @@ class _BookingHistoryState extends State<BookingHistory> {
                                         ],
                                       ),
                                     ),
-                                     if (status == BookingStatus.completed)
-                               
-                                    // In the _BookingHistoryState class, update the TextButton onPressed:
-                                    TextButton(
-                                      onPressed: () {
+                                    if (status == BookingStatus.completed)
+                                      // In the _BookingHistoryState class, update the TextButton onPressed:
+                                      TextButton(
                                         // Prepare all data needed for rating and review
-                                        final bookingId = item['id']
-                                            ?.toString();
-                                        final bookingDetail =
-                                            item['booking_detail'];
-                                        final handymanData =
-                                            item['handyman_data'];
-                                        final providerData =
-                                            item['provider_data'];
-                                        final serviceData = item['service'];
-
-                                        // Extract handyman info
-                                        Map<String, dynamic>? handyman;
-                                        if (handymanData is List &&
-                                            handymanData.isNotEmpty) {
-                                          handyman = Map<String, dynamic>.from(
-                                            handymanData.first,
+                                        onPressed: () {
+                                          _navigateToRatingScreen(
+                                            context,
+                                            item,
                                           );
-                                        } else if (handymanData is Map) {
-                                          handyman = Map<String, dynamic>.from(
-                                            handymanData,
-                                          );
-                                        }
-
-                                        // Extract provider info
-                                        Map<String, dynamic>? provider;
-                                        if (providerData is List &&
-                                            providerData.isNotEmpty) {
-                                          provider = Map<String, dynamic>.from(
-                                            providerData.first,
-                                          );
-                                        } else if (providerData is Map) {
-                                          provider = Map<String, dynamic>.from(
-                                            providerData,
-                                          );
-                                        }
-
-                                        // Extract service info
-                                        Map<String, dynamic>? service;
-                                        if (serviceData is List &&
-                                            serviceData.isNotEmpty) {
-                                          service = Map<String, dynamic>.from(
-                                            serviceData.first,
-                                          );
-                                        } else if (serviceData is Map) {
-                                          service = Map<String, dynamic>.from(
-                                            serviceData,
-                                          );
-                                        }
-
-                                        // Extract booking detail
-                                        Map<String, dynamic>? detail;
-                                        if (bookingDetail is List &&
-                                            bookingDetail.isNotEmpty) {
-                                          detail = Map<String, dynamic>.from(
-                                            bookingDetail.first,
-                                          );
-                                        } else if (bookingDetail is Map) {
-                                          detail = Map<String, dynamic>.from(
-                                            bookingDetail,
-                                          );
-                                        }
-
-                                        Navigator.pushNamed(
-                                          context,
-                                          AppRoutes.ratingsAndReview,
-                                          arguments: {
-                                            'booking_data': item,
-                                            'booking_id': bookingId,
-                                            'detail': detail,
-                                            'handyman': handyman,
-                                            'provider': provider,
-                                            'service': service,
-                                            'service_name':
-                                                detail?['service_name'] ??
-                                                service?['name'] ??
-                                                item['service_name'],
-                                            'handyman_id':
-                                                handyman?['id'] ??
-                                                provider?['id'],
-                                            'handyman_name':
-                                                handyman?['display_name'] ??
-                                                handyman?['first_name'] ??
-                                                provider?['display_name'] ??
-                                                'Service Provider',
-                                            'handyman_image':
-                                                handyman?['profile_image'] ??
-                                                provider?['profile_image'],
-                                            'handyman_rating':
-                                                handyman?['providers_service_rating'] ??
-                                                provider?['providers_service_rating'] ??
-                                                0.0,
-                                            'handyman_jobs':
-                                                handyman?['total_services_booked'] ??
-                                                provider?['total_services_booked'] ??
-                                                0,
-                                            'service_id':
-                                                detail?['service_id'] ??
-                                                service?['id'],
-                                          },
-                                        );
-                                      },
-                                      child: const Text(
-                                        "Rate & Review",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.primaryRed,
+                                        },
+                                        child: const Text(
+                                          "Rate & Review",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.primaryRed,
+                                          ),
                                         ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ],
