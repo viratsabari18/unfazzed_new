@@ -98,6 +98,13 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> with SingleTi
     }
   }
 
+        void _handleBack() {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.landingPage,
+      (route) => false,
+    );
+  }
   Future<void> _fetchBookingDetails() async {
     if (widget.bookingId == null || widget.bookingId!.startsWith('#')) {
       debugPrint("Invalid or dummy booking ID: ${widget.bookingId}");
@@ -225,73 +232,81 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return PopScope(
+       canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+
+        _handleBack();
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pushNamed(context, AppRoutes.landingPage),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: _handleBack,
+          ),
+          title: const Text(
+            "Finding a Professional",
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
         ),
-        title: const Text(
-          "Finding a Professional",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            // Hero Illustrations (Clipped circles)
-            _buildHeroImages(),
-            const SizedBox(height: 32),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40),
-              child: Text(
-                "We’re finding the best professional for you",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  height: 1.2,
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              // Hero Illustrations (Clipped circles)
+              _buildHeroImages(),
+              const SizedBox(height: 32),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 40),
+                child: Text(
+                  "We’re finding the best professional for you",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              "Searching...",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-            const Text(
-              "Usually within 2~5 minutes",
-              style: TextStyle(color: Colors.black54, fontSize: 13),
-            ),
-            const SizedBox(height: 40),
-            // Timeline Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTimelineIcons(),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildTimelineContent()),
-                ],
+              const SizedBox(height: 12),
+              const Text(
+                "Searching...",
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
               ),
-            ),
-            const Divider(thickness: 4, color: Color(0xFFEEEEEE), height: 80),
-            // Service Details Card
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildServiceInfo(),
-            ),
-            const SizedBox(height: 48),
-            // Action Buttons
-            _buildActionButtons(context),
-            const SizedBox(height: 40),
-          ],
+              const Text(
+                "Usually within 2~5 minutes",
+                style: TextStyle(color: Colors.black54, fontSize: 13),
+              ),
+              const SizedBox(height: 40),
+              // Timeline Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTimelineIcons(),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildTimelineContent()),
+                  ],
+                ),
+              ),
+              const Divider(thickness: 4, color: Color(0xFFEEEEEE), height: 80),
+              // Service Details Card
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildServiceInfo(),
+              ),
+              const SizedBox(height: 48),
+              // Action Buttons
+              _buildActionButtons(context),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );

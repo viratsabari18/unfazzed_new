@@ -13,7 +13,9 @@ class SelectLocationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final savedAddresses = Provider.of<AddressProvider>(context).savedAddresses;
+    final addressProvider = Provider.of<AddressProvider>(context);
+    final savedAddresses = addressProvider.savedAddresses;
+    final selectedLocation = addressProvider.selectedLocation;
 
     // Set status bar to light icons on dark background
     SystemChrome.setSystemUIOverlayStyle(
@@ -66,8 +68,12 @@ class SelectLocationScreen extends StatelessWidget {
               _buildSectionLabel('SAVED ADDRESSES'),
 
               // Saved Address Cards
-              ...savedAddresses.map(
-                (address) => _buildSavedAddressCard(context, address),
+              ...savedAddresses.asMap().entries.map(
+                (entry) => _buildSavedAddressCard(
+                  context, 
+                  entry.value, 
+                  isSelected: _isAddressSelected(entry.value, selectedLocation),
+                ),
               ),
 
               const SizedBox(height: 24), // Bottom padding
@@ -76,6 +82,15 @@ class SelectLocationScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  bool _isAddressSelected(Map<String, dynamic> address, Map<String, dynamic>? selectedLocation) {
+    if (selectedLocation == null) return false;
+    
+    // Compare by address string or by coordinates
+    return address['address'] == selectedLocation['address'] ||
+        (address['latitude'] == selectedLocation['latitude'] && 
+         address['longitude'] == selectedLocation['longitude']);
   }
 
   Widget _buildSearchBar() {
@@ -222,8 +237,9 @@ class SelectLocationScreen extends StatelessWidget {
 
   Widget _buildSavedAddressCard(
     BuildContext context,
-    Map<String, dynamic> data,
-  ) {
+    Map<String, dynamic> data, {
+    required bool isSelected,
+  }) {
     return GestureDetector(
       onTap: () {
         Provider.of<AddressProvider>(
@@ -236,8 +252,11 @@ class SelectLocationScreen extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF242424),
+          color: isSelected ? const Color(0xFFE53935).withOpacity(0.15) : const Color(0xFF242424),
           borderRadius: BorderRadius.circular(14),
+          border: isSelected 
+              ? Border.all(color: const Color(0xFFE53935), width: 1.5) 
+              : null,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,16 +266,20 @@ class SelectLocationScreen extends StatelessWidget {
               width: 48,
               child: Column(
                 children: [
-                  Icon(data['icon'], color: Colors.white, size: 26),
-                  const SizedBox(height: 4),
-                  Text(
-                    data['distance'] ?? '0 m',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      color: const Color(0xFF9E9E9E),
-                      fontSize: 11,
-                    ),
+                  Icon(
+                    data['icon'], 
+                    color: isSelected ? const Color(0xFFE53935) : Colors.white, 
+                    size: 26,
                   ),
+                  const SizedBox(height: 4),
+                  // Text(
+                  //   data['distance'] ?? '0 m',
+                  //   textAlign: TextAlign.center,
+                  //   style: GoogleFonts.poppins(
+                  //     color: isSelected ? const Color(0xFFE53935) : const Color(0xFF9E9E9E),
+                  //     fontSize: 11,
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -266,13 +289,18 @@ class SelectLocationScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    data['label'] ?? 'Other',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        data['label'] ?? 'Other',
+                        style: GoogleFonts.poppins(
+                          color: isSelected ? const Color(0xFFE53935) : Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                  
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -280,7 +308,7 @@ class SelectLocationScreen extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
-                      color: Colors.white,
+                      color: isSelected ? Colors.white : const Color(0xFFBDBDBD),
                       fontSize: 13,
                     ),
                   ),
@@ -318,6 +346,16 @@ class SelectLocationScreen extends StatelessWidget {
                 ],
               ),
             ),
+            // Add checkmark icon for selected address
+            if (isSelected)
+              const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(
+                  Icons.check_circle,
+                  color: Color(0xFFE53935),
+                  size: 24,
+                ),
+              ),
           ],
         ),
       ),

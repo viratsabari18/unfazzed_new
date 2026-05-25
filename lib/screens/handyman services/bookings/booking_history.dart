@@ -1,23 +1,17 @@
-import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:zeerah/core/common/app_exports.dart' hide BookingStatusModel, BookingState, ProfessionalMatch;
-import 'package:zeerah/core/models/service_models.dart';
-
+import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/config/api_config.dart';
-import 'package:zeerah/core/models/new_booking_model.dart' hide BookingStatusModel, BookingState, ProfessionalMatch;
+import 'package:zeerah/core/models/booking_model.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
-import 'package:zeerah/core/routes/app_routes.dart';
 import 'package:zeerah/core/services/booking_service.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/bookig_sevice_progress_home.dart';
-import 'package:zeerah/screens/handyman%20services/bookings/booking_card.dart';
 import 'package:zeerah/widgets/custom/fade_animation_text.dart';
 
 class BookingHistory extends StatefulWidget {
-  const BookingHistory({super.key});
+  BookingHistory({super.key});
 
   @override
   State<BookingHistory> createState() => _BookingHistoryState();
@@ -25,142 +19,45 @@ class BookingHistory extends StatefulWidget {
 
 class _BookingHistoryState extends State<BookingHistory> {
   final BookingService _bookingService = BookingService();
-  final Map<String, BookingModel> _bookingsCache = {};
-  List<String> _bookingIds = [];
-  bool _isInitialLoading = true;
+  List<dynamic> _bookings = [];
+  bool _isLoading = true;
   bool _isNavigating = false;
-  Timer? _pollingTimer;
-
-  // Cache for booking details to avoid repeated API calls
-  final Map<String, Map<String, dynamic>> _bookingDetailsCache = {};
 
   @override
   void initState() {
     super.initState();
     _fetchBookings();
-    _startPolling();
-  }
-
-  @override
-  void dispose() {
-    _pollingTimer?.cancel();
-    _bookingDetailsCache.clear();
-    super.dispose();
-  }
-
-  void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      // Don't poll if navigating or if initial load hasn't completed
-      if (!_isNavigating && !_isInitialLoading) {
-        _fetchBookingsLive();
-      }
-    });
   }
 
   Future<void> _fetchBookings() async {
-    setState(() => _isInitialLoading = true);
-
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final response = await _bookingService.fetchBookingList(
-        token: userProvider.apiToken,
-      );
-
-      if (mounted) {
-        final List<dynamic> rawBookings = response['data'] ?? [];
-        final Map<String, BookingModel> newCache = {};
-        final List<String> newIds = [];
-
-        for (final raw in rawBookings) {
-          if (raw is Map) {
-            // Convert dynamic map to String map
-            final Map<String, dynamic> convertedMap = {};
-            raw.forEach((key, value) {
-              convertedMap[key.toString()] = value;
-            });
-            final booking = BookingModel.fromJson(convertedMap);
-            newCache[booking.id] = booking;
-            newIds.add(booking.id);
-          }
-        }
-
-        setState(() {
-          _bookingsCache.clear();
-          _bookingsCache.addAll(newCache);
-          _bookingIds = newIds;
-          _isInitialLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error fetching bookings: $e');
-      if (mounted) {
-        setState(() => _isInitialLoading = false);
-      }
-    }
-  }
-
-  Future<void> _fetchBookingsLive() async {
+    setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final response = await _bookingService.fetchBookingList(
+      token: userProvider.apiToken,
+    );
 
-    try {
-      final response = await _bookingService.fetchBookingList(
-        token: userProvider.apiToken,
-      );
-
-      if (!mounted) return;
-
-      final List<dynamic> rawBookings = response['data'] ?? [];
-      bool hasChanges = false;
-      final Map<String, BookingModel> updatedBookings = {};
-
-      for (final raw in rawBookings) {
-        if (raw is Map) {
-          // Convert dynamic map to String map
-          final Map<String, dynamic> convertedMap = {};
-          raw.forEach((key, value) {
-            convertedMap[key.toString()] = value;
-          });
-          final newBooking = BookingModel.fromJson(convertedMap);
-          updatedBookings[newBooking.id] = newBooking;
-
-          // Check if this booking exists and if it has changed
-          final existingBooking = _bookingsCache[newBooking.id];
-          if (existingBooking == null ||
-              existingBooking.status != newBooking.status ||
-              existingBooking.statusLabel != newBooking.statusLabel) {
-            hasChanges = true;
-          }
-        }
-      }
-
-      // Check for removed bookings
-      if (_bookingIds.length != updatedBookings.length) {
-        hasChanges = true;
-      }
-
-      if (hasChanges && mounted) {
-        setState(() {
-          _bookingsCache.clear();
-          _bookingsCache.addAll(updatedBookings);
-          _bookingIds = updatedBookings.keys.toList();
-        });
-      }
-    } catch (e) {
-      debugPrint('Live polling error: $e');
+    if (mounted) {
+      setState(() {
+        final List<dynamic> rawBookings = response['data'] ?? [];
+        // Show all bookings including active ones so users can resume them
+        _bookings = rawBookings.toList();
+        _isLoading = false;
+      });
     }
   }
 
-  Future<Map<String, dynamic>> _getBookingDetails(String bookingId) async {
-    // Return from cache if available
-    if (_bookingDetailsCache.containsKey(bookingId)) {
-      return _bookingDetailsCache[bookingId]!;
-    }
+  Future<void> _navigateToPayment(BuildContext context, Map item) async {
+    final bookingId = item['id']?.toString();
+
+    if (bookingId == null) return;
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
+
       final url = Uri.parse(
         '${ApiConfig.apiBaseUrl}/booking-detail?booking_id=$bookingId',
       );
+
       final response = await http.get(
         url,
         headers: {
@@ -169,376 +66,174 @@ class _BookingHistoryState extends State<BookingHistory> {
         },
       );
 
-      Map<String, dynamic> data = {};
+      Map<dynamic, dynamic> data = item;
+
       if (response.statusCode == 200) {
         final raw = json.decode(response.body);
-        // Convert dynamic map to String map
-        if (raw is Map<dynamic, dynamic>) {
-          data = Map<String, dynamic>.fromEntries(
-            raw.entries.map(
-              (entry) => MapEntry(entry.key.toString(), entry.value),
-            ),
-          );
-        } else if (raw is Map<String, dynamic>) {
-          data = raw;
-        } else if (raw is List && raw.isNotEmpty) {
-          final firstItem = raw.first;
-          if (firstItem is Map<dynamic, dynamic>) {
-            data = Map<String, dynamic>.fromEntries(
-              firstItem.entries.map(
-                (entry) => MapEntry(entry.key.toString(), entry.value),
-              ),
-            );
-          } else if (firstItem is Map<String, dynamic>) {
-            data = firstItem;
-          }
-        }
 
-        // Cache the result
-        _bookingDetailsCache[bookingId] = data;
+        data = raw is List
+            ? Map<String, dynamic>.from(raw.first)
+            : Map<String, dynamic>.from(raw);
       }
 
-      return data;
-    } catch (e) {
-      debugPrint("Get booking details error: $e");
-      return {};
-    }
-  }
-
-  Future<void> _navigateToRatingScreen(
-    BuildContext context,
-    BookingModel booking,
-  ) async {
-    final bookingId = booking.id;
-    final data = await _getBookingDetails(bookingId);
-
-    if (!mounted) return;
-
-    final detail = _extractDetail(data, booking);
-    final handyman = _extractHandyman(data, booking);
-    final provider = _extractProvider(data, booking);
-    final service = _extractService(data, booking);
-
-    Navigator.pushNamed(
-      context,
-      AppRoutes.ratingsAndReview,
-      arguments: {
-        'booking_data': data.isEmpty ? booking : data,
-        'booking_id': bookingId,
-        'detail': detail,
-        'handyman': handyman,
-        'provider': provider,
-        'service': service,
-        'service_name':
-            detail['service_name'] ?? service['name'] ?? booking.serviceName,
-        'handyman_id': handyman['id'] ?? provider['id'],
-        'handyman_name':
-            handyman['display_name'] ??
-            handyman['first_name'] ??
-            provider['display_name'] ??
-            'Service Provider',
-        'handyman_image':
-            handyman['profile_image'] ?? provider['profile_image'],
-        'handyman_rating':
-            handyman['providers_service_rating'] ??
-            provider['providers_service_rating'] ??
-            0.0,
-        'handyman_jobs':
-            handyman['total_services_booked'] ??
-            provider['total_services_booked'] ??
-            0,
-        'service_id': detail['service_id'] ?? service['id'],
-      },
-    );
-  }
-
-  Map<String, dynamic> _extractDetail(
-    Map<String, dynamic> data,
-    BookingModel booking,
-  ) {
-    final rawDetail = data['booking_detail'];
-    if (rawDetail is List && rawDetail.isNotEmpty) {
-      return Map<String, dynamic>.from(rawDetail.first);
-    } else if (rawDetail is Map) {
-      return Map<String, dynamic>.from(rawDetail);
-    }
-    return {
-      'status': booking.status,
-      'service_name': booking.serviceName,
-      'booking_date': booking.bookingDate,
-      'booking_slot': booking.bookingSlot,
-    };
-  }
-
-  Map<String, dynamic> _extractHandyman(
-    Map<String, dynamic> data,
-    BookingModel booking,
-  ) {
-    // ADD THIS
-    final rawHandyman =
-        data['handyman_data'] ?? data['handyman'] ?? booking.handymanData;
-
-    if (rawHandyman is List && rawHandyman.isNotEmpty) {
-      // API structure handyman[0].handyman
-      final handymanItem = rawHandyman.first;
-
-      if (handymanItem is Map && handymanItem['handyman'] != null) {
-        return Map<String, dynamic>.from(handymanItem['handyman']);
-      }
-
-      return Map<String, dynamic>.from(handymanItem);
-    } else if (rawHandyman is Map) {
-      if (rawHandyman['handyman'] != null) {
-        return Map<String, dynamic>.from(rawHandyman['handyman']);
-      }
-
-      return Map<String, dynamic>.from(rawHandyman);
-    } else if (rawHandyman is HandymanModel) {
-      return {
-        'id': rawHandyman.id,
-        'display_name': rawHandyman.displayName,
-        'first_name': rawHandyman.firstName,
-        'profile_image': rawHandyman.profileImage,
-        'providers_service_rating': rawHandyman.rating,
-        'total_services_booked': rawHandyman.totalJobs,
-      };
-    }
-
-    return {};
-  }
-
-  Map<String, dynamic> _extractProvider(
-    Map<String, dynamic> data,
-    BookingModel booking,
-  ) {
-    final rawProvider = data['provider_data'] ?? booking.providerData;
-    if (rawProvider is List && rawProvider.isNotEmpty) {
-      return Map<String, dynamic>.from(rawProvider.first);
-    } else if (rawProvider is Map) {
-      return Map<String, dynamic>.from(rawProvider);
-    } else if (rawProvider is ProviderModel) {
-      return {
-        'id': rawProvider.id,
-        'display_name': rawProvider.displayName,
-        'profile_image': rawProvider.profileImage,
-        'providers_service_rating': rawProvider.rating,
-        'total_services_booked': rawProvider.totalJobs,
-      };
-    }
-    return {};
-  }
-
-  Map<String, dynamic> _extractService(
-    Map<String, dynamic> data,
-    BookingModel booking,
-  ) {
-    final rawService = data['service'] ?? booking.service;
-    if (rawService is List && rawService.isNotEmpty) {
-      return Map<String, dynamic>.from(rawService.first);
-    } else if (rawService is Map) {
-      return Map<String, dynamic>.from(rawService);
-    } else if (rawService is ServiceModel) {
-      return rawService.rawData ??
-          {'name': rawService.name, 'id': rawService.id};
-    }
-    return {};
-  }
-
-  void _handleBookingTap(BookingModel booking) async {
-    final status = booking.status?.toLowerCase() ?? '';
-
-    if (status == 'completed') {
-      if (booking.isPaymentPending) {
-        await _navigateToPaymentWithDetails(booking);
-      } else {
-        if (mounted) {
-          Navigator.pushNamed(
-            context,
-            AppRoutes.bookingDetail,
-            arguments: booking.id,
-          );
-        }
-      }
-    } else if (status == 'cancelled' ||
-        status == 'canceled' ||
-        status == 'rejected') {
-      if (mounted) {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.bookingDetail,
-          arguments: booking.id,
-        );
-      }
-    } else {
-      await _navigateToActiveBooking(booking);
-    }
-  }
-
-  Future<void> _navigateToPaymentWithDetails(BookingModel booking) async {
-    final data = await _getBookingDetails(booking.id);
-
-    if (mounted) {
       Navigator.pushNamed(
         context,
         AppRoutes.paymentsHome,
         arguments: {
-          'booking_data': data.isEmpty ? booking : data,
-          'price': booking.totalAmount.toString(),
+          'booking_data': data,
+          'price':
+              item['total_amount']?.toString() ?? item['price']?.toString(),
         },
       );
+    } catch (e) {
+      debugPrint("Payment navigation error: $e");
     }
   }
 
-  Future<void> _navigateToActiveBooking(BookingModel booking) async {
-    final bookingId = booking.id;
-    if (_isNavigating) return;
+  Future<void> _navigateToRatingScreen(BuildContext context, Map item) async {
+    final bookingId = item['id']?.toString();
 
-    setState(() => _isNavigating = true);
+    if (bookingId == null) return;
 
     try {
-      final data = await _getBookingDetails(bookingId);
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-      if (!mounted) return;
+      final url = Uri.parse(
+        '${ApiConfig.apiBaseUrl}/booking-detail?booking_id=$bookingId',
+      );
 
-      final detail = _extractDetail(data, booking);
-      final handyman = _extractHandyman(data, booking);
-      final service = _extractService(data, booking);
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ${userProvider.apiToken}',
+        },
+      );
 
-      final currentStatus = (detail['status'] ?? booking.status ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
+      Map<dynamic, dynamic> data = item;
 
-      debugPrint('📋 BookingResume: ID=$bookingId | Status="$currentStatus"');
+      if (response.statusCode == 200) {
+        final raw = json.decode(response.body);
 
-      if (currentStatus == 'pending' && handyman.isEmpty) {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.bookingStatus,
-          arguments: {
-            'service': service,
-            'booking_id': bookingId,
-            'date': detail['booking_date'] ?? booking.bookingDate,
-            'time': detail['booking_slot'] ?? booking.bookingSlot,
-            'price': booking.totalAmount.toString(),
-          },
-        );
-      } else if (currentStatus == 'pending' ||
-          currentStatus == 'ongoing' ||
-          currentStatus == 'on_going' ||
-          currentStatus == 'assigned') {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.professionalAssigned,
-          arguments: {
-            'service': service,
-            'booking_data': data.isEmpty ? booking : data,
-            'price': booking.totalAmount.toString(),
-            'status': BookingStatusModel(
-              currentState: BookingState.onTheWay,
-              professional: ProfessionalMatch(
-                name:
-                    handyman['display_name'] ??
-                    '${handyman['first_name'] ?? ''} ${handyman['last_name'] ?? ''}'
-                        .trim() ??
-                    'Handyman',
-                rating:
-                    double.tryParse(
-                      handyman['handyman_rating']?.toString() ?? '4.5',
-                    ) ??
-                    4.5,
-                jobsDone:
-                    int.tryParse(
-                      handyman['handyman_job_completed']?.toString() ?? '10',
-                    ) ??
-                    10,
-                avatarUrl: handyman['profile_image'] ?? '',
-              ),
-              appointmentDate:
-                  detail['booking_date'] ?? booking.bookingDate ?? '',
-              appointmentTime:
-                  detail['booking_slot'] ?? booking.bookingSlot ?? '',
-            ),
-          },
-        );
-      } else if (currentStatus == 'accepted' ||
-          currentStatus == 'arrived' ||
-          currentStatus == 'reached') {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.serviceVerification,
-          arguments: {
-            'service': service,
-            'booking_data': data.isEmpty ? booking : data,
-            'price': booking.totalAmount.toString(),
-            'status': BookingStatusModel(
-              currentState: BookingState.assigned,
-              professional: ProfessionalMatch(
-                name:
-                    handyman['display_name'] ??
-                    '${handyman['first_name'] ?? ''} ${handyman['last_name'] ?? ''}'
-                        .trim() ??
-                    'Handyman',
-                rating:
-                    double.tryParse(
-                      handyman['handyman_rating']?.toString() ?? '4.5',
-                    ) ??
-                    4.5,
-                jobsDone:
-                    int.tryParse(
-                      handyman['handyman_job_completed']?.toString() ?? '10',
-                    ) ??
-                    10,
-                avatarUrl: handyman['profile_image'] ?? '',
-              ),
-              appointmentDate:
-                  detail['booking_date'] ?? booking.bookingDate ?? '',
-              appointmentTime:
-                  detail['booking_slot'] ?? booking.bookingSlot ?? '',
-            ),
-          },
-        );
-      } else if (currentStatus == 'in_progress' ||
-          currentStatus == 'inprogress' ||
-          currentStatus == 'started' ||
-          currentStatus == 'work_started' ||
-          currentStatus == 'pending_approval' ||
-          currentStatus == 'pending approval') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BookingServiceProgressHome(
-              serviceDurationInSeconds: 3600,
-              bookingData: data.isEmpty ? booking : data,
-              startTime: DateTime.now(),
-              price: booking.totalAmount.toString(),
-            ),
-          ),
-        );
-      } else {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.bookingStatus,
-          arguments: {
-            'service': service,
-            'booking_id': bookingId,
-            'date': detail['booking_date'] ?? booking.bookingDate,
-            'time': detail['booking_slot'] ?? booking.bookingSlot,
-            'price': booking.totalAmount.toString(),
-          },
-        );
+        data = raw is List
+            ? Map<String, dynamic>.from(raw.first)
+            : Map<String, dynamic>.from(raw);
       }
+
+      // Extract booking detail
+      final rawDetail = data['booking_detail'];
+      final detail = rawDetail is List
+          ? (rawDetail.isNotEmpty ? rawDetail.first : {})
+          : (rawDetail ?? {});
+
+      // Extract handyman
+      final rawHandyman = data['handyman_data'];
+      final handyman = rawHandyman is List
+          ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
+          : (rawHandyman ?? {});
+
+      // Extract provider
+      final rawProvider = data['provider_data'];
+      final provider = rawProvider is List
+          ? (rawProvider.isNotEmpty ? rawProvider.first : {})
+          : (rawProvider ?? {});
+
+      // Extract service
+      final rawService = data['service'];
+      final service = rawService is List
+          ? (rawService.isNotEmpty ? rawService.first : {})
+          : (rawService ?? {});
+
+      Navigator.pushNamed(
+        context,
+        AppRoutes.ratingsAndReview,
+        arguments: {
+          'booking_data': data,
+          'booking_id': bookingId,
+          'detail': detail,
+          'handyman': handyman,
+          'provider': provider,
+          'service': service,
+          'service_name':
+              detail['service_name'] ?? service['name'] ?? item['service_name'],
+          'handyman_id': handyman['id'] ?? provider['id'],
+          'handyman_name':
+              handyman['display_name'] ??
+              handyman['first_name'] ??
+              provider['display_name'] ??
+              'Service Provider',
+          'handyman_image':
+              handyman['profile_image'] ?? provider['profile_image'],
+          'handyman_rating':
+              handyman['providers_service_rating'] ??
+              provider['providers_service_rating'] ??
+              0.0,
+          'handyman_jobs':
+              handyman['total_services_booked'] ??
+              provider['total_services_booked'] ??
+              0,
+          'service_id': detail['service_id'] ?? service['id'],
+        },
+      );
     } catch (e) {
-      debugPrint('❌ BookingResume error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not load booking. Please try again.'),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isNavigating = false);
+      debugPrint("Rating navigation error: $e");
+    }
+  }
+
+  Color getOuterColor(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.pending:
+      case BookingStatus.onHold:
+        return AppColors.outerInProgress;
+      case BookingStatus.accepted:
+      case BookingStatus.onTheWay:
+      case BookingStatus.arrived:
+        return AppColors.outerAccepted;
+      case BookingStatus.inProgress:
+        return AppColors.outerInProgress;
+      case BookingStatus.completed:
+        return AppColors.outerCompleted;
+      case BookingStatus.rejected:
+      case BookingStatus.cancelled:
+        return AppColors.outerRejected;
+    }
+  }
+
+  Color getInnerColor(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.pending:
+      case BookingStatus.onHold:
+        return AppColors.innerInProgress;
+      case BookingStatus.accepted:
+      case BookingStatus.onTheWay:
+      case BookingStatus.arrived:
+        return AppColors.innerAccepted;
+      case BookingStatus.inProgress:
+        return AppColors.innerInProgress;
+      case BookingStatus.completed:
+        return AppColors.innerCompleted;
+      case BookingStatus.rejected:
+      case BookingStatus.cancelled:
+        return AppColors.innerRejected;
+    }
+  }
+
+  Color getBorderColor(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.pending:
+      case BookingStatus.onHold:
+        return AppColors.borderInProgress;
+      case BookingStatus.accepted:
+      case BookingStatus.onTheWay:
+      case BookingStatus.arrived:
+        return AppColors.pauseBlue;
+      case BookingStatus.inProgress:
+        return AppColors.borderInProgress;
+      case BookingStatus.completed:
+        return AppColors.neonGreen;
+      case BookingStatus.rejected:
+      case BookingStatus.cancelled:
+        return AppColors.borderRejected;
     }
   }
 
@@ -562,13 +257,13 @@ class _BookingHistoryState extends State<BookingHistory> {
       body: Stack(
         children: [
           SafeArea(
-            child: _isInitialLoading
+            child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(
                       color: AppColors.primaryRed,
                     ),
                   )
-                : _bookingIds.isEmpty
+                : _bookings.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -594,24 +289,392 @@ class _BookingHistoryState extends State<BookingHistory> {
                     onRefresh: _fetchBookings,
                     color: AppColors.primaryRed,
                     child: ListView.builder(
-                      cacheExtent: 500,
                       padding: EdgeInsets.all(Insets.sm),
-                      itemCount: _bookingIds.length,
-                      itemBuilder: (_, index) {
-                        final booking = _bookingsCache[_bookingIds[index]];
-                        if (booking == null) return const SizedBox.shrink();
-                        return RepaintBoundary(
-                          child: BookingCard(
-                            booking: booking,
-                            onTap: () => _handleBookingTap(booking),
-                            onRateReview: () =>
-                                _navigateToRatingScreen(context, booking),
+                      itemCount: _bookings.length,
+                      itemBuilder: (_, i) {
+                        final item = _bookings[i];
+                        final statusStr =
+                            item['status']?.toString() ?? "pending";
+                        final status = BookingStatusExt.fromString(statusStr);
+                        final statusLabel =
+                            item['status_label']?.toString() ?? status.value;
+
+                        final rawHandyman = item['handyman_data'];
+                        final handyman = rawHandyman is List
+                            ? (rawHandyman.isNotEmpty
+                                  ? rawHandyman.first
+                                  : null)
+                            : rawHandyman;
+
+                        final attachments = item['service_attchments'] as List?;
+                        final imageUrl = (handyman?['profile_image'] != null)
+                            ? handyman!['profile_image'].toString()
+                            : (attachments != null && attachments.isNotEmpty)
+                            ? attachments[0].toString()
+                            : item['provider_image']?.toString() ??
+                                  UserMessages.serviceBookingDummy1;
+
+                        return InkWell(
+                          onTap: () {
+                            final bookingId = item['id']?.toString();
+                            if (bookingId == null) return;
+                            final statusStr =
+                                item['status']?.toString().toLowerCase() ?? '';
+                            // Final statuses → detail screen (read-only)
+                            if (statusStr == 'completed') {
+                              final paymentId = item['payment_id'];
+
+                              // PAYMENT PENDING
+                              if (paymentId == null) {
+                                _navigateToPayment(context, item);
+                              } else {
+                                // PAYMENT COMPLETED
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.bookingDetail,
+                                  arguments: bookingId,
+                                );
+                              }
+                            } else if (statusStr == 'cancelled' ||
+                                statusStr == 'canceled' ||
+                                statusStr == 'rejected') {
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.bookingDetail,
+                                arguments: bookingId,
+                              );
+                            } else {
+                              // Active booking
+                              _navigateToActiveBooking(context, item);
+                            }
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(bottom: Insets.sm),
+                            padding: EdgeInsets.all(Insets.xsm),
+                            decoration: BoxDecoration(
+                              color: getOuterColor(status),
+                              borderRadius: BorderRadius.circular(Insets.sm),
+                              border: Border.all(color: getBorderColor(status)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(height: AppSizes.h(context, 8)),
+                                Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(
+                                        Insets.xs,
+                                      ),
+                                      child: CachedNetworkImage(
+                                        imageUrl: imageUrl,
+                                        height: AppSizes.h(context, 80),
+                                        width: AppSizes.w(context, 70),
+                                        fit: BoxFit.cover,
+                                        httpHeaders: const {},
+                                        errorWidget: (_, __, ___) => Container(
+                                          height: AppSizes.h(context, 80),
+                                          width: AppSizes.w(context, 70),
+                                          color: Colors.grey.shade300,
+                                          child: const Icon(Icons.image),
+                                        ),
+                                        placeholder: (_, __) => Container(
+                                          height: AppSizes.h(context, 80),
+                                          width: AppSizes.w(context, 70),
+                                          color: Colors.grey.shade200,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: Insets.xs),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: Insets.xs,
+                                                  vertical: Insets.xxs,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: getInnerColor(status),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        Insets.md,
+                                                      ),
+                                                ),
+                                                child: Text(
+                                                  "#${item['id']}",
+                                                  style: TextStyle(
+                                                    fontSize: AppSizes.w(
+                                                      context,
+                                                      11,
+                                                    ),
+                                                    color: getBorderColor(
+                                                      status,
+                                                    ),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: Insets.xs,
+                                                  vertical: Insets.xxs,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: getInnerColor(status),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        Insets.md,
+                                                      ),
+                                                ),
+                                                child: Text(
+                                                  () {
+                                                    final paymentId =
+                                                        item['payment_id'];
+
+                                                    if (status ==
+                                                        BookingStatus
+                                                            .completed) {
+                                                      return paymentId == null
+                                                          ? "Payment Pending"
+                                                          : "Completed";
+                                                    }
+
+                                                    return statusLabel
+                                                            .isNotEmpty
+                                                        ? statusLabel
+                                                        : status.value;
+                                                  }(),
+                                                  style: TextStyle(
+                                                    fontSize: AppSizes.w(
+                                                      context,
+                                                      11,
+                                                    ),
+                                                    color: getBorderColor(
+                                                      status,
+                                                    ),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children:
+                                                [
+                                                  Text(
+                                                    item['service_name']
+                                                            ?.toString() ??
+                                                        "Service",
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  if (status ==
+                                                      BookingStatus.accepted)
+                                                    BlinkingText(
+                                                      text: UserMessages
+                                                          .currentlyAtYourService,
+                                                      style: TextStyle(
+                                                        fontSize: AppSizes.w(
+                                                          context,
+                                                          11,
+                                                        ),
+                                                        color: AppColors
+                                                            .blinkingRed,
+                                                      ),
+                                                    ),
+                                                  // if (status ==
+                                                  //     BookingStatus.inProgress)
+                                                  //   BlinkingText(
+                                                  //     text: UserMessages
+                                                  //         .timeRemaining,
+                                                  //     style: TextStyle(
+                                                  //       fontSize: AppSizes.w(
+                                                  //         context,
+                                                  //         11,
+                                                  //       ),
+                                                  //       color: AppColors
+                                                  //           .blinkingGreen,
+                                                  //     ),
+                                                  //   ),
+                                                  Builder(
+                                                    builder: (context) {
+                                                      final double price =
+                                                          double.tryParse(
+                                                            item['total_amount']
+                                                                    ?.toString() ??
+                                                                item['price']
+                                                                    ?.toString() ??
+                                                                "0",
+                                                          ) ??
+                                                          0;
+                                                      return Row(
+                                                        children: [
+                                                          const Text(
+                                                            "Service Fee: ",
+                                                            style: TextStyle(
+                                                              fontSize: 10,
+                                                              color:
+                                                                  Colors.grey,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            "₹${price.toStringAsFixed(0)}",
+                                                            style: TextStyle(
+                                                              color: AppColors
+                                                                  .priceOrange,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      );
+                                                    },
+                                                  ),
+                                                ].withSpaceBetween(
+                                                  height: AppSizes.h(
+                                                    context,
+                                                    2,
+                                                  ),
+                                                ),
+                                          ),
+                                        ].withSpaceBetween(height: AppSizes.h(context, 6)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: AppSizes.h(context, 10)),
+                                Container(
+                                  padding: EdgeInsets.all(Insets.xsm),
+                                  decoration: BoxDecoration(
+                                    color: getInnerColor(status),
+                                    borderRadius: BorderRadius.circular(
+                                      Insets.sm,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      rowText(
+                                        UserMessages.addressLabel,
+                                        item['address']?.toString() ?? "N/A",
+                                      ),
+                                      SizedBox(height: AppSizes.h(context, 12)),
+                                      rowText(
+                                        UserMessages.dateLabel,
+                                        item['booking_date']?.toString() ??
+                                            "N/A",
+                                      ),
+                                      // API doesn't seem to have separate 'time' field in the way original dummy used it,
+                                      // it's likely included in booking_date.
+                                      // If needed we can extract it or use another field.
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: AppSizes.h(context, 17)),
+                                if (status != BookingStatus.rejected &&
+                                    status != BookingStatus.cancelled)
+                                  const Divider(color: Colors.black12),
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: AppSizes.w(context, 18),
+                                      backgroundColor: Colors.grey.shade200,
+                                      child: ClipOval(
+                                        child: CachedNetworkImage(
+                                          imageUrl:
+                                              (handyman?['profile_image'] !=
+                                                  null)
+                                              ? handyman!['profile_image']
+                                                    .toString()
+                                              : item['provider_image']
+                                                        ?.toString() ??
+                                                    "",
+                                          height: AppSizes.h(context, 36),
+                                          width: AppSizes.w(context, 36),
+                                          fit: BoxFit.cover,
+                                          httpHeaders: const {},
+                                          errorWidget: (_, __, ___) =>
+                                              Image.asset(
+                                                UserMessages.riderImage,
+                                                height: AppSizes.h(context, 36),
+                                                width: AppSizes.w(context, 36),
+                                                fit: BoxFit.cover,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: Insets.xs),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                     
+                                 Text(
+  (status == BookingStatus.cancelled ||
+          status == BookingStatus.rejected)
+      ? "Cancelled"
+      : handyman != null
+          ? (handyman['display_name']?.toString() ??
+              handyman['first_name']?.toString() ??
+              "Handyman")
+          : "Finding...",
+),
+                                          SizedBox(
+                                            height: AppSizes.h(context, 4),
+                                          ),
+                                          if (status !=
+                                                  BookingStatus.cancelled &&
+                                              status != BookingStatus.rejected)
+                                            Text(
+                                              UserMessages.handyman,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (status == BookingStatus.completed)
+                                      // In the _BookingHistoryState class, update the TextButton onPressed:
+                                      TextButton(
+                                        // Prepare all data needed for rating and review
+                                        onPressed: () {
+                                          _navigateToRatingScreen(
+                                            context,
+                                            item,
+                                          );
+                                        },
+                                        child: const Text(
+                                          "Rate & Review",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.primaryRed,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
                     ),
                   ),
           ),
+          // Loading overlay while fetching live booking status
           if (_isNavigating)
             Container(
               color: Colors.black.withOpacity(0.35),
@@ -623,4 +686,258 @@ class _BookingHistoryState extends State<BookingHistory> {
       ),
     );
   }
+
+  /// Fetches the live booking status and routes to the exact screen the user left.
+  Future<void> _navigateToActiveBooking(BuildContext context, Map item) async {
+    final bookingId = item['id']?.toString();
+    if (bookingId == null || _isNavigating) return;
+
+    // Use a state flag instead of a dialog to avoid Navigator context issues
+    setState(() => _isNavigating = true);
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final apiToken = userProvider.apiToken;
+
+      final url = Uri.parse(
+        '${ApiConfig.apiBaseUrl}/booking-detail?booking_id=$bookingId',
+      );
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          if (apiToken != null && apiToken.isNotEmpty)
+            'Authorization': 'Bearer $apiToken',
+        },
+      );
+
+      if (!mounted) return;
+
+      // Safely parse response
+      Map<String, dynamic> data = {};
+      Map<String, dynamic> detail = {};
+      Map<String, dynamic>? handyman;
+      dynamic service;
+
+      if (response.statusCode == 200) {
+        final rawBody = json.decode(response.body);
+        data = rawBody is List
+            ? (rawBody.isNotEmpty
+                  ? Map<String, dynamic>.from(rawBody.first)
+                  : {})
+            : Map<String, dynamic>.from(rawBody as Map);
+
+        final rawDetail = data['booking_detail'];
+        if (rawDetail is List && rawDetail.isNotEmpty) {
+          detail = Map<String, dynamic>.from(rawDetail.first);
+        } else if (rawDetail is Map) {
+          detail = Map<String, dynamic>.from(rawDetail);
+        }
+
+        final rawHandyman = data['handyman_data'] ?? item['handyman_data'];
+        if (rawHandyman is List && rawHandyman.isNotEmpty) {
+          handyman = Map<String, dynamic>.from(rawHandyman.first);
+        } else if (rawHandyman is Map) {
+          handyman = Map<String, dynamic>.from(rawHandyman);
+        }
+
+        final rawSvc = data['service'] ?? item['service'];
+        service = rawSvc is List
+            ? (rawSvc.isNotEmpty ? rawSvc.first : {})
+            : rawSvc;
+      } else {
+        // API failed — use list item data as fallback
+        detail = {'status': item['status']};
+        final rawHandyman = item['handyman_data'];
+        if (rawHandyman is List && rawHandyman.isNotEmpty) {
+          handyman = Map<String, dynamic>.from(rawHandyman.first);
+        } else if (rawHandyman is Map) {
+          handyman = Map<String, dynamic>.from(rawHandyman);
+        }
+        final rawSvc = item['service'];
+        service = rawSvc is List
+            ? (rawSvc.isNotEmpty ? rawSvc.first : {})
+            : rawSvc;
+        data = item as Map<String, dynamic>;
+      }
+
+      service ??= <String, dynamic>{};
+      final price =
+          item['total_amount']?.toString() ?? item['price']?.toString();
+      final currentStatus = (detail['status'] ?? item['status'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+
+      debugPrint(
+        '📋 BookingResume: ID=$bookingId | Status="$currentStatus" | Handyman=${handyman != null}',
+      );
+
+      // ── Route based on live status ──────────────────────────────────────────
+      if (currentStatus == 'pending' && handyman == null) {
+        // Still searching for a professional
+        Navigator.pushNamed(
+          context,
+          AppRoutes.bookingStatus,
+          arguments: {
+            'service': service,
+            'booking_id': bookingId,
+            'date': detail['booking_date'] ?? item['booking_date'],
+            'time': detail['booking_slot'] ?? item['booking_slot'],
+            'price': price,
+          },
+        );
+      } else if (currentStatus == 'pending' ||
+          currentStatus == 'ongoing' ||
+          currentStatus == 'on_going' ||
+          currentStatus == 'assigned') {
+        // Professional assigned — show map/tracking screen
+        Navigator.pushNamed(
+          context,
+          AppRoutes.professionalAssigned,
+          arguments: {
+            'service': service,
+            'booking_data': data,
+            'price': price,
+            'status': BookingStatusModel(
+              currentState: BookingState.onTheWay,
+              professional: ProfessionalMatch(
+                name:
+                    handyman?['display_name'] ??
+                    handyman?['first_name'] ??
+                    'Handyman',
+                rating:
+                    double.tryParse(
+                      handyman?['handyman_rating']?.toString() ?? '4.5',
+                    ) ??
+                    4.5,
+                jobsDone:
+                    int.tryParse(
+                      handyman?['handyman_job_completed']?.toString() ?? '10',
+                    ) ??
+                    10,
+                avatarUrl: handyman?['profile_image'] ?? '',
+              ),
+              appointmentDate:
+                  detail['booking_date'] ?? item['booking_date'] ?? '',
+              appointmentTime:
+                  detail['booking_slot'] ?? item['booking_slot'] ?? '',
+            ),
+          },
+        );
+      } else if (currentStatus == 'pending_approval' ||
+          currentStatus == 'pending approval') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BookingServiceProgressHome(
+              serviceDurationInSeconds: 3600,
+              bookingData: data,
+              startTime: DateTime.now(),
+              price: price,
+            ),
+          ),
+        );
+      } else if (currentStatus == 'accepted' ||
+          currentStatus == 'arrived' ||
+          currentStatus == 'reached') {
+        // Handyman arrived — OTP verification
+        Navigator.pushNamed(
+          context,
+          AppRoutes.serviceVerification,
+          arguments: {
+            'service': service,
+            'booking_data': data,
+            'price': price,
+            'status': BookingStatusModel(
+              currentState: BookingState.assigned,
+              professional: ProfessionalMatch(
+                name:
+                    handyman?['display_name'] ??
+                    handyman?['first_name'] ??
+                    'Handyman',
+                rating:
+                    double.tryParse(
+                      handyman?['handyman_rating']?.toString() ?? '4.5',
+                    ) ??
+                    4.5,
+                jobsDone:
+                    int.tryParse(
+                      handyman?['handyman_job_completed']?.toString() ?? '10',
+                    ) ??
+                    10,
+                avatarUrl: handyman?['profile_image'] ?? '',
+              ),
+              appointmentDate:
+                  detail['booking_date'] ?? item['booking_date'] ?? '',
+              appointmentTime:
+                  detail['booking_slot'] ?? item['booking_slot'] ?? '',
+            ),
+          },
+        );
+      } else if (currentStatus == 'in_progress' ||
+          currentStatus == 'inprogress' ||
+          currentStatus == 'started' ||
+          currentStatus == 'work_started' ||
+          currentStatus == 'pending_approval' ||
+          currentStatus == 'pending approval') {
+        // Service in progress — timer screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BookingServiceProgressHome(
+              serviceDurationInSeconds: 3600,
+              bookingData: data,
+              startTime: DateTime.now(),
+              price: price,
+            ),
+          ),
+        );
+      } else {
+        // Unknown active status — fall back to searching screen
+        debugPrint(
+          '⚠️ Unknown status "$currentStatus" — defaulting to BookingStatusScreen',
+        );
+        Navigator.pushNamed(
+          context,
+          AppRoutes.bookingStatus,
+          arguments: {
+            'service': service,
+            'booking_id': bookingId,
+            'date': detail['booking_date'] ?? item['booking_date'],
+            'time': detail['booking_slot'] ?? item['booking_slot'],
+            'price': price,
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ BookingResume error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not load booking. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isNavigating = false);
+    }
+  }
+
+  Widget rowText(String title, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: AppSizes.w(context, 70),
+          child: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(child: Text(value)),
+      ],
+    );
+  }
 }
+

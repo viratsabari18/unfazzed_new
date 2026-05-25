@@ -6,7 +6,7 @@ import 'package:zeerah/core/services/booking_service.dart';
 import 'package:provider/provider.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 
-class BookingConfirmedScreen extends StatelessWidget {
+class BookingConfirmedScreen extends StatefulWidget {
   final dynamic service;
   final String bookingId;
   final String date;
@@ -23,235 +23,258 @@ class BookingConfirmedScreen extends StatelessWidget {
   });
 
   @override
+  State<BookingConfirmedScreen> createState() => _BookingConfirmedScreenState();
+}
+
+class _BookingConfirmedScreenState extends State<BookingConfirmedScreen> {
+
+
+    void _handleBack() {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.landingPage,
+      (route) => false,
+    );
+  }
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+
+    return PopScope(
+       canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+
+        _handleBack();
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pushNamed(context, AppRoutes.landingPage),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: _handleBack,
+          ),
+          title: const Text(
+            "Booking Confirmed",
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
         ),
-        title: const Text(
-          "Booking Confirmed",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            // Hero Success Section
-            Center(
-              child: Column(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFB300), // Yellow circle
-                      shape: BoxShape.circle,
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              // Hero Success Section
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFB300), // Yellow circle
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Color(0xFFD90000), // Red check
+                        size: 60,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.check,
-                      color: Color(0xFFD90000), // Red check
-                      size: 60,
+                    const SizedBox(height: 24),
+                    const Text(
+                      "Your booking is confirmed!",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    "Your booking is confirmed!",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 40),
-            // Service Details Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Service Details",
-                    style: TextStyle(
-                      color: Color(0xFFD90000),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+              const SizedBox(height: 40),
+              // Service Details Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Service Details",
+                      style: TextStyle(
+                        color: Color(0xFFD90000),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              service is CategoryItem ? service.title : (service.name ?? ''),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.service is CategoryItem ? widget.service.title : (widget.service.name ?? ''),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "$date ~ $time",
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.black54,
-                                fontWeight: FontWeight.w500,
+                              const SizedBox(height: 4),
+                              Text(
+                                "${widget.date} ~ ${widget.time}",
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: service is CategoryItem
-                            ? Image.asset(
-                                service.image,
-                                width: 100,
-                                height: 70,
-                                fit: BoxFit.cover,
-                              )
-                            : CachedNetworkImage(
-                                imageUrl: (service.attachmentsArray?.isNotEmpty == true)
-                                    ? service.attachmentsArray!.first.url ?? ''
-                                    : '',
-                                width: 100,
-                                height: 70,
-                                fit: BoxFit.cover,
-                                errorWidget: (context, url, error) => const Icon(Icons.image),
-                              ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            // What happens next section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "What happens next",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                        const SizedBox(width: 16),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: widget.service is CategoryItem
+                              ? Image.asset(
+                                  widget.service.image,
+                                  width: 100,
+                                  height: 70,
+                                  fit: BoxFit.cover,
+                                )
+                              : CachedNetworkImage(
+                                  imageUrl: (widget.service.attachmentsArray?.isNotEmpty == true)
+                                      ? widget.service.attachmentsArray!.first.url ?? ''
+                                      : '',
+                                  width: 100,
+                                  height: 70,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, url, error) => const Icon(Icons.image),
+                                ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildNextStep(
-                    icon: Icons.search,
-                    color: const Color(0xFFFFCCBC),
-                    title: "We'll find the best professional for you",
-                    subtitle: "Usually within 2~5 minutes",
-                  ),
-                  _buildNextStep(
-                    icon: Icons.notifications_none,
-                    color: const Color(0xFFF8BBD0),
-                    title: "You'll get a notifications once provider accepts",
-                    subtitle: "",
-                  ),
-                  _buildNextStep(
-                    icon: Icons.sensors,
-                    color: const Color(0xFFFFD180),
-                    title: "Live tracking will start once they leave",
-                    subtitle: "",
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const Divider(thickness: 4, color: Color(0xFFEEEEEE), height: 40),
-            // Booking Details section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Booking details",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildDetailRow("Service Date:", date),
-                  const SizedBox(height: 16),
-                  _buildDetailRow("Amount:", "₹$price", isAmount: true),
-                  const SizedBox(height: 16),
-                  _buildDetailRow("Booking ID:", bookingId),
-                ],
-              ),
-            ),
-            const SizedBox(height: 40),
-            // Action Buttons
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.mediumImpact();
-                      Navigator.pushReplacementNamed(
-                        context,
-                        AppRoutes.bookingStatus,
-                        arguments: {
-                          'service': service,
-                          'booking_id': bookingId,
-                          'date': date,
-                          'time': time,
-                          'price': price,
-                        },
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFB300), // Yellow button
-                        borderRadius: BorderRadius.circular(16),
+              const SizedBox(height: 32),
+              // What happens next section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "What happens next",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                      child: const Center(
-                        child: Text(
-                          "View Booking",
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildNextStep(
+                      icon: Icons.search,
+                      color: const Color(0xFFFFCCBC),
+                      title: "We'll find the best professional for you",
+                      subtitle: "Usually within 2~5 minutes",
+                    ),
+                    _buildNextStep(
+                      icon: Icons.notifications_none,
+                      color: const Color(0xFFF8BBD0),
+                      title: "You'll get a notifications once provider accepts",
+                      subtitle: "",
+                    ),
+                    _buildNextStep(
+                      icon: Icons.sensors,
+                      color: const Color(0xFFFFD180),
+                      title: "Live tracking will start once they leave",
+                      subtitle: "",
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(thickness: 4, color: Color(0xFFEEEEEE), height: 40),
+              // Booking Details section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Booking details",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildDetailRow("Service Date:", widget.date),
+                    const SizedBox(height: 16),
+                    _buildDetailRow("Amount:", "₹${widget.price}", isAmount: true),
+                    const SizedBox(height: 16),
+                    _buildDetailRow("Booking ID:", widget.bookingId),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 40),
+              // Action Buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.pushReplacementNamed(
+                          context,
+                          AppRoutes.bookingStatus,
+                          arguments: {
+                            'service': widget.service,
+                            'booking_id': widget.bookingId,
+                            'date': widget.date,
+                            'time': widget.time,
+                            'price': widget.price,
+                          },
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFB300), // Yellow button
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            "View Booking",
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Cancel Booking Button with functionality
-                  _CancelBookingButton(
-                    bookingId: bookingId,
-                    service: service,
-                    date: date,
-                    time: time,
-                    price: price,
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    // Cancel Booking Button with functionality
+                    _CancelBookingButton(
+                      bookingId: widget.bookingId,
+                      service: widget.service,
+                      date: widget.date,
+                      time: widget.time,
+                      price: widget.price,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );

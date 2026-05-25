@@ -43,58 +43,51 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
   double _maxPrice = 10000;
   String _sortBy = 'default'; // default, price_low_to_high, price_high_to_low
 
-@override
-void initState() {
-  super.initState();
+  @override
+  void initState() {
+    super.initState();
 
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    final controller =
-        Provider.of<ServiceListController>(
-      context,
-      listen: false,
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final controller = Provider.of<ServiceListController>(
+        context,
+        listen: false,
+      );
 
-    final addressProvider =
-        Provider.of<AddressProvider>(
-      context,
-      listen: false,
-    );
+      final addressProvider = Provider.of<AddressProvider>(
+        context,
+        listen: false,
+      );
 
-    final loc = addressProvider.selectedLocation;
+      final loc = addressProvider.selectedLocation;
 
-    final lat = double.tryParse(
-      loc?['latitude']?.toString() ?? '',
-    );
+      final lat = double.tryParse(loc?['latitude']?.toString() ?? '');
 
-    final lng = double.tryParse(
-      loc?['longitude']?.toString() ?? '',
-    );
+      final lng = double.tryParse(loc?['longitude']?.toString() ?? '');
 
-    debugPrint(
-      "📍 FETCHING SERVICES => "
-      "SUBCATEGORY: ${widget.subcategoryId} "
-      "LAT: $lat LNG: $lng",
-    );
+      debugPrint(
+        "📍 FETCHING SERVICES => "
+        "SUBCATEGORY: ${widget.subcategoryId} "
+        "LAT: $lat LNG: $lng",
+      );
 
-controller.clearServices();
+      controller.clearServices();
 
-_minPrice = 0;
-_maxPrice = 10000;
-_priceRange = const RangeValues(0, 10000);
+      _minPrice = 0;
+      _maxPrice = 10000;
+      _priceRange = const RangeValues(0, 10000);
 
-_searchQuery = '';
-_searchController.clear();
+      _searchQuery = '';
+      _searchController.clear();
 
-_sortBy = 'default';
+      _sortBy = 'default';
 
-controller.setSubcategory(
-  widget.subcategoryId,
-);
-    controller.setLocation(lat, lng);
+      controller.setSubcategory(widget.subcategoryId);
+      controller.setLocation(lat, lng);
 
-    await controller.fetchServices();
-  });
-}
+      await controller.fetchServices();
+    });
+  }
+
   void toggleSearch() {
     setState(() {
       _isSearchVisible = !_isSearchVisible;
@@ -109,6 +102,23 @@ controller.setSubcategory(
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // Calculate dynamic aspect ratio based on content
+  double getCardAspectRatio(BuildContext context) {
+    // Card width is half of screen width minus padding (16*2 for padding + 16 for gap = 48)
+    double cardWidth = (MediaQuery.of(context).size.width - 48) / 2;
+
+    // Card height = image height + content height + padding
+    double imageHeight = AppSizes.h(context, 138);
+    double contentHeight = AppSizes.h(
+      context,
+      67,
+    ); // Approximate content height
+    double totalPadding = AppSizes.h(context, 14);
+    double cardHeight = imageHeight + contentHeight + totalPadding;
+
+    return cardWidth / cardHeight;
   }
 
   @override
@@ -136,7 +146,7 @@ controller.setSubcategory(
                 size: 18,
                 color: AppColors.naturalBlack87,
               ),
-        onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
         ),
@@ -170,37 +180,26 @@ controller.setSubcategory(
             "📱 CategoryDetailsScreen: Selected Location -> Lat: $lat, Lng: $lng",
           );
 
+          if (controller.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryRed),
+            );
+          }
+          if (controller.isLoading && controller.serviceList.isEmpty) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryRed),
+            );
+          }
 
+          /// SHOW EMPTY ONLY AFTER API COMPLETES
+          if (!controller.isLoading &&
+              !controller.isPaginationLoading &&
+              controller.errorMessage != null &&
+              controller.serviceList.isEmpty) {
+            return Center(child: Text(controller.errorMessage ?? ""));
+          }
 
-       if (controller.isLoading) {
-  return const Center(
-    child: CircularProgressIndicator(
-      color: AppColors.primaryRed,
-    ),
-  );
-}
-if (controller.isLoading &&
-    controller.serviceList.isEmpty) {
-  return const Center(
-    child: CircularProgressIndicator(
-      color: AppColors.primaryRed,
-    ),
-  );
-}
-
-/// SHOW EMPTY ONLY AFTER API COMPLETES
-if (!controller.isLoading &&
-    !controller.isPaginationLoading &&
-    controller.errorMessage != null &&
-    controller.serviceList.isEmpty) {
-  return Center(
-    child: Text(
-     " controller.errorMessage ?? ,"
-    ),
-  );
-}
-
-    if (controller.serviceList.isNotEmpty) {
+          if (controller.serviceList.isNotEmpty) {
             final prices = controller.serviceList
                 .map((s) => s.price?.toDouble() ?? 0)
                 .toList();
@@ -219,9 +218,9 @@ if (!controller.isLoading &&
               // Search Bar (Conditional)
               if (_isSearchVisible)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSizes.w(context, 16),
+                    vertical: AppSizes.h(context, 8),
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -241,18 +240,21 @@ if (!controller.isLoading &&
                           autofocus: true,
                           decoration: InputDecoration(
                             hintText: 'Search ${widget.subcategoryName}...',
-                            hintStyle: const TextStyle(
+                            hintStyle: TextStyle(
                               color: Colors.grey,
-                              fontSize: 14,
+                              fontSize: AppSizes.w(context, 14),
                             ),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.search,
-                              size: 20,
+                              size: AppSizes.w(context, 20),
                               color: Colors.grey,
                             ),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.clear, size: 20),
+                                    icon: Icon(
+                                      Icons.clear,
+                                      size: AppSizes.w(context, 20),
+                                    ),
                                     onPressed: () {
                                       setState(() {
                                         _searchController.clear();
@@ -267,9 +269,9 @@ if (!controller.isLoading &&
                             ),
                             filled: true,
                             fillColor: Colors.grey.shade100,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: AppSizes.w(context, 16),
+                              vertical: AppSizes.h(context, 12),
                             ),
                           ),
                           onChanged: (value) {
@@ -287,9 +289,12 @@ if (!controller.isLoading &&
                             _searchQuery = '';
                           });
                         },
-                        child: const Text(
+                        child: Text(
                           'Cancel',
-                          style: TextStyle(color: AppColors.primaryRed),
+                          style: TextStyle(
+                            fontSize: AppSizes.w(context, 14),
+                            color: AppColors.primaryRed,
+                          ),
                         ),
                       ),
                     ],
@@ -298,9 +303,9 @@ if (!controller.isLoading &&
 
               // Header with Popular text and Filter Button
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSizes.w(context, 16),
+                  vertical: AppSizes.h(context, 12),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -309,7 +314,7 @@ if (!controller.isLoading &&
                     Text(
                       "Popular",
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: AppSizes.w(context, 22),
                         fontWeight: FontWeight.w700,
                         color: Colors.black,
                       ),
@@ -323,9 +328,9 @@ if (!controller.isLoading &&
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSizes.w(context, 14),
+                          vertical: AppSizes.h(context, 8),
                         ),
                         decoration: BoxDecoration(
                           color: _isFilterVisible
@@ -345,17 +350,17 @@ if (!controller.isLoading &&
                             Text(
                               "Filters",
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: AppSizes.w(context, 14),
                                 fontWeight: FontWeight.w600,
                                 color: _isFilterVisible
                                     ? AppColors.primaryRed
                                     : Colors.black87,
                               ),
                             ),
-                            const SizedBox(width: 4),
+                            SizedBox(width: AppSizes.w(context, 4)),
                             Icon(
                               Icons.tune,
-                              size: 16,
+                              size: AppSizes.w(context, 16),
                               color: _isFilterVisible
                                   ? AppColors.primaryRed
                                   : Colors.black87,
@@ -371,11 +376,11 @@ if (!controller.isLoading &&
               // Filter Panel (Conditional)
               if (_isFilterVisible)
                 Container(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+                  margin: EdgeInsets.symmetric(
+                    horizontal: AppSizes.w(context, 16),
+                    vertical: AppSizes.h(context, 8),
                   ),
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(AppSizes.w(context, 16)),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -394,10 +399,10 @@ if (!controller.isLoading &&
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Price Range',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: AppSizes.w(context, 16),
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
                             ),
@@ -409,17 +414,18 @@ if (!controller.isLoading &&
                                 _sortBy = 'default';
                               });
                             },
-                            child: const Text(
+                            child: Text(
                               'Reset',
                               style: TextStyle(
                                 color: AppColors.primaryRed,
-                                fontSize: 12,
+                                fontSize: AppSizes.w(context, 12),
                               ),
                             ),
                           ),
                         ],
                       ),
-         
+
+                      // Price range slider (commented out but kept for reference)
                       // RangeSlider(
                       //   values: _priceRange,
                       //   min: _minPrice,
@@ -459,21 +465,21 @@ if (!controller.isLoading &&
                       //     ],
                       //   ),
                       // ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: AppSizes.h(context, 16)),
 
                       // Sort By
-                      const Text(
+                      Text(
                         'Sort By',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: AppSizes.w(context, 16),
                           fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: AppSizes.h(context, 8)),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: AppSizes.w(context, 8),
+                        runSpacing: AppSizes.h(context, 8),
                         children: [
                           _buildSortChip('Default', 'default'),
                           _buildSortChip(
@@ -488,7 +494,7 @@ if (!controller.isLoading &&
                       ),
 
                       // Apply Filter Button
-                      const SizedBox(height: 16),
+                      SizedBox(height: AppSizes.h(context, 16)),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -500,15 +506,17 @@ if (!controller.isLoading &&
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryRed,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding: EdgeInsets.symmetric(
+                              vertical: AppSizes.h(context, 12),
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Apply Filters',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: AppSizes.w(context, 16),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -524,9 +532,9 @@ if (!controller.isLoading &&
                   _priceRange.end < _maxPrice ||
                   _sortBy != 'default')
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSizes.w(context, 16),
+                    vertical: AppSizes.h(context, 8),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -534,7 +542,7 @@ if (!controller.isLoading &&
                       Text(
                         '${filteredServices.length} results found',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppSizes.w(context, 12),
                           color: Colors.grey.shade600,
                         ),
                       ),
@@ -550,7 +558,7 @@ if (!controller.isLoading &&
                         child: Text(
                           'Clear All',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: AppSizes.w(context, 12),
                             color: AppColors.primaryRed,
                             fontWeight: FontWeight.w600,
                           ),
@@ -569,18 +577,18 @@ if (!controller.isLoading &&
                           children: [
                             Icon(
                               Icons.search_off,
-                              size: 64,
+                              size: AppSizes.w(context, 64),
                               color: Colors.grey.shade400,
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: AppSizes.h(context, 16)),
                             Text(
                               'No services found',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: AppSizes.w(context, 16),
                                 color: Colors.grey.shade600,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: AppSizes.h(context, 8)),
                             TextButton(
                               onPressed: () {
                                 setState(() {
@@ -593,27 +601,31 @@ if (!controller.isLoading &&
                                   _sortBy = 'default';
                                 });
                               },
-                              child: const Text('Clear filters'),
+                              child: Text(
+                                'Clear filters',
+                                style: TextStyle(
+                                  fontSize: AppSizes.w(context, 14),
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       )
                     : GridView.builder(
                         padding: EdgeInsets.all(Insets.md),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 16,
-                              mainAxisSpacing: 16,
-                              childAspectRatio: 0.72,
-                            ),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: AppSizes.w(context, 16),
+                          mainAxisSpacing: AppSizes.h(context, 16),
+                          childAspectRatio: getCardAspectRatio(context),
+                        ),
                         itemCount: filteredServices.length,
                         itemBuilder: (context, index) {
                           final service = filteredServices[index];
-                         return _ServiceCard(
-  key: UniqueKey(),
-  service: service,
-);
+                          return _ServiceCard(
+                            key: UniqueKey(),
+                            service: service,
+                          );
                         },
                       ),
               ),
@@ -626,7 +638,7 @@ if (!controller.isLoading &&
 
   Widget _buildSortChip(String label, String value) {
     return FilterChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
+      label: Text(label, style: TextStyle(fontSize: AppSizes.w(context, 12))),
       selected: _sortBy == value,
       onSelected: (selected) {
         setState(() {
@@ -674,17 +686,13 @@ if (!controller.isLoading &&
 class _ServiceCard extends StatefulWidget {
   final ServiceData service;
 
-  const _ServiceCard({
-    Key? key,
-    required this.service,
-  }) : super(key: key);
+  const _ServiceCard({Key? key, required this.service}) : super(key: key);
 
   @override
   State<_ServiceCard> createState() => _ServiceCardState();
 }
 
 class _ServiceCardState extends State<_ServiceCard> {
-
   bool _isDisposed = false;
   double? _lowestPrice;
   bool _isFetchingPrice = false;
@@ -692,7 +700,6 @@ class _ServiceCardState extends State<_ServiceCard> {
 
   // Add-ons data
   List<dynamic> _addOnServices = [];
-
 
   bool _isLoadingAddOns = false;
 
@@ -702,104 +709,108 @@ class _ServiceCardState extends State<_ServiceCard> {
     _fetchLowestPriceAndAddOns();
   }
 
+  Future<void> _fetchLowestPriceAndAddOns() async {
+    final currentServiceId = widget.service.id;
+    if (!mounted || _isDisposed) return;
 
+    setState(() {
+      _isFetchingPrice = true;
+      _isLoadingAddOns = true;
+    });
 
-Future<void> _fetchLowestPriceAndAddOns() async {
-  final currentServiceId = widget.service.id;
-if (!mounted || _isDisposed) return;
+    try {
+      final url = Uri.parse('${ApiConfig.apiBaseUrl}/service-detail');
 
-  setState(() {
-    _isFetchingPrice = true;
-    _isLoadingAddOns = true;
-  });
-
-  try {
-    final url = Uri.parse('${ApiConfig.apiBaseUrl}/service-detail');
-
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'service_id': currentServiceId,
-      }),
-    );
-    if (!mounted || _isDisposed) {
-  debugPrint(
-    "🚫 IGNORING OLD SERVICE DETAIL RESPONSE => $currentServiceId",
-  );
-  return;
-}
-
-    debugPrint("========== FULL API RESPONSE ==========");
-    debugPrint(response.body);
-    debugPrint("======================================");
-
-    // VERY IMPORTANT
-    // Ignore old response
-   if (!mounted || _isDisposed) return;
-
-    if (currentServiceId != widget.service.id) {
-      return;
-    }
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-
-      final serviceDetail = data['service_detail'];
-
-      final List<dynamic> bhkOptions =
-          serviceDetail?['service_options'] ?? [];
-
-      final List<dynamic> addOnServices =
-          data['serviceaddon'] ?? [];
-
-      double? minPrice;
-
-      // Check options
-      for (var opt in bhkOptions) {
-        final p = double.tryParse(
-          opt['price'].toString(),
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'service_id': currentServiceId}),
+      );
+      if (!mounted || _isDisposed) {
+        debugPrint(
+          "🚫 IGNORING OLD SERVICE DETAIL RESPONSE => $currentServiceId",
         );
-
-        if (p != null) {
-          if (minPrice == null || p < minPrice) {
-            minPrice = p;
-          }
-        }
+        return;
       }
 
-      // Check add-ons
-      for (var addon in addOnServices) {
-        final p = double.tryParse(
-          addon['price'].toString(),
-        );
+      debugPrint("========== FULL API RESPONSE ==========");
+      debugPrint(response.body);
+      debugPrint("======================================");
 
-        if (p != null) {
-          if (minPrice == null || p < minPrice) {
-            minPrice = p;
-          }
-        }
-      }
-
-if (!mounted || _isDisposed) return;
+      // VERY IMPORTANT
+      // Ignore old response
+      if (!mounted || _isDisposed) return;
 
       if (currentServiceId != widget.service.id) {
         return;
       }
 
-      setState(() {
-        _lowestPrice = minPrice;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
 
-        _hasOptionsOrAddons =
-            bhkOptions.isNotEmpty ||
-            addOnServices.isNotEmpty;
+        final serviceDetail = data['service_detail'];
 
-        _addOnServices = addOnServices;
+        final List<dynamic> bhkOptions =
+            serviceDetail?['service_options'] ?? [];
 
-        _isFetchingPrice = false;
-        _isLoadingAddOns = false;
-      });
-    } else {
+        final List<dynamic> addOnServices = data['serviceaddon'] ?? [];
+
+        double? minPrice;
+
+        // Check options
+        for (var opt in bhkOptions) {
+          final p = double.tryParse(opt['price'].toString());
+
+          if (p != null) {
+            if (minPrice == null || p < minPrice) {
+              minPrice = p;
+            }
+          }
+        }
+
+        // Check add-ons
+        for (var addon in addOnServices) {
+          final p = double.tryParse(addon['price'].toString());
+
+          if (p != null) {
+            if (minPrice == null || p < minPrice) {
+              minPrice = p;
+            }
+          }
+        }
+
+        if (!mounted || _isDisposed) return;
+
+        if (currentServiceId != widget.service.id) {
+          return;
+        }
+
+        setState(() {
+          _lowestPrice = minPrice;
+
+          _hasOptionsOrAddons =
+              bhkOptions.isNotEmpty || addOnServices.isNotEmpty;
+
+          _addOnServices = addOnServices;
+
+          _isFetchingPrice = false;
+          _isLoadingAddOns = false;
+        });
+      } else {
+        if (!mounted || _isDisposed) return;
+
+        if (currentServiceId != widget.service.id) {
+          return;
+        }
+
+        setState(() {
+          _isFetchingPrice = false;
+          _isLoadingAddOns = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching data: $e");
+
       if (!mounted || _isDisposed) return;
 
       if (currentServiceId != widget.service.id) {
@@ -811,32 +822,17 @@ if (!mounted || _isDisposed) return;
         _isLoadingAddOns = false;
       });
     }
-  } catch (e) {
-    debugPrint("Error fetching data: $e");
-
-    if (!mounted || _isDisposed) return;
-
-    if (currentServiceId != widget.service.id) {
-      return;
-    }
-
-    setState(() {
-      _isFetchingPrice = false;
-      _isLoadingAddOns = false;
-    });
   }
-}
 
-@override
-void dispose() {
-  _isDisposed = true;
+  @override
+  void dispose() {
+    _isDisposed = true;
 
-  debugPrint(
-    "❌ DISPOSE SERVICE CARD => ${widget.service.id}",
-  );
+    debugPrint("❌ DISPOSE SERVICE CARD => ${widget.service.id}");
 
-  super.dispose();
-}
+    super.dispose();
+  }
+
   void _showAddOnsBottomSheet() {
     final Set<int> selectedAddOnIndices = {};
 
@@ -882,17 +878,20 @@ void dispose() {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 40,
-                    height: 4,
+                    margin: EdgeInsets.only(top: AppSizes.h(context, 12)),
+                    width: AppSizes.w(context, 40),
+                    height: AppSizes.h(context, 4),
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: Align(
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSizes.w(context, 20),
+                      vertical: AppSizes.h(context, 16),
+                    ),
+                    child: const Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'Frequently Added Together',
@@ -905,25 +904,25 @@ void dispose() {
                     ),
                   ),
                   _isLoadingAddOns
-                      ? const Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Center(
+                      ? Padding(
+                          padding: EdgeInsets.all(AppSizes.w(context, 40)),
+                          child: const Center(
                             child: CircularProgressIndicator(
                               color: AppColors.primaryRed,
                             ),
                           ),
                         )
                       : _addOnServices.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Text('No add-ons available'),
+                      ? Padding(
+                          padding: EdgeInsets.all(AppSizes.w(context, 40)),
+                          child: const Text('No add-ons available'),
                         )
                       : ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _addOnServices.length,
                           separatorBuilder: (_, __) =>
-                              const SizedBox(height: 12),
+                              SizedBox(height: AppSizes.h(context, 12)),
                           itemBuilder: (context, index) {
                             final addon = _addOnServices[index];
                             final isSelected = selectedAddOnIndices.contains(
@@ -936,10 +935,10 @@ void dispose() {
                                 0;
 
                             return Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
+                              margin: EdgeInsets.symmetric(
+                                horizontal: AppSizes.w(context, 16),
                               ),
-                              padding: const EdgeInsets.all(12),
+                              padding: EdgeInsets.all(AppSizes.w(context, 12)),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? AppColors.primaryRed.withOpacity(0.05)
@@ -955,8 +954,8 @@ void dispose() {
                               child: Row(
                                 children: [
                                   Container(
-                                    width: 70,
-                                    height: 70,
+                                    width: AppSizes.w(context, 70),
+                                    height: AppSizes.h(context, 70),
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(12),
                                       color: Colors.grey[100],
@@ -990,8 +989,8 @@ void dispose() {
                                               imageUrl.isNotEmpty) {
                                             return CachedNetworkImage(
                                               imageUrl: imageUrl,
-                                              width: 70,
-                                              height: 70,
+                                              width: AppSizes.w(context, 70),
+                                              height: AppSizes.h(context, 70),
                                               fit: BoxFit.cover,
                                               placeholder: (context, url) =>
                                                   Container(
@@ -1021,9 +1020,9 @@ void dispose() {
                                           }
                                           return Container(
                                             color: Colors.grey[200],
-                                            child: const Icon(
+                                            child: Icon(
                                               Icons.add_shopping_cart,
-                                              size: 32,
+                                              size: AppSizes.w(context, 32),
                                               color: Colors.grey,
                                             ),
                                           );
@@ -1031,7 +1030,7 @@ void dispose() {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
+                                  SizedBox(width: AppSizes.w(context, 16)),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -1041,27 +1040,31 @@ void dispose() {
                                           addon['title'] ??
                                               addon['name'] ??
                                               'Add-on Service',
-                                          style: const TextStyle(
-                                            fontSize: 16,
+                                          style: TextStyle(
+                                            fontSize: AppSizes.w(context, 16),
                                             fontWeight: FontWeight.w600,
                                             color: Colors.black87,
                                           ),
                                         ),
                                         if (addon['subtitle'] != null) ...[
-                                          const SizedBox(height: 4),
+                                          SizedBox(
+                                            height: AppSizes.h(context, 4),
+                                          ),
                                           Text(
                                             addon['subtitle'],
                                             style: TextStyle(
-                                              fontSize: 13,
+                                              fontSize: AppSizes.w(context, 13),
                                               color: Colors.grey[600],
                                             ),
                                           ),
                                         ],
-                                        const SizedBox(height: 8),
+                                        SizedBox(
+                                          height: AppSizes.h(context, 8),
+                                        ),
                                         Text(
                                           '₹${addonPrice.toInt()}',
                                           style: TextStyle(
-                                            fontSize: 16,
+                                            fontSize: AppSizes.w(context, 16),
                                             fontWeight: FontWeight.bold,
                                             color: AppColors.primaryRed,
                                           ),
@@ -1095,11 +1098,11 @@ void dispose() {
                             );
                           },
                         ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: AppSizes.h(context, 20)),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSizes.w(context, 20),
+                      vertical: AppSizes.h(context, 16),
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -1181,19 +1184,19 @@ void dispose() {
                             );
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 14,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSizes.w(context, 32),
+                              vertical: AppSizes.h(context, 14),
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.primaryRed,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Book',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 16,
+                                fontSize: AppSizes.w(context, 16),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -1202,7 +1205,7 @@ void dispose() {
                       ],
                     ),
                   ),
-                 const SizedBox(height: 8),
+                  SizedBox(height: AppSizes.h(context, 8)),
                 ],
               ),
             );
@@ -1233,12 +1236,12 @@ void dispose() {
           /// IMAGE SECTION
           SizedBox(
             width: double.infinity,
-            height: 140,
+            height: AppSizes.h(context, 140),
             child: Stack(
               children: [
                 Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.all(8),
+                  margin: EdgeInsets.all(AppSizes.w(context, 8)),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     color: Colors.grey.shade100,
@@ -1261,7 +1264,10 @@ void dispose() {
                           Container(color: Colors.grey.shade200),
                       errorWidget: (context, url, error) => Container(
                         color: Colors.grey.shade200,
-                        child: const Icon(Icons.image_not_supported, size: 30),
+                        child: Icon(
+                          Icons.image_not_supported,
+                          size: AppSizes.w(context, 30),
+                        ),
                       ),
                     ),
                   ),
@@ -1269,12 +1275,12 @@ void dispose() {
 
                 /// RATING
                 Positioned(
-                  top: 14,
-                  right: 14,
+                  top: AppSizes.h(context, 14),
+                  right: AppSizes.w(context, 14),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 4,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSizes.w(context, 7),
+                      vertical: AppSizes.h(context, 4),
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black.withAlpha(40),
@@ -1285,16 +1291,25 @@ void dispose() {
                       children: [
                         Icon(
                           Icons.star,
-                          size: 10,
+                          size: AppSizes.w(context, 10),
                           color: Colors.amber.shade700,
                         ),
-                        const SizedBox(width: 2),
+                        SizedBox(width: AppSizes.w(context, 2)),
                         Text(
-                          widget.service.serviceRating?.toString() ?? "4.0",
-                          style: const TextStyle(
-                            fontSize: 10,
+                          "${widget.service.serviceRating ?? 0}",
+                          style: TextStyle(
+                            fontSize: AppSizes.w(context, 10),
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: AppSizes.w(context, 3)),
+                        Text(
+                          "(${widget.service.serviceReview ?? "0"})",
+                          style: TextStyle(
+                            fontSize: AppSizes.w(context, 9),
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white70,
                           ),
                         ),
                       ],
@@ -1304,8 +1319,8 @@ void dispose() {
 
                 /// FAVORITE
                 Positioned(
-                  top: 14,
-                  left: 14,
+                  top: AppSizes.h(context, 14),
+                  left: AppSizes.w(context, 14),
                   child: Consumer<FavoritesProvider>(
                     builder: (context, favoritesProvider, child) {
                       final isFav = favoritesProvider.isFavorite(
@@ -1327,7 +1342,7 @@ void dispose() {
                           );
                         },
                         child: Container(
-                          padding: const EdgeInsets.all(5),
+                          padding: EdgeInsets.all(AppSizes.w(context, 5)),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
@@ -1340,7 +1355,7 @@ void dispose() {
                           ),
                           child: Icon(
                             isFav ? Icons.favorite : Icons.favorite_border,
-                            size: 14,
+                            size: AppSizes.w(context, 14),
                             color: isFav ? Colors.red : Colors.black87,
                           ),
                         ),
@@ -1349,17 +1364,23 @@ void dispose() {
                   ),
                 ),
                 Positioned(
-                  bottom: 15,
-                  right: 15,
+                  bottom: AppSizes.h(context, 15),
+                  right: AppSizes.w(context, 15),
                   child: GestureDetector(
                     onTap: () {
-                      Navigator.pushNamed(context,AppRoutes.serviceDetails,arguments: widget.service);
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.serviceDetails,
+                        arguments: widget.service,
+                      );
                     },
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(AppSizes.w(context, 8)),
                       decoration: BoxDecoration(
                         color: AppColors.primaryRed,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(
+                          AppSizes.w(context, 14),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.25),
@@ -1368,10 +1389,10 @@ void dispose() {
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_forward_ios_rounded,
                         color: Colors.white,
-                        size: 10,
+                        size: AppSizes.w(context, 10),
                       ),
                     ),
                   ),
@@ -1380,24 +1401,28 @@ void dispose() {
             ),
           ),
 
-          /// CONTENT
+          /// CONTENT - Made responsive
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSizes.w(context, 10),
+              vertical: AppSizes.h(context, 8),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                /// ROW 1: Service Name (Left) and Book Now Button (Right)
+                /// ROW 1: Service Name
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: Text(
                         widget.service.name ?? "",
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: TextStyle(
+                          fontSize: AppSizes.w(context, 12),
                           fontWeight: FontWeight.w700,
                           color: Colors.black87,
                         ),
@@ -1405,37 +1430,20 @@ void dispose() {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: AppSizes.h(context, 6)),
 
-                /// ROW 2: Price (Left) and View Details (Right)
+                /// ROW 2: Price and Book Now Button
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       "₹${widget.service.price ?? 0}",
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: AppSizes.w(context, 14),
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
                     ),
-                    // GestureDetector(
-                    //   onTap: () {
-                    //     Navigator.pushNamed(
-                    //       context,
-                    //       AppRoutes.serviceDetails,
-                    //       arguments: widget.service,
-                    //     );
-                    //   },
-                    //   child: Text(
-                    //     "view details",
-                    //     style: TextStyle(
-                    //       fontSize: 11,
-                    //       color: Colors.grey.shade600,
-                    //       decoration: TextDecoration.underline,
-                    //     ),
-                    //   ),
-                    // ),
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.lightImpact();
@@ -1470,20 +1478,22 @@ void dispose() {
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSizes.w(context, 10),
+                          vertical: AppSizes.h(context, 6),
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(
+                            AppSizes.w(context, 20),
+                          ),
                         ),
-                        child: const Text(
+                        child: Text(
                           "Book Now",
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
-                            fontSize: 9,
+                            fontSize: AppSizes.w(context, 9),
                           ),
                         ),
                       ),

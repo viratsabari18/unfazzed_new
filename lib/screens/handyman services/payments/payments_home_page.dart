@@ -161,8 +161,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final detail = bookingData?['booking_detail'];
     final service = bookingData?['service'];
 
-    print(   
-        service?['attchments']?[0]);
+    print(service?['attchments']?[0]);
 
     // Data extraction
     final serviceName =
@@ -172,255 +171,252 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final serviceImage =
         service?['attchments']?[0] ?? UserMessages.fullHouseCleaningImage;
 
-    
     final serviceDate = detail?['booking_date'] ?? UserMessages.serviceDateTime;
 
     // Priority: 1. Passed in args, 2. Booking detail price, 3. Base service price
-// Base service price
-final double baseServicePrice =
-    (service?['price'] ?? 0).toDouble();
+    // Base service price
+    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
 
-// Selected addons/options price
-final double addonsPrice =
-    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
-        .clamp(0, double.infinity);
+    // Selected addons/options price
+    final double addonsPrice =
+        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
+          0,
+          double.infinity,
+        );
 
-// Total service + addon
-final double subTotal =
-    baseServicePrice + addonsPrice;
+    // Total service + addon
+    final double subTotal = baseServicePrice + addonsPrice;
 
-// Discount
-final double discountPercent =
-    (detail?['discount'] ?? service?['discount'] ?? 0)
+    // Discount
+    final double discountPercent =
+        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
+
+    final double discountAmount = (subTotal * discountPercent) / 100;
+
+    // Extra charges
+    final List extraCharges = detail?['extra_charges'] ?? [];
+
+    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
         .toDouble();
 
-final double discountAmount =
-    (subTotal * discountPercent) / 100;
+    // Final amount
+    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
 
-// Extra charges
-final List extraCharges =
-    detail?['extra_charges'] ?? [];
-
-final double extraChargesTotal =
-    (detail?['extra_charges_value'] ?? 0).toDouble();
-
-// Final amount
-final double totalAmount =
-    subTotal -
-    discountAmount +
-    extraChargesTotal;
-    return Scaffold(
-      backgroundColor: AppColors.reviewBgColor,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryRed,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.naturalWhite),
-          onPressed: () =>
-              Navigator.pushNamed(context, AppRoutes.bookingHistory),
-        ),
-        centerTitle: true,
-        title: Text(
-          UserMessages.paymentSummary,
-          style: TextStyle(
-            fontSize: AppSizes.w(context, 18),
-            fontWeight: FontWeight.w600,
-            color: AppColors.naturalWhite,
+        _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.reviewBgColor,
+        appBar: AppBar(
+          backgroundColor: AppColors.primaryRed,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.naturalWhite),
+            onPressed: _handleBack,
+          ),
+          centerTitle: true,
+          title: Text(
+            UserMessages.paymentSummary,
+            style: TextStyle(
+              fontSize: AppSizes.w(context, 18),
+              fontWeight: FontWeight.w600,
+              color: AppColors.naturalWhite,
+            ),
           ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(Insets.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                UserMessages.serviceDetails,
-                                style: TextStyle(
-                                  color: AppColors.primaryRed,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: AppSizes.h(context, 6)),
-                              Text(
-                                serviceName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: AppSizes.h(context, 4)),
-                              Text(
-                                serviceDate,
-                                style: TextStyle(
-                                  fontSize: AppSizes.w(context, 11),
-                                  color: AppColors.naturalBlack.withOpacity(
-                                    0.54,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(Insets.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  UserMessages.serviceDetails,
+                                  style: TextStyle(
+                                    color: AppColors.primaryRed,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(Insets.xs),
-                          child: serviceImage.startsWith('http')
-                              ? Image.network(
-                                  serviceImage,
-                                  height: AppSizes.h(context, 80),
-                                  width: AppSizes.w(context, 110),
-                                  fit: BoxFit.cover,
-                                  headers: const {},
-                                )
-                              : Image.asset(
-                                  serviceImage,
-                                  height: AppSizes.h(context, 80),
-                                  width: AppSizes.w(context, 110),
-                                  fit: BoxFit.cover,
+                                SizedBox(height: AppSizes.h(context, 6)),
+                                Text(
+                                  serviceName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: AppSizes.h(context, 20)),
-                    Text(
-                      UserMessages.billBreakdown,
-                      style: TextStyle(
-                        color: AppColors.billGreen,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: AppSizes.h(context, 10)),
-               billRow(
-  "Service Price",
-  "₹${baseServicePrice.toStringAsFixed(0)}",
-  AppColors.naturalBlack,
-),
-
-if (addonsPrice > 0)
-  billRow(
-    "Addons",
-    "+ ₹${addonsPrice.toStringAsFixed(0)}",
-    AppColors.neonGreen,
-  ),
-
-if (discountAmount > 0)
-  billRow(
-    "Discount",
-    "- ₹${discountAmount.toStringAsFixed(0)}",
-    Colors.red,
-  ),
-
-...extraCharges.map((charge) {
-  final title = charge['title'] ?? "Extra Charge";
-  final value = charge['price'] ?? 0;
-
-  return billRow(
-    title,
-    "+ ₹$value",
-    AppColors.neonGreen,
-  );
-}).toList(),
-
-                    // if (discountAmount > 0)
-                    //   billRow(
-                    //     UserMessages.coupon,
-                    //     "- ₹${discountAmount.toStringAsFixed(0)}",
-                    //     AppColors.softBlue,
-                    //   ),
-
-                    SizedBox(height: AppSizes.h(context, 12)),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          UserMessages.totalAmount,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          "₹${totalAmount.toStringAsFixed(0)}",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: AppSizes.w(context, 18),
+                                SizedBox(height: AppSizes.h(context, 4)),
+                                Text(
+                                  serviceDate,
+                                  style: TextStyle(
+                                    fontSize: AppSizes.w(context, 11),
+                                    color: AppColors.naturalBlack.withOpacity(
+                                      0.54,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: AppSizes.h(context, 10)),
-                    Container(
-                      height: AppSizes.h(context, 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.billGreen.withOpacity(0.3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.billGreen.withOpacity(0.5),
-                            blurRadius: AppSizes.w(context, 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(Insets.xs),
+                            child: serviceImage.startsWith('http')
+                                ? Image.network(
+                                    serviceImage,
+                                    height: AppSizes.h(context, 80),
+                                    width: AppSizes.w(context, 110),
+                                    fit: BoxFit.cover,
+                                    headers: const {},
+                                  )
+                                : Image.asset(
+                                    serviceImage,
+                                    height: AppSizes.h(context, 80),
+                                    width: AppSizes.w(context, 110),
+                                    fit: BoxFit.cover,
+                                  ),
                           ),
                         ],
                       ),
-                    ),
-                    SizedBox(height: AppSizes.h(context, 20)),
-                    Text(
-                      UserMessages.paymentMethod,
-                      style: TextStyle(
-                        color: AppColors.billGreen,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: AppSizes.h(context, 12)),
-                    if (_isLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else if (_gateways.isEmpty)
-                      const Center(child: Text("No payment methods available"))
-                    else
-                      ..._gateways
-                          .map(
-                            (g) => paymentTile(
-                              title: g['type'] == 'razorPay'
-                                  ? "Pay Online"
-                                  : (g['title'] ?? "Payment Method"),
-                              value: g['type'] ?? "",
-                              gateway: g,
-                            ),
-                          )
-                          .toList(),
-
-                    SizedBox(height: AppSizes.h(context, 20)),
-                    GestureDetector(
-                      onTap: () {
-                        _handlePayment();
-                      },
-                      child: Container(
-                        height: AppSizes.h(context, 55),
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: AppColors.payButtonColor,
-                          borderRadius: BorderRadius.circular(Insets.sm),
+                      SizedBox(height: AppSizes.h(context, 20)),
+                      Text(
+                        UserMessages.billBreakdown,
+                        style: TextStyle(
+                          color: AppColors.billGreen,
+                          fontWeight: FontWeight.bold,
                         ),
-                        child: Center(
-                          child: Text(
-                            UserMessages.payNow,
+                      ),
+                      SizedBox(height: AppSizes.h(context, 10)),
+                      billRow(
+                        "Service Price",
+                        "₹${baseServicePrice.toStringAsFixed(0)}",
+                        AppColors.naturalBlack,
+                      ),
+
+                      if (addonsPrice > 0)
+                        billRow(
+                          "Addons",
+                          "+ ₹${addonsPrice.toStringAsFixed(0)}",
+                          AppColors.neonGreen,
+                        ),
+
+                      if (discountAmount > 0)
+                        billRow(
+                          "Discount",
+                          "- ₹${discountAmount.toStringAsFixed(0)}",
+                          Colors.red,
+                        ),
+
+                      ...extraCharges.map((charge) {
+                        final title = charge['title'] ?? "Extra Charge";
+                        final value = charge['price'] ?? 0;
+
+                        return billRow(title, "+ ₹$value", AppColors.neonGreen);
+                      }).toList(),
+
+                      // if (discountAmount > 0)
+                      //   billRow(
+                      //     UserMessages.coupon,
+                      //     "- ₹${discountAmount.toStringAsFixed(0)}",
+                      //     AppColors.softBlue,
+                      //   ),
+                      SizedBox(height: AppSizes.h(context, 12)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            UserMessages.totalAmount,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            "₹${totalAmount.toStringAsFixed(0)}",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: AppSizes.w(context, 16),
+                              fontSize: AppSizes.w(context, 18),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: AppSizes.h(context, 10)),
+                      Container(
+                        height: AppSizes.h(context, 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.billGreen.withOpacity(0.3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.billGreen.withOpacity(0.5),
+                              blurRadius: AppSizes.w(context, 6),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: AppSizes.h(context, 20)),
+                      Text(
+                        UserMessages.paymentMethod,
+                        style: TextStyle(
+                          color: AppColors.billGreen,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: AppSizes.h(context, 12)),
+                      if (_isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_gateways.isEmpty)
+                        const Center(
+                          child: Text("No payment methods available"),
+                        )
+                      else
+                        ..._gateways
+                            .map(
+                              (g) => paymentTile(
+                                title: g['type'] == 'razorPay'
+                                    ? "Pay Online"
+                                    : (g['title'] ?? "Payment Method"),
+                                value: g['type'] ?? "",
+                                gateway: g,
+                              ),
+                            )
+                            .toList(),
+
+                      SizedBox(height: AppSizes.h(context, 20)),
+                      GestureDetector(
+                        onTap: () {
+                          _handlePayment();
+                        },
+                        child: Container(
+                          height: AppSizes.h(context, 55),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppColors.payButtonColor,
+                            borderRadius: BorderRadius.circular(Insets.sm),
+                          ),
+                          child: Center(
+                            child: Text(
+                              UserMessages.payNow,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: AppSizes.w(context, 16),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -457,39 +453,33 @@ if (discountAmount > 0)
     // Calculate total amount (same logic as build)
     final detail = bookingData?['booking_detail'];
     final service = bookingData?['service'];
-// Base service price
-final double baseServicePrice =
-    (service?['price'] ?? 0).toDouble();
+    // Base service price
+    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
 
-// Selected addons/options price
-final double addonsPrice =
-    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
-        .clamp(0, double.infinity);
+    // Selected addons/options price
+    final double addonsPrice =
+        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
+          0,
+          double.infinity,
+        );
 
-// Total service + addon
-final double subTotal =
-    baseServicePrice + addonsPrice;
+    // Total service + addon
+    final double subTotal = baseServicePrice + addonsPrice;
 
-// Discount
-final double discountPercent =
-    (detail?['discount'] ?? service?['discount'] ?? 0)
+    // Discount
+    final double discountPercent =
+        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
+
+    final double discountAmount = (subTotal * discountPercent) / 100;
+
+    // Extra charges
+    final List extraCharges = detail?['extra_charges'] ?? [];
+
+    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
         .toDouble();
 
-final double discountAmount =
-    (subTotal * discountPercent) / 100;
-
-// Extra charges
-final List extraCharges =
-    detail?['extra_charges'] ?? [];
-
-final double extraChargesTotal =
-    (detail?['extra_charges_value'] ?? 0).toDouble();
-
-// Final amount
-final double totalAmount =
-    subTotal -
-    discountAmount +
-    extraChargesTotal;
+    // Final amount
+    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -524,39 +514,33 @@ final double totalAmount =
     final service = bookingData?['service'];
 
     // Calculate total amount
-// Base service price
-final double baseServicePrice =
-    (service?['price'] ?? 0).toDouble();
+    // Base service price
+    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
 
-// Selected addons/options price
-final double addonsPrice =
-    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
-        .clamp(0, double.infinity);
+    // Selected addons/options price
+    final double addonsPrice =
+        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
+          0,
+          double.infinity,
+        );
 
-// Total service + addon
-final double subTotal =
-    baseServicePrice + addonsPrice;
+    // Total service + addon
+    final double subTotal = baseServicePrice + addonsPrice;
 
-// Discount
-final double discountPercent =
-    (detail?['discount'] ?? service?['discount'] ?? 0)
+    // Discount
+    final double discountPercent =
+        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
+
+    final double discountAmount = (subTotal * discountPercent) / 100;
+
+    // Extra charges
+    final List extraCharges = detail?['extra_charges'] ?? [];
+
+    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
         .toDouble();
 
-final double discountAmount =
-    (subTotal * discountPercent) / 100;
-
-// Extra charges
-final List extraCharges =
-    detail?['extra_charges'] ?? [];
-
-final double extraChargesTotal =
-    (detail?['extra_charges_value'] ?? 0).toDouble();
-
-// Final amount
-final double totalAmount =
-    subTotal -
-    discountAmount +
-    extraChargesTotal;
+    // Final amount
+    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
 
     final value = _selectedGateway['value'];
     final key = value?['razor_key'] ?? "rzp_test_SlXdLiPsjndXjm";
@@ -596,39 +580,33 @@ final double totalAmount =
     // Recalculate amount
     final detail = bookingData?['booking_detail'];
     final service = bookingData?['service'];
-// Base service price
-final double baseServicePrice =
-    (service?['price'] ?? 0).toDouble();
+    // Base service price
+    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
 
-// Selected addons/options price
-final double addonsPrice =
-    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
-        .clamp(0, double.infinity);
+    // Selected addons/options price
+    final double addonsPrice =
+        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
+          0,
+          double.infinity,
+        );
 
-// Total service + addon
-final double subTotal =
-    baseServicePrice + addonsPrice;
+    // Total service + addon
+    final double subTotal = baseServicePrice + addonsPrice;
 
-// Discount
-final double discountPercent =
-    (detail?['discount'] ?? service?['discount'] ?? 0)
+    // Discount
+    final double discountPercent =
+        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
+
+    final double discountAmount = (subTotal * discountPercent) / 100;
+
+    // Extra charges
+    final List extraCharges = detail?['extra_charges'] ?? [];
+
+    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
         .toDouble();
 
-final double discountAmount =
-    (subTotal * discountPercent) / 100;
-
-// Extra charges
-final List extraCharges =
-    detail?['extra_charges'] ?? [];
-
-final double extraChargesTotal =
-    (detail?['extra_charges_value'] ?? 0).toDouble();
-
-// Final amount
-final double totalAmount =
-    subTotal -
-    discountAmount +
-    extraChargesTotal;
+    // Final amount
+    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -671,6 +649,14 @@ final double totalAmount =
     );
   }
 
+  void _handleBack() {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.landingPage,
+      (route) => false,
+    );
+  }
+
   void _processWalletPayment() async {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
@@ -684,39 +670,33 @@ final double totalAmount =
     // Calculate total amount
     final detail = bookingData?['booking_detail'];
     final service = bookingData?['service'];
-// Base service price
-final double baseServicePrice =
-    (service?['price'] ?? 0).toDouble();
+    // Base service price
+    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
 
-// Selected addons/options price
-final double addonsPrice =
-    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
-        .clamp(0, double.infinity);
+    // Selected addons/options price
+    final double addonsPrice =
+        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
+          0,
+          double.infinity,
+        );
 
-// Total service + addon
-final double subTotal =
-    baseServicePrice + addonsPrice;
+    // Total service + addon
+    final double subTotal = baseServicePrice + addonsPrice;
 
-// Discount
-final double discountPercent =
-    (detail?['discount'] ?? service?['discount'] ?? 0)
+    // Discount
+    final double discountPercent =
+        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
+
+    final double discountAmount = (subTotal * discountPercent) / 100;
+
+    // Extra charges
+    final List extraCharges = detail?['extra_charges'] ?? [];
+
+    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
         .toDouble();
 
-final double discountAmount =
-    (subTotal * discountPercent) / 100;
-
-// Extra charges
-final List extraCharges =
-    detail?['extra_charges'] ?? [];
-
-final double extraChargesTotal =
-    (detail?['extra_charges_value'] ?? 0).toDouble();
-
-// Final amount
-final double totalAmount =
-    subTotal -
-    discountAmount +
-    extraChargesTotal;
+    // Final amount
+    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -745,10 +725,10 @@ final double totalAmount =
   }
 
   void _showSuccessDialog() {
-      final args =
-      ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
-  final bookingData = args?['booking_data'];
+    final bookingData = args?['booking_data'];
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -800,7 +780,7 @@ final double totalAmount =
               ),
               const SizedBox(height: 12),
               const Text(
-               "Your service booking has been successfully completed, and the payment was received successfully. Thank you for choosing our service. We hope you had a great experience!",
+                "Your service booking has been successfully completed, and the payment was received successfully. Thank you for choosing our service. We hope you had a great experience!",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
               ),
@@ -809,7 +789,7 @@ final double totalAmount =
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                          onPressed: () {
+                  onPressed: () {
                     Navigator.pushNamed(
                       context,
                       AppRoutes.ratingsAndReview,

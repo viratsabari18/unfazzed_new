@@ -1,3 +1,4 @@
+import 'package:device_preview/device_preview.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -12,6 +13,7 @@ import 'package:zeerah/core/providers/favorites_provider.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/services/fcm_service.dart';
 import 'package:zeerah/firebase_options.dart';
+import 'package:device_preview/device_preview.dart';
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey<NavigatorState>();
@@ -36,25 +38,28 @@ void main() async {
   }
 
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => AddressProvider(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => UserProvider(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => DashboardProvider(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => ServiceListController(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => FavoritesProvider(),
-        ),
-      ],
-      child: const MyApp(),
+    DevicePreview(
+      enabled: true,
+      builder: (context) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => AddressProvider(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => UserProvider(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => DashboardProvider(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => ServiceListController(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => FavoritesProvider(),
+          ),
+        ],
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -79,6 +84,11 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _initializeApp() async {
     try {
+      // Smooth loading delay
+      await Future.delayed(
+        const Duration(seconds: 2),
+      );
+
       final user = FirebaseAuth.instance.currentUser;
 
       if (user != null) {
@@ -103,19 +113,52 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Custom loading splash
+    if (_isLoading) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+
+        builder: DevicePreview.appBuilder,
+        useInheritedMediaQuery: true,
+        locale: DevicePreview.locale(context),
+
+        home: Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Column(
+              mainAxisAlignment:
+                  MainAxisAlignment.center,
+              children: [
+         
+
+                const SizedBox(height: 30),
+
+                SizedBox(
+                  height: 35,
+                  width: 35,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
 
-      // IMPORTANT
-      // Do NOT use home:
-      // because routes already contains "/"
+      builder: DevicePreview.appBuilder,
+      useInheritedMediaQuery: true,
+      locale: DevicePreview.locale(context),
 
-      initialRoute: _isLoading
-          ? AppRoutes.splash
-          : _isLoggedIn
-              ? AppRoutes.landingPage
-              : AppRoutes.signIn,
+      initialRoute: _isLoggedIn
+          ? AppRoutes.landingPage
+          : AppRoutes.signIn,
 
       routes: AppPages.routes,
     );

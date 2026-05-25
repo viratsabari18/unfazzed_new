@@ -226,168 +226,184 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
     super.dispose();
   }
 
+          void _handleBack() {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.landingPage,
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.reviewBgColor,
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        backgroundColor: AppColors.naturalWhite,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.primaryRed),
-          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.bookingHistory, (route) => false),
-        ),
-        centerTitle: true,
-        title: Text(
-          UserMessages.rateYourExperience,
-          style: TextStyle(
-            color: AppColors.primaryRed,
-            fontWeight: FontWeight.w600,
+    return PopScope(
+       canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+
+        _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.reviewBgColor,
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          backgroundColor: AppColors.naturalWhite,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: AppColors.primaryRed),
+            onPressed: _handleBack,
+          ),
+          centerTitle: true,
+          title: Text(
+            UserMessages.rateYourExperience,
+            style: TextStyle(
+              color: AppColors.primaryRed,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(Insets.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Provider/Handyman Info Row
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: AppSizes.w(context, 28),
-                          backgroundColor: Colors.grey.shade300,
-                          backgroundImage: _handymanImage != null && _handymanImage!.startsWith('http')
-                              ? NetworkImage(_handymanImage!)
-                              : null,
-                          child: _handymanImage == null || !_handymanImage!.startsWith('http')
-                              ? const Icon(Icons.person, color: AppColors.naturalBlack)
-                              : null,
-                        ),
-                        SizedBox(width: Insets.xsm),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _handymanName ?? "Service Provider",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: AppSizes.w(context, 16),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(Insets.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Provider/Handyman Info Row
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: AppSizes.w(context, 28),
+                            backgroundColor: Colors.grey.shade300,
+                            backgroundImage: _handymanImage != null && _handymanImage!.startsWith('http')
+                                ? NetworkImage(_handymanImage!)
+                                : null,
+                            child: _handymanImage == null || !_handymanImage!.startsWith('http')
+                                ? const Icon(Icons.person, color: AppColors.naturalBlack)
+                                : null,
+                          ),
+                          SizedBox(width: Insets.xsm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _handymanName ?? "Service Provider",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: AppSizes.w(context, 16),
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: AppSizes.h(context, 4)),
-                              Text(
-                                _serviceName ?? "Professional Service",
-                                style: TextStyle(
-                                  fontSize: AppSizes.w(context, 13),
-                                  color: AppColors.naturalBlack.withOpacity(0.54),
+                                SizedBox(height: AppSizes.h(context, 4)),
+                                Text(
+                                  _serviceName ?? "Professional Service",
+                                  style: TextStyle(
+                                    fontSize: AppSizes.w(context, 13),
+                                    color: AppColors.naturalBlack.withOpacity(0.54),
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: AppSizes.h(context, 4)),
-                              Text(
-                                "Rating: ${_handymanRating.toStringAsFixed(1)} ($_handymanJobs jobs)",
-                                style: TextStyle(
-                                  fontSize: AppSizes.w(context, 12),
-                                  color: AppColors.naturalBlack.withOpacity(0.54),
+                                SizedBox(height: AppSizes.h(context, 4)),
+                                Text(
+                                  "Rating: ${_handymanRating.toStringAsFixed(1)} ($_handymanJobs jobs)",
+                                  style: TextStyle(
+                                    fontSize: AppSizes.w(context, 12),
+                                    color: AppColors.naturalBlack.withOpacity(0.54),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+      
+                      SizedBox(height: AppSizes.h(context, 20)),
+      
+                      // Star Rating
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(5, (index) => buildStar(index)),
+                      ),
+      
+                      SizedBox(height: AppSizes.h(context, 12)),
+      
+                      Center(
+                        child: Text(
+                          getRatingText(selectedRating),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: AppSizes.w(context, 16),
                           ),
                         ),
-                      ],
-                    ),
-
-                    SizedBox(height: AppSizes.h(context, 20)),
-
-                    // Star Rating
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(5, (index) => buildStar(index)),
-                    ),
-
-                    SizedBox(height: AppSizes.h(context, 12)),
-
-                    Center(
-                      child: Text(
-                        getRatingText(selectedRating),
+                      ),
+      
+                      SizedBox(height: AppSizes.h(context, 20)),
+      
+                      // Review Label
+                      Text(
+                        "${UserMessages.writeA} ${UserMessages.review}",
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: AppSizes.w(context, 16),
+                          color: AppColors.reviewGreen,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-
-                    SizedBox(height: AppSizes.h(context, 20)),
-
-                    // Review Label
-                    Text(
-                      "${UserMessages.writeA} ${UserMessages.review}",
-                      style: TextStyle(
-                        color: AppColors.reviewGreen,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-
-                    SizedBox(height: AppSizes.h(context, 8)),
-
-                    // Review TextField
-                    Container(
-                      height: AppSizes.h(context, 120),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(Insets.xsm),
-                        border: Border.all(color: Colors.grey.shade300),
-                        color: AppColors.naturalWhite,
-                      ),
-                      child: TextField(
-                        controller: reviewController,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          hintText: UserMessages.reviewHint,
-                          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(Insets.xsm),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: AppSizes.h(context, 24)),
-
-                    // Submit Button
-                    GestureDetector(
-                      onTap: _isSubmitting ? null : submitReview,
-                      child: Container(
-                        height: AppSizes.h(context, 55),
-                        width: double.infinity,
+      
+                      SizedBox(height: AppSizes.h(context, 8)),
+      
+                      // Review TextField
+                      Container(
+                        height: AppSizes.h(context, 120),
                         decoration: BoxDecoration(
-                          color: _isSubmitting ? Colors.grey : AppColors.submitButtonColor,
-                          borderRadius: BorderRadius.circular(Insets.sm),
+                          borderRadius: BorderRadius.circular(Insets.xsm),
+                          border: Border.all(color: Colors.grey.shade300),
+                          color: AppColors.naturalWhite,
                         ),
-                        child: Center(
-                          child: _isSubmitting 
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                UserMessages.submitReview,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
+                        child: TextField(
+                          controller: reviewController,
+                          maxLines: 4,
+                          decoration: InputDecoration(
+                            hintText: UserMessages.reviewHint,
+                            hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(Insets.xsm),
+                          ),
                         ),
                       ),
-                    ),
-
-                    SizedBox(height: AppSizes.h(context, 14)),
-                  ],
+      
+                      SizedBox(height: AppSizes.h(context, 24)),
+      
+                      // Submit Button
+                      GestureDetector(
+                        onTap: _isSubmitting ? null : submitReview,
+                        child: Container(
+                          height: AppSizes.h(context, 55),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: _isSubmitting ? Colors.grey : AppColors.submitButtonColor,
+                            borderRadius: BorderRadius.circular(Insets.sm),
+                          ),
+                          child: Center(
+                            child: _isSubmitting 
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text(
+                                  UserMessages.submitReview,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                          ),
+                        ),
+                      ),
+      
+                      SizedBox(height: AppSizes.h(context, 14)),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

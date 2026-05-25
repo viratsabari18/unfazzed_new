@@ -68,7 +68,9 @@ class ServiceData {
   String? translations;
   dynamic rejectReason;
   String? serviceRequestStatus;
-  double? serviceRating;  // Added this field
+
+  double? serviceRating;
+  String? serviceReview;
 
   ServiceData({
     this.id,
@@ -105,7 +107,8 @@ class ServiceData {
     this.translations,
     this.rejectReason,
     this.serviceRequestStatus,
-    this.serviceRating,  // Added this parameter
+    this.serviceRating,
+    this.serviceReview,
   });
 
   factory ServiceData.fromJson(Map<String, dynamic> json) {
@@ -128,35 +131,60 @@ class ServiceData {
       cityId: json['city_id'],
       categoryName: json['category_name'],
       subcategoryName: json['subcategory_name'],
+
       attachments: json['attchments'] != null
           ? List<String>.from(json['attchments'])
           : [],
+
       attachmentsArray: json['attchments_array'] != null
           ? List<AttachmentArray>.from(
               json['attchments_array']
-                  .map((x) => AttachmentArray.fromJson(x)))
+                  .map((x) => AttachmentArray.fromJson(x)),
+            )
           : [],
+
       totalReview: json['total_review'],
       totalRating: json['total_rating'],
       isFavourite: json['is_favourite'],
-      serviceAddressMapping: json['service_address_mapping'] ?? [],
-      attachmentExtension: json['attchment_extension'],
+      serviceAddressMapping:
+          json['service_address_mapping'] ?? [],
+
+      attachmentExtension:
+          json['attchment_extension'],
+
       deletedAt: json['deleted_at'],
+
       isSlot: json['is_slot'],
+
       slots: json['slots'] != null
-          ? List<Slot>.from(json['slots'].map((x) => Slot.fromJson(x)))
+          ? List<Slot>.from(
+              json['slots'].map((x) => Slot.fromJson(x)),
+            )
           : [],
+
       visitType: json['visit_type'],
-      isEnableAdvancePayment: json['is_enable_advance_payment'],
-      advancePaymentAmount: json['advance_payment_amount'],
+
+      isEnableAdvancePayment:
+          json['is_enable_advance_payment'],
+
+      advancePaymentAmount:
+          json['advance_payment_amount'],
+
       translations: json['translations'],
+
       rejectReason: json['reject_reason'],
-      serviceRequestStatus: json['service_request_status'],
-      serviceRating: json['service_rating'] != null 
-          ? (json['service_rating'] is int 
-              ? (json['service_rating'] as int).toDouble() 
-              : json['service_rating']) 
-          : null,  // Added this line
+
+      serviceRequestStatus:
+          json['service_request_status'],
+
+      serviceRating: json['service_rating'] != null
+          ? double.tryParse(
+              json['service_rating'].toString(),
+            )
+          : null,
+
+      serviceReview:
+          json['service_review']?.toString(),
     );
   }
 
@@ -192,12 +220,17 @@ class ServiceData {
       "is_slot": isSlot,
       "slots": slots?.map((x) => x.toJson()).toList(),
       "visit_type": visitType,
-      "is_enable_advance_payment": isEnableAdvancePayment,
-      "advance_payment_amount": advancePaymentAmount,
+      "is_enable_advance_payment":
+          isEnableAdvancePayment,
+      "advance_payment_amount":
+          advancePaymentAmount,
       "translations": translations,
       "reject_reason": rejectReason,
-      "service_request_status": serviceRequestStatus,
-      "service_rating": serviceRating,  // Added this line
+      "service_request_status":
+          serviceRequestStatus,
+
+      "service_rating": serviceRating,
+      "service_review": serviceReview,
     };
   }
 }
