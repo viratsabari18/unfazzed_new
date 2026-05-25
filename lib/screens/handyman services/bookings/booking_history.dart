@@ -5,9 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:zeerah/core/common/app_exports.dart' hide BookingStatusModel, BookingState, ProfessionalMatch;
+import 'package:zeerah/core/models/service_models.dart';
 
 import 'package:zeerah/core/config/api_config.dart';
-import 'package:zeerah/core/models/new_booking_model.dart';
+import 'package:zeerah/core/models/new_booking_model.dart' hide BookingStatusModel, BookingState, ProfessionalMatch;
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/routes/app_routes.dart';
 import 'package:zeerah/core/services/booking_service.dart';
@@ -29,7 +30,7 @@ class _BookingHistoryState extends State<BookingHistory> {
   bool _isInitialLoading = true;
   bool _isNavigating = false;
   Timer? _pollingTimer;
-  
+
   // Cache for booking details to avoid repeated API calls
   final Map<String, Map<String, dynamic>> _bookingDetailsCache = {};
 
@@ -58,7 +59,7 @@ class _BookingHistoryState extends State<BookingHistory> {
 
   Future<void> _fetchBookings() async {
     setState(() => _isInitialLoading = true);
-    
+
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final response = await _bookingService.fetchBookingList(
@@ -69,7 +70,7 @@ class _BookingHistoryState extends State<BookingHistory> {
         final List<dynamic> rawBookings = response['data'] ?? [];
         final Map<String, BookingModel> newCache = {};
         final List<String> newIds = [];
-        
+
         for (final raw in rawBookings) {
           if (raw is Map) {
             // Convert dynamic map to String map
@@ -82,7 +83,7 @@ class _BookingHistoryState extends State<BookingHistory> {
             newIds.add(booking.id);
           }
         }
-        
+
         setState(() {
           _bookingsCache.clear();
           _bookingsCache.addAll(newCache);
@@ -100,7 +101,7 @@ class _BookingHistoryState extends State<BookingHistory> {
 
   Future<void> _fetchBookingsLive() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    
+
     try {
       final response = await _bookingService.fetchBookingList(
         token: userProvider.apiToken,
@@ -121,10 +122,10 @@ class _BookingHistoryState extends State<BookingHistory> {
           });
           final newBooking = BookingModel.fromJson(convertedMap);
           updatedBookings[newBooking.id] = newBooking;
-          
+
           // Check if this booking exists and if it has changed
           final existingBooking = _bookingsCache[newBooking.id];
-          if (existingBooking == null || 
+          if (existingBooking == null ||
               existingBooking.status != newBooking.status ||
               existingBooking.statusLabel != newBooking.statusLabel) {
             hasChanges = true;
@@ -174,7 +175,9 @@ class _BookingHistoryState extends State<BookingHistory> {
         // Convert dynamic map to String map
         if (raw is Map<dynamic, dynamic>) {
           data = Map<String, dynamic>.fromEntries(
-            raw.entries.map((entry) => MapEntry(entry.key.toString(), entry.value))
+            raw.entries.map(
+              (entry) => MapEntry(entry.key.toString(), entry.value),
+            ),
           );
         } else if (raw is Map<String, dynamic>) {
           data = raw;
@@ -182,17 +185,19 @@ class _BookingHistoryState extends State<BookingHistory> {
           final firstItem = raw.first;
           if (firstItem is Map<dynamic, dynamic>) {
             data = Map<String, dynamic>.fromEntries(
-              firstItem.entries.map((entry) => MapEntry(entry.key.toString(), entry.value))
+              firstItem.entries.map(
+                (entry) => MapEntry(entry.key.toString(), entry.value),
+              ),
             );
           } else if (firstItem is Map<String, dynamic>) {
             data = firstItem;
           }
         }
-        
+
         // Cache the result
         _bookingDetailsCache[bookingId] = data;
       }
-      
+
       return data;
     } catch (e) {
       debugPrint("Get booking details error: $e");
@@ -200,10 +205,13 @@ class _BookingHistoryState extends State<BookingHistory> {
     }
   }
 
-  Future<void> _navigateToRatingScreen(BuildContext context, BookingModel booking) async {
+  Future<void> _navigateToRatingScreen(
+    BuildContext context,
+    BookingModel booking,
+  ) async {
     final bookingId = booking.id;
     final data = await _getBookingDetails(bookingId);
-    
+
     if (!mounted) return;
 
     final detail = _extractDetail(data, booking);
@@ -221,27 +229,33 @@ class _BookingHistoryState extends State<BookingHistory> {
         'handyman': handyman,
         'provider': provider,
         'service': service,
-        'service_name': detail['service_name'] ?? 
-                       service['name'] ?? 
-                       booking.serviceName,
+        'service_name':
+            detail['service_name'] ?? service['name'] ?? booking.serviceName,
         'handyman_id': handyman['id'] ?? provider['id'],
-        'handyman_name': handyman['display_name'] ??
-                         handyman['first_name'] ??
-                         provider['display_name'] ??
-                         'Service Provider',
-        'handyman_image': handyman['profile_image'] ?? provider['profile_image'],
-        'handyman_rating': handyman['providers_service_rating'] ??
-                           provider['providers_service_rating'] ??
-                           0.0,
-        'handyman_jobs': handyman['total_services_booked'] ??
-                          provider['total_services_booked'] ??
-                          0,
+        'handyman_name':
+            handyman['display_name'] ??
+            handyman['first_name'] ??
+            provider['display_name'] ??
+            'Service Provider',
+        'handyman_image':
+            handyman['profile_image'] ?? provider['profile_image'],
+        'handyman_rating':
+            handyman['providers_service_rating'] ??
+            provider['providers_service_rating'] ??
+            0.0,
+        'handyman_jobs':
+            handyman['total_services_booked'] ??
+            provider['total_services_booked'] ??
+            0,
         'service_id': detail['service_id'] ?? service['id'],
       },
     );
   }
 
-  Map<String, dynamic> _extractDetail(Map<String, dynamic> data, BookingModel booking) {
+  Map<String, dynamic> _extractDetail(
+    Map<String, dynamic> data,
+    BookingModel booking,
+  ) {
     final rawDetail = data['booking_detail'];
     if (rawDetail is List && rawDetail.isNotEmpty) {
       return Map<String, dynamic>.from(rawDetail.first);
@@ -256,11 +270,28 @@ class _BookingHistoryState extends State<BookingHistory> {
     };
   }
 
-  Map<String, dynamic> _extractHandyman(Map<String, dynamic> data, BookingModel booking) {
-    final rawHandyman = data['handyman_data'] ?? booking.handymanData;
+  Map<String, dynamic> _extractHandyman(
+    Map<String, dynamic> data,
+    BookingModel booking,
+  ) {
+    // ADD THIS
+    final rawHandyman =
+        data['handyman_data'] ?? data['handyman'] ?? booking.handymanData;
+
     if (rawHandyman is List && rawHandyman.isNotEmpty) {
-      return Map<String, dynamic>.from(rawHandyman.first);
+      // API structure handyman[0].handyman
+      final handymanItem = rawHandyman.first;
+
+      if (handymanItem is Map && handymanItem['handyman'] != null) {
+        return Map<String, dynamic>.from(handymanItem['handyman']);
+      }
+
+      return Map<String, dynamic>.from(handymanItem);
     } else if (rawHandyman is Map) {
+      if (rawHandyman['handyman'] != null) {
+        return Map<String, dynamic>.from(rawHandyman['handyman']);
+      }
+
       return Map<String, dynamic>.from(rawHandyman);
     } else if (rawHandyman is HandymanModel) {
       return {
@@ -272,10 +303,14 @@ class _BookingHistoryState extends State<BookingHistory> {
         'total_services_booked': rawHandyman.totalJobs,
       };
     }
+
     return {};
   }
 
-  Map<String, dynamic> _extractProvider(Map<String, dynamic> data, BookingModel booking) {
+  Map<String, dynamic> _extractProvider(
+    Map<String, dynamic> data,
+    BookingModel booking,
+  ) {
     final rawProvider = data['provider_data'] ?? booking.providerData;
     if (rawProvider is List && rawProvider.isNotEmpty) {
       return Map<String, dynamic>.from(rawProvider.first);
@@ -293,21 +328,25 @@ class _BookingHistoryState extends State<BookingHistory> {
     return {};
   }
 
-  Map<String, dynamic> _extractService(Map<String, dynamic> data, BookingModel booking) {
+  Map<String, dynamic> _extractService(
+    Map<String, dynamic> data,
+    BookingModel booking,
+  ) {
     final rawService = data['service'] ?? booking.service;
     if (rawService is List && rawService.isNotEmpty) {
       return Map<String, dynamic>.from(rawService.first);
     } else if (rawService is Map) {
       return Map<String, dynamic>.from(rawService);
     } else if (rawService is ServiceModel) {
-      return rawService.rawData ?? {'name': rawService.name, 'id': rawService.id};
+      return rawService.rawData ??
+          {'name': rawService.name, 'id': rawService.id};
     }
     return {};
   }
 
   void _handleBookingTap(BookingModel booking) async {
     final status = booking.status?.toLowerCase() ?? '';
-    
+
     if (status == 'completed') {
       if (booking.isPaymentPending) {
         await _navigateToPaymentWithDetails(booking);
@@ -320,7 +359,9 @@ class _BookingHistoryState extends State<BookingHistory> {
           );
         }
       }
-    } else if (status == 'cancelled' || status == 'canceled' || status == 'rejected') {
+    } else if (status == 'cancelled' ||
+        status == 'canceled' ||
+        status == 'rejected') {
       if (mounted) {
         Navigator.pushNamed(
           context,
@@ -335,7 +376,7 @@ class _BookingHistoryState extends State<BookingHistory> {
 
   Future<void> _navigateToPaymentWithDetails(BookingModel booking) async {
     final data = await _getBookingDetails(booking.id);
-    
+
     if (mounted) {
       Navigator.pushNamed(
         context,
@@ -356,13 +397,13 @@ class _BookingHistoryState extends State<BookingHistory> {
 
     try {
       final data = await _getBookingDetails(bookingId);
-      
+
       if (!mounted) return;
 
       final detail = _extractDetail(data, booking);
       final handyman = _extractHandyman(data, booking);
       final service = _extractService(data, booking);
-      
+
       final currentStatus = (detail['status'] ?? booking.status ?? '')
           .toString()
           .trim()
@@ -396,13 +437,27 @@ class _BookingHistoryState extends State<BookingHistory> {
             'status': BookingStatusModel(
               currentState: BookingState.onTheWay,
               professional: ProfessionalMatch(
-                name: handyman['display_name'] ?? handyman['first_name'] ?? 'Handyman',
-                rating: double.tryParse(handyman['handyman_rating']?.toString() ?? '4.5') ?? 4.5,
-                jobsDone: int.tryParse(handyman['handyman_job_completed']?.toString() ?? '10') ?? 10,
+                name:
+                    handyman['display_name'] ??
+                    '${handyman['first_name'] ?? ''} ${handyman['last_name'] ?? ''}'
+                        .trim() ??
+                    'Handyman',
+                rating:
+                    double.tryParse(
+                      handyman['handyman_rating']?.toString() ?? '4.5',
+                    ) ??
+                    4.5,
+                jobsDone:
+                    int.tryParse(
+                      handyman['handyman_job_completed']?.toString() ?? '10',
+                    ) ??
+                    10,
                 avatarUrl: handyman['profile_image'] ?? '',
               ),
-              appointmentDate: detail['booking_date'] ?? booking.bookingDate ?? '',
-              appointmentTime: detail['booking_slot'] ?? booking.bookingSlot ?? '',
+              appointmentDate:
+                  detail['booking_date'] ?? booking.bookingDate ?? '',
+              appointmentTime:
+                  detail['booking_slot'] ?? booking.bookingSlot ?? '',
             ),
           },
         );
@@ -419,13 +474,27 @@ class _BookingHistoryState extends State<BookingHistory> {
             'status': BookingStatusModel(
               currentState: BookingState.assigned,
               professional: ProfessionalMatch(
-                name: handyman['display_name'] ?? handyman['first_name'] ?? 'Handyman',
-                rating: double.tryParse(handyman['handyman_rating']?.toString() ?? '4.5') ?? 4.5,
-                jobsDone: int.tryParse(handyman['handyman_job_completed']?.toString() ?? '10') ?? 10,
+                name:
+                    handyman['display_name'] ??
+                    '${handyman['first_name'] ?? ''} ${handyman['last_name'] ?? ''}'
+                        .trim() ??
+                    'Handyman',
+                rating:
+                    double.tryParse(
+                      handyman['handyman_rating']?.toString() ?? '4.5',
+                    ) ??
+                    4.5,
+                jobsDone:
+                    int.tryParse(
+                      handyman['handyman_job_completed']?.toString() ?? '10',
+                    ) ??
+                    10,
                 avatarUrl: handyman['profile_image'] ?? '',
               ),
-              appointmentDate: detail['booking_date'] ?? booking.bookingDate ?? '',
-              appointmentTime: detail['booking_slot'] ?? booking.bookingSlot ?? '',
+              appointmentDate:
+                  detail['booking_date'] ?? booking.bookingDate ?? '',
+              appointmentTime:
+                  detail['booking_slot'] ?? booking.bookingSlot ?? '',
             ),
           },
         );
@@ -535,7 +604,8 @@ class _BookingHistoryState extends State<BookingHistory> {
                           child: BookingCard(
                             booking: booking,
                             onTap: () => _handleBookingTap(booking),
-                            onRateReview: () => _navigateToRatingScreen(context, booking),
+                            onRateReview: () =>
+                                _navigateToRatingScreen(context, booking),
                           ),
                         );
                       },
@@ -554,5 +624,3 @@ class _BookingHistoryState extends State<BookingHistory> {
     );
   }
 }
-
-

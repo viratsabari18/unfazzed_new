@@ -88,6 +88,7 @@ class BookingCard extends StatelessWidget {
         : booking.bookingStatus.value;
   }
 
+
   @override
   Widget build(BuildContext context) {
     final status = booking.bookingStatus;
@@ -234,7 +235,11 @@ class BookingCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(booking.displayName),
+                  Text(
+  booking.handymanData?.displayName ??
+  booking.handymanData?.firstName ??
+  booking.displayName,
+),
                       SizedBox(height: AppSizes.h(context, 4)),
                       if (status != BookingStatus.cancelled && status != BookingStatus.rejected)
                         Text(

@@ -176,22 +176,39 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final serviceDate = detail?['booking_date'] ?? UserMessages.serviceDateTime;
 
     // Priority: 1. Passed in args, 2. Booking detail price, 3. Base service price
-    final double serviceFee = args?['price'] != null
-        ? double.tryParse(args!['price'].toString()) ?? 0.0
-        : (detail?['price'] ?? service?['price'] ?? 0).toDouble();
+// Base service price
+final double baseServicePrice =
+    (service?['price'] ?? 0).toDouble();
 
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-    final double discountAmount = (serviceFee * discountPercent) / 100;
+// Selected addons/options price
+final double addonsPrice =
+    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
+        .clamp(0, double.infinity);
 
-    // We keep extraCharges for display if they exist in the detail
-    final List extraCharges = detail?['extra_charges'] ?? [];
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
+// Total service + addon
+final double subTotal =
+    baseServicePrice + addonsPrice;
+
+// Discount
+final double discountPercent =
+    (detail?['discount'] ?? service?['discount'] ?? 0)
         .toDouble();
 
-    // Final total is the serviceFee (which includes options/addons) minus discount plus any extra charges
-    final double totalAmount = serviceFee  + extraChargesTotal;
+final double discountAmount =
+    (subTotal * discountPercent) / 100;
 
+// Extra charges
+final List extraCharges =
+    detail?['extra_charges'] ?? [];
+
+final double extraChargesTotal =
+    (detail?['extra_charges_value'] ?? 0).toDouble();
+
+// Final amount
+final double totalAmount =
+    subTotal -
+    discountAmount +
+    extraChargesTotal;
     return Scaffold(
       backgroundColor: AppColors.reviewBgColor,
       appBar: AppBar(
@@ -282,18 +299,36 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                       ),
                     ),
                     SizedBox(height: AppSizes.h(context, 10)),
-                    billRow(
-                      UserMessages.serviceFee,
-                      "₹ $serviceFee",
-                      AppColors.naturalBlack,
-                    ),
+               billRow(
+  "Service Price",
+  "₹${baseServicePrice.toStringAsFixed(0)}",
+  AppColors.naturalBlack,
+),
 
-                    // Dynamic Extra Charges
-                    ...extraCharges.map((charge) {
-                      final title = charge['title'] ?? "Extra Charge";
-                      final value = charge['price'] ?? 0;
-                      return billRow(title, "+ ₹$value", AppColors.neonGreen);
-                    }).toList(),
+if (addonsPrice > 0)
+  billRow(
+    "Addons",
+    "+ ₹${addonsPrice.toStringAsFixed(0)}",
+    AppColors.neonGreen,
+  ),
+
+if (discountAmount > 0)
+  billRow(
+    "Discount",
+    "- ₹${discountAmount.toStringAsFixed(0)}",
+    Colors.red,
+  ),
+
+...extraCharges.map((charge) {
+  final title = charge['title'] ?? "Extra Charge";
+  final value = charge['price'] ?? 0;
+
+  return billRow(
+    title,
+    "+ ₹$value",
+    AppColors.neonGreen,
+  );
+}).toList(),
 
                     // if (discountAmount > 0)
                     //   billRow(
@@ -422,16 +457,39 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     // Calculate total amount (same logic as build)
     final detail = bookingData?['booking_detail'];
     final service = bookingData?['service'];
-    final double serviceFee = args?['price'] != null
-        ? double.tryParse(args!['price'].toString()) ?? 0.0
-        : (detail?['price'] ?? service?['price'] ?? 0).toDouble();
+// Base service price
+final double baseServicePrice =
+    (service?['price'] ?? 0).toDouble();
 
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-    final double discountAmount = (serviceFee * discountPercent) / 100;
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
+// Selected addons/options price
+final double addonsPrice =
+    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
+        .clamp(0, double.infinity);
+
+// Total service + addon
+final double subTotal =
+    baseServicePrice + addonsPrice;
+
+// Discount
+final double discountPercent =
+    (detail?['discount'] ?? service?['discount'] ?? 0)
         .toDouble();
-    final double totalAmount = serviceFee  + extraChargesTotal;
+
+final double discountAmount =
+    (subTotal * discountPercent) / 100;
+
+// Extra charges
+final List extraCharges =
+    detail?['extra_charges'] ?? [];
+
+final double extraChargesTotal =
+    (detail?['extra_charges_value'] ?? 0).toDouble();
+
+// Final amount
+final double totalAmount =
+    subTotal -
+    discountAmount +
+    extraChargesTotal;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -466,16 +524,39 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final service = bookingData?['service'];
 
     // Calculate total amount
-    final double serviceFee = args?['price'] != null
-        ? double.tryParse(args!['price'].toString()) ?? 0.0
-        : (detail?['price'] ?? service?['price'] ?? 0).toDouble();
+// Base service price
+final double baseServicePrice =
+    (service?['price'] ?? 0).toDouble();
 
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-    final double discountAmount = (serviceFee * discountPercent) / 100;
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
+// Selected addons/options price
+final double addonsPrice =
+    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
+        .clamp(0, double.infinity);
+
+// Total service + addon
+final double subTotal =
+    baseServicePrice + addonsPrice;
+
+// Discount
+final double discountPercent =
+    (detail?['discount'] ?? service?['discount'] ?? 0)
         .toDouble();
-    final double totalAmount = serviceFee  + extraChargesTotal;
+
+final double discountAmount =
+    (subTotal * discountPercent) / 100;
+
+// Extra charges
+final List extraCharges =
+    detail?['extra_charges'] ?? [];
+
+final double extraChargesTotal =
+    (detail?['extra_charges_value'] ?? 0).toDouble();
+
+// Final amount
+final double totalAmount =
+    subTotal -
+    discountAmount +
+    extraChargesTotal;
 
     final value = _selectedGateway['value'];
     final key = value?['razor_key'] ?? "rzp_test_SlXdLiPsjndXjm";
@@ -515,16 +596,39 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     // Recalculate amount
     final detail = bookingData?['booking_detail'];
     final service = bookingData?['service'];
-    final double serviceFee = args?['price'] != null
-        ? double.tryParse(args!['price'].toString()) ?? 0.0
-        : (detail?['price'] ?? service?['price'] ?? 0).toDouble();
+// Base service price
+final double baseServicePrice =
+    (service?['price'] ?? 0).toDouble();
 
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-    final double discountAmount = (serviceFee * discountPercent) / 100;
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
+// Selected addons/options price
+final double addonsPrice =
+    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
+        .clamp(0, double.infinity);
+
+// Total service + addon
+final double subTotal =
+    baseServicePrice + addonsPrice;
+
+// Discount
+final double discountPercent =
+    (detail?['discount'] ?? service?['discount'] ?? 0)
         .toDouble();
-    final double totalAmount = serviceFee  + extraChargesTotal;
+
+final double discountAmount =
+    (subTotal * discountPercent) / 100;
+
+// Extra charges
+final List extraCharges =
+    detail?['extra_charges'] ?? [];
+
+final double extraChargesTotal =
+    (detail?['extra_charges_value'] ?? 0).toDouble();
+
+// Final amount
+final double totalAmount =
+    subTotal -
+    discountAmount +
+    extraChargesTotal;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -580,16 +684,39 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     // Calculate total amount
     final detail = bookingData?['booking_detail'];
     final service = bookingData?['service'];
-    final double serviceFee = args?['price'] != null
-        ? double.tryParse(args!['price'].toString()) ?? 0.0
-        : (detail?['price'] ?? service?['price'] ?? 0).toDouble();
+// Base service price
+final double baseServicePrice =
+    (service?['price'] ?? 0).toDouble();
 
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-    final double discountAmount = (serviceFee * discountPercent) / 100;
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
+// Selected addons/options price
+final double addonsPrice =
+    ((detail?['price'] ?? 0).toDouble() - baseServicePrice)
+        .clamp(0, double.infinity);
+
+// Total service + addon
+final double subTotal =
+    baseServicePrice + addonsPrice;
+
+// Discount
+final double discountPercent =
+    (detail?['discount'] ?? service?['discount'] ?? 0)
         .toDouble();
-    final double totalAmount = serviceFee  + extraChargesTotal;
+
+final double discountAmount =
+    (subTotal * discountPercent) / 100;
+
+// Extra charges
+final List extraCharges =
+    detail?['extra_charges'] ?? [];
+
+final double extraChargesTotal =
+    (detail?['extra_charges_value'] ?? 0).toDouble();
+
+// Final amount
+final double totalAmount =
+    subTotal -
+    discountAmount +
+    extraChargesTotal;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);

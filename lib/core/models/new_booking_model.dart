@@ -107,106 +107,251 @@ class BookingModel {
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
-    // Helper function to convert dynamic map to String map
+
     Map<String, dynamic> _toStrMap(dynamic data) {
       if (data == null) return {};
-      if (data is Map<String, dynamic>) return data;
+
+      if (data is Map<String, dynamic>) {
+        return data;
+      }
+
       if (data is Map<dynamic, dynamic>) {
         return Map<String, dynamic>.fromEntries(
-          data.entries.map((entry) => MapEntry(entry.key.toString(), entry.value))
+          data.entries.map(
+            (e) => MapEntry(
+              e.key.toString(),
+              e.value,
+            ),
+          ),
         );
       }
+
       return {};
     }
 
-    final rawHandyman = json['handyman_data'];
+    // =========================
+    // HANDYMAN PARSING FIX
+    // =========================
+
+    final rawHandyman =
+        json['handyman_data'] ??
+        json['handyman'];
+
     HandymanModel? handyman;
+
     if (rawHandyman != null) {
-      if (rawHandyman is List && rawHandyman.isNotEmpty) {
-        handyman = HandymanModel.fromJson(_toStrMap(rawHandyman.first));
-      } else if (rawHandyman is Map) {
-        handyman = HandymanModel.fromJson(_toStrMap(rawHandyman));
+
+      // handyman is LIST
+      if (rawHandyman is List &&
+          rawHandyman.isNotEmpty) {
+
+        final firstItem = rawHandyman.first;
+
+        // API:
+        // handyman[0].handyman
+        if (firstItem is Map &&
+            firstItem['handyman'] != null) {
+
+          handyman = HandymanModel.fromJson(
+            _toStrMap(
+              firstItem['handyman'],
+            ),
+          );
+
+        } else {
+
+          handyman = HandymanModel.fromJson(
+            _toStrMap(firstItem),
+          );
+        }
+
+      }
+
+      // handyman is MAP
+      else if (rawHandyman is Map) {
+
+        if (rawHandyman['handyman'] != null) {
+
+          handyman = HandymanModel.fromJson(
+            _toStrMap(
+              rawHandyman['handyman'],
+            ),
+          );
+
+        } else {
+
+          handyman = HandymanModel.fromJson(
+            _toStrMap(rawHandyman),
+          );
+        }
       }
     }
+
+    // =========================
+    // PROVIDER
+    // =========================
 
     final rawProvider = json['provider_data'];
+
     ProviderModel? provider;
+
     if (rawProvider != null) {
-      if (rawProvider is List && rawProvider.isNotEmpty) {
-        provider = ProviderModel.fromJson(_toStrMap(rawProvider.first));
+
+      if (rawProvider is List &&
+          rawProvider.isNotEmpty) {
+
+        provider = ProviderModel.fromJson(
+          _toStrMap(rawProvider.first),
+        );
+
       } else if (rawProvider is Map) {
-        provider = ProviderModel.fromJson(_toStrMap(rawProvider));
+
+        provider = ProviderModel.fromJson(
+          _toStrMap(rawProvider),
+        );
       }
     }
+
+    // =========================
+    // SERVICE
+    // =========================
 
     final rawService = json['service'];
+
     ServiceModel? service;
+
     if (rawService != null) {
-      if (rawService is List && rawService.isNotEmpty) {
-        service = ServiceModel.fromJson(_toStrMap(rawService.first));
+
+      if (rawService is List &&
+          rawService.isNotEmpty) {
+
+        service = ServiceModel.fromJson(
+          _toStrMap(rawService.first),
+        );
+
       } else if (rawService is Map) {
-        service = ServiceModel.fromJson(_toStrMap(rawService));
+
+        service = ServiceModel.fromJson(
+          _toStrMap(rawService),
+        );
       }
     }
 
-    final attachments = json['service_attchments'] as List?;
+    // =========================
+    // ATTACHMENTS
+    // =========================
+
+    final attachments =
+        json['service_attchments'] as List?;
+
     List<String> serviceAttachments = [];
+
     if (attachments != null) {
-      serviceAttachments = attachments.map((e) => e.toString()).toList();
+      serviceAttachments =
+          attachments.map((e) => e.toString()).toList();
     }
 
     return BookingModel(
       id: json['id']?.toString() ?? '',
-      serviceName: json['service_name']?.toString(),
-      totalAmount: double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0,
-      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0,
+      serviceName:
+          json['service_name']?.toString(),
+
+      totalAmount:
+          double.tryParse(
+                json['total_amount']?.toString() ?? '0',
+              ) ??
+              0,
+
+      price:
+          double.tryParse(
+                json['price']?.toString() ?? '0',
+              ) ??
+              0,
+
       status: json['status']?.toString(),
-      statusLabel: json['status_label']?.toString(),
+
+      statusLabel:
+          json['status_label']?.toString(),
+
       address: json['address']?.toString(),
-      bookingDate: json['booking_date']?.toString(),
-      bookingSlot: json['booking_slot']?.toString(),
-      paymentId: json['payment_id']?.toString(),
+
+      bookingDate:
+          json['booking_date']?.toString(),
+
+      bookingSlot:
+          json['booking_slot']?.toString(),
+
+      paymentId:
+          json['payment_id']?.toString(),
+
       handymanData: handyman,
+
       providerData: provider,
+
       service: service,
+
       serviceAttachments: serviceAttachments,
-      providerImage: json['provider_image']?.toString(),
-      providerName: json['provider_name']?.toString(),
+
+      providerImage:
+          json['provider_image']?.toString(),
+
+      providerName:
+          json['provider_name']?.toString(),
     );
   }
 
   BookingStatus get bookingStatus {
-    return BookingStatusExt.fromString(status ?? 'unknown');
+    return BookingStatusExt.fromString(
+      status ?? 'unknown',
+    );
   }
 
   String get displayImage {
-    if (handymanData?.profileImage != null && handymanData!.profileImage!.isNotEmpty) {
+
+    if (handymanData?.profileImage != null &&
+        handymanData!.profileImage!.isNotEmpty) {
       return handymanData!.profileImage!;
     }
+
     if (serviceAttachments.isNotEmpty) {
       return serviceAttachments.first;
     }
-    if (providerImage != null && providerImage!.isNotEmpty) {
+
+    if (providerImage != null &&
+        providerImage!.isNotEmpty) {
       return providerImage!;
     }
+
     return '';
   }
 
   String get displayName {
-    if (bookingStatus == BookingStatus.cancelled || 
-        bookingStatus == BookingStatus.rejected) {
+
+    if (bookingStatus ==
+            BookingStatus.cancelled ||
+        bookingStatus ==
+            BookingStatus.rejected) {
       return "Cancelled";
     }
-    return handymanData?.displayName ?? 
-           providerName ?? 
-           "Finding...";
+
+    return handymanData?.displayName ??
+        handymanData?.firstName ??
+        providerName ??
+        "Finding...";
   }
 
-  bool get isPaymentPending => 
-      bookingStatus == BookingStatus.completed && paymentId == null;
+  bool get isPaymentPending =>
+      bookingStatus ==
+              BookingStatus.completed &&
+          paymentId == null;
 }
 
+// ==========================================
+// HANDYMAN MODEL
+// ==========================================
+
 class HandymanModel {
+
   final String? id;
   final String? displayName;
   final String? firstName;
@@ -223,19 +368,47 @@ class HandymanModel {
     this.totalJobs,
   });
 
-  factory HandymanModel.fromJson(Map<String, dynamic> json) {
+  factory HandymanModel.fromJson(
+      Map<String, dynamic> json) {
+
     return HandymanModel(
+
       id: json['id']?.toString(),
-      displayName: json['display_name']?.toString(),
-      firstName: json['first_name']?.toString(),
-      profileImage: json['profile_image']?.toString(),
-      rating: double.tryParse(json['providers_service_rating']?.toString() ?? '0'),
-      totalJobs: int.tryParse(json['total_services_booked']?.toString() ?? '0'),
+
+      // IMPORTANT FIX
+      displayName:
+          json['display_name']?.toString() ??
+          '${json['first_name'] ?? ''} '
+              '${json['last_name'] ?? ''}'
+                  .trim(),
+
+      firstName:
+          json['first_name']?.toString(),
+
+      profileImage:
+          json['profile_image']?.toString(),
+
+      rating: double.tryParse(
+        json['providers_service_rating']
+                ?.toString() ??
+            '0',
+      ),
+
+      totalJobs: int.tryParse(
+        json['total_services_booked']
+                ?.toString() ??
+            '0',
+      ),
     );
   }
 }
 
+// ==========================================
+// PROVIDER MODEL
+// ==========================================
+
 class ProviderModel {
+
   final String? id;
   final String? displayName;
   final String? profileImage;
@@ -250,35 +423,70 @@ class ProviderModel {
     this.totalJobs,
   });
 
-  factory ProviderModel.fromJson(Map<String, dynamic> json) {
+  factory ProviderModel.fromJson(
+      Map<String, dynamic> json) {
+
     return ProviderModel(
+
       id: json['id']?.toString(),
-      displayName: json['display_name']?.toString(),
-      profileImage: json['profile_image']?.toString(),
-      rating: double.tryParse(json['providers_service_rating']?.toString() ?? '0'),
-      totalJobs: int.tryParse(json['total_services_booked']?.toString() ?? '0'),
+
+      displayName:
+          json['display_name']?.toString(),
+
+      profileImage:
+          json['profile_image']?.toString(),
+
+      rating: double.tryParse(
+        json['providers_service_rating']
+                ?.toString() ??
+            '0',
+      ),
+
+      totalJobs: int.tryParse(
+        json['total_services_booked']
+                ?.toString() ??
+            '0',
+      ),
     );
   }
 }
 
+// ==========================================
+// SERVICE MODEL
+// ==========================================
+
 class ServiceModel {
+
   final String? id;
   final String? name;
   final Map<String, dynamic>? rawData;
 
-  ServiceModel({this.id, this.name, this.rawData});
+  ServiceModel({
+    this.id,
+    this.name,
+    this.rawData,
+  });
 
-  factory ServiceModel.fromJson(Map<String, dynamic> json) {
+  factory ServiceModel.fromJson(
+      Map<String, dynamic> json) {
+
     return ServiceModel(
+
       id: json['id']?.toString(),
+
       name: json['name']?.toString(),
+
       rawData: json,
     );
   }
 }
 
-// Add these classes if not defined elsewhere
+// ==========================================
+// STATUS MODEL
+// ==========================================
+
 class BookingStatusModel {
+
   final BookingState currentState;
   final ProfessionalMatch professional;
   final String appointmentDate;
@@ -303,6 +511,7 @@ enum BookingState {
 }
 
 class ProfessionalMatch {
+
   final String name;
   final double rating;
   final int jobsDone;

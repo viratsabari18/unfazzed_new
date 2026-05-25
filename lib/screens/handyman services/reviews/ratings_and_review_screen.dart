@@ -236,7 +236,7 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppColors.primaryRed),
-          onPressed: () => Navigator.pop(context)
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.bookingHistory, (route) => false),
         ),
         centerTitle: true,
         title: Text(
