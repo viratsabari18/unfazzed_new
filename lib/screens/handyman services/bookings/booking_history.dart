@@ -9,7 +9,7 @@ import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/services/booking_service.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/bookig_sevice_progress_home.dart';
 import 'package:zeerah/widgets/custom/fade_animation_text.dart';
-
+import 'dart:async';
 class BookingHistory extends StatefulWidget {
   BookingHistory({super.key});
 
@@ -22,30 +22,50 @@ class _BookingHistoryState extends State<BookingHistory> {
   List<dynamic> _bookings = [];
   bool _isLoading = true;
   bool _isNavigating = false;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _fetchBookings();
+  _fetchBookings(showLoader: true);
+     _timer = Timer.periodic(
+    const Duration(seconds: 5),
+    (_) {
+      _fetchBookings();
+    },
+  );
   }
 
-  Future<void> _fetchBookings() async {
+Future<void> _fetchBookings({
+  bool showLoader = false,
+}) async {
+
+  if (showLoader) {
     setState(() => _isLoading = true);
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final response = await _bookingService.fetchBookingList(
-      token: userProvider.apiToken,
-    );
-
-    if (mounted) {
-      setState(() {
-        final List<dynamic> rawBookings = response['data'] ?? [];
-        // Show all bookings including active ones so users can resume them
-        _bookings = rawBookings.toList();
-        _isLoading = false;
-      });
-    }
   }
 
+  final userProvider =
+      Provider.of<UserProvider>(
+        context,
+        listen: false,
+      );
+
+  final response =
+      await _bookingService.fetchBookingList(
+        token: userProvider.apiToken,
+      );
+
+  if (mounted) {
+    setState(() {
+      final List<dynamic> rawBookings =
+          response['data'] ?? [];
+
+      _bookings = rawBookings.toList();
+
+      _isLoading = false;
+    });
+  }
+}
   Future<void> _navigateToPayment(BuildContext context, Map item) async {
     final bookingId = item['id']?.toString();
 
@@ -238,6 +258,12 @@ class _BookingHistoryState extends State<BookingHistory> {
   }
 
   @override
+void dispose() {
+  _timer?.cancel();
+  super.dispose();
+}
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.naturalWhite,
@@ -299,12 +325,26 @@ class _BookingHistoryState extends State<BookingHistory> {
                         final statusLabel =
                             item['status_label']?.toString() ?? status.value;
 
-                        final rawHandyman = item['handyman_data'];
-                        final handyman = rawHandyman is List
-                            ? (rawHandyman.isNotEmpty
-                                  ? rawHandyman.first
-                                  : null)
-                            : rawHandyman;
+ 
+
+final rawHandyman =
+    item['handyman_data'] ?? item['handyman'];
+
+Map<String, dynamic>? handyman;
+
+if (rawHandyman is List && rawHandyman.isNotEmpty) {
+  final wrapper = rawHandyman.first;
+
+  if (wrapper is Map && wrapper['handyman'] != null) {
+    handyman = Map<String, dynamic>.from(wrapper['handyman']);
+  }
+} else if (rawHandyman is Map) {
+  if (rawHandyman['handyman'] != null) {
+    handyman = Map<String, dynamic>.from(rawHandyman['handyman']);
+  } else {
+    handyman = Map<String, dynamic>.from(rawHandyman);
+  }
+}
 
                         final attachments = item['service_attchments'] as List?;
                         final imageUrl = (handyman?['profile_image'] != null)
@@ -619,17 +659,21 @@ class _BookingHistoryState extends State<BookingHistory> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                     
-                                 Text(
-  (status == BookingStatus.cancelled ||
-          status == BookingStatus.rejected)
-      ? "Cancelled"
-      : handyman != null
-          ? (handyman['display_name']?.toString() ??
-              handyman['first_name']?.toString() ??
-              "Handyman")
-          : "Finding...",
-),
+                                          Text(
+                                            (status ==
+                                                        BookingStatus
+                                                            .cancelled ||
+                                                    status ==
+                                                        BookingStatus.rejected)
+                                                ? "Cancelled"
+                                                : handyman != null
+                                                ? (handyman['display_name']
+                                                          ?.toString() ??
+                                                      handyman['first_name']
+                                                          ?.toString() ??
+                                                      "Handyman")
+                                                : "Finding...",
+                                          ),
                                           SizedBox(
                                             height: AppSizes.h(context, 4),
                                           ),
@@ -734,7 +778,11 @@ class _BookingHistoryState extends State<BookingHistory> {
           detail = Map<String, dynamic>.from(rawDetail);
         }
 
-        final rawHandyman = data['handyman_data'] ?? item['handyman_data'];
+  final rawHandyman =
+    data['handyman_data'] ??
+    data['handyman'] ??
+    item['handyman_data'] ??
+    item['handyman'];
         if (rawHandyman is List && rawHandyman.isNotEmpty) {
           handyman = Map<String, dynamic>.from(rawHandyman.first);
         } else if (rawHandyman is Map) {
@@ -748,7 +796,8 @@ class _BookingHistoryState extends State<BookingHistory> {
       } else {
         // API failed — use list item data as fallback
         detail = {'status': item['status']};
-        final rawHandyman = item['handyman_data'];
+   final rawHandyman =
+    item['handyman_data'] ?? item['handyman'];
         if (rawHandyman is List && rawHandyman.isNotEmpty) {
           handyman = Map<String, dynamic>.from(rawHandyman.first);
         } else if (rawHandyman is Map) {
@@ -940,4 +989,3 @@ class _BookingHistoryState extends State<BookingHistory> {
     );
   }
 }
-
