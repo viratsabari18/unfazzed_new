@@ -750,49 +750,23 @@ if (alreadySaved == null ||
                                             size: 14,
                                           ),
                                           const SizedBox(width: 4),
-                                          Text(
-                                            (() {
-                                              final rating =
-                                                  handyman?['handyman_rating'] ??
-                                                  provider?['providers_service_rating'] ??
-                                                  provider?['handyman_rating'] ??
-                                                  0;
-
-                                              if (rating == 0) {
-                                                // Create a unique key for this handyman/provider
-                                                final id =
-                                                    handyman?['id']
-                                                        ?.toString() ??
-                                                    provider?['id']
-                                                        ?.toString() ??
-                                                    handyman?['uid']
-                                                        ?.toString() ??
-                                                    provider?['uid']
-                                                        ?.toString() ??
-                                                    'default';
-
-                                                // Get cached rating or generate new one
-                                                final cachedRating =
-                                                    _dummyRatingsCache.putIfAbsent(
-                                                      id,
-                                                      () =>
-                                                          4.2 +
-                                                          (4.9 - 4.2) *
-                                                              Random()
-                                                                  .nextDouble(),
-                                                    );
-
-                                                return cachedRating
-                                                    .toStringAsFixed(1);
-                                              }
-
-                                              return rating.toString();
-                                            })(),
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12,
-                                            ),
-                                          ),
+                                        Text(
+  double.tryParse(
+        (
+          handyman?['handyman_rating'] ??
+          provider?['handyman_rating'] ??
+          handyman?['providers_service_rating'] ??
+          provider?['providers_service_rating'] ??
+          0
+        ).toString(),
+      )!
+      .toStringAsFixed(1),
+  style: const TextStyle(
+    fontWeight: FontWeight.bold,
+    fontSize: 12,
+  ),
+),
+                                          
                                           const SizedBox(width: 4),
                                           Text(
                                             "(${handyman?['total_services_booked'] ?? provider?['total_services_booked'] ?? 0} jobs done)",

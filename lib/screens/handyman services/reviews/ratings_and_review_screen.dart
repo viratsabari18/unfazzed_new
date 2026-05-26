@@ -83,7 +83,17 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
     _serviceName = args['service_name']?.toString() ?? _detail?['service_name']?.toString() ?? _service?['name']?.toString() ?? _bookingData?['service_name']?.toString() ?? "Service";
     _handymanName = args['handyman_name']?.toString() ?? _handyman?['display_name']?.toString() ?? _handyman?['first_name']?.toString() ?? _provider?['display_name']?.toString() ?? _detail?['provider_name']?.toString() ?? "Service Provider";
     _handymanImage = args['handyman_image']?.toString() ?? _handyman?['profile_image']?.toString() ?? _provider?['profile_image']?.toString();
-    _handymanRating = (args['handyman_rating'] ?? _handyman?['providers_service_rating'] ?? _provider?['providers_service_rating'] ?? 0.0).toDouble();
+  _handymanRating = double.tryParse(
+      (
+        args['handyman_rating'] ??
+        _handyman?['handyman_rating'] ??
+        _provider?['handyman_rating'] ??
+        _handyman?['providers_service_rating'] ??
+        _provider?['providers_service_rating'] ??
+        0.0
+      ).toString(),
+    ) ??
+    0.0;
     _handymanJobs = (args['handyman_jobs'] ?? _handyman?['total_services_booked'] ?? _provider?['total_services_booked'] ?? 0).toInt();
   }
 

@@ -38,6 +38,7 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
   // Value Notifiers for UI updates
   final ValueNotifier<String> _locationNameNotifier = ValueNotifier("Getting your location...");
   final ValueNotifier<String> _fullAddressNotifier = ValueNotifier("");
+  bool _isInitialized = false;
 
   // Dark Map Style
   static const String _darkMapStyle = '''
@@ -92,6 +93,22 @@ class _ConfirmLocationScreenState extends State<ConfirmLocationScreen> {
     _initializeLocation();
   }
 
+
+
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+
+  if (!_isInitialized) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+
+    if (args != null && args is String) {
+      _selectedAddressType = args;
+    }
+
+    _isInitialized = true;
+  }
+}
   void _setupSystemUI() {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(

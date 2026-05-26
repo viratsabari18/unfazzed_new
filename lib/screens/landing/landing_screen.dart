@@ -74,6 +74,8 @@ class _LandingScreenState extends State<LandingScreen> {
             bottom: AppSizes.h(context, 10),
           ),
           child: ClipRRect(
+            clipBehavior: Clip.antiAlias,
+            
             borderRadius: BorderRadius.circular(AppSizes.w(context, 32)),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
@@ -96,7 +98,8 @@ class _LandingScreenState extends State<LandingScreen> {
                       const Color(0xFFC8FFF4).withOpacity(0.10),
                     ],
                   ),
-                  border: Border.all(color: Colors.white, width: 1),
+                  border: Border.all(color: Colors.grey, width: 1),
+                              borderRadius: BorderRadius.circular(AppSizes.w(context, 32)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.06),

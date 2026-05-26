@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 
@@ -132,8 +133,7 @@ void initState() {
 
   if (!mounted) return;
 
-  // Close bottomsheet
-  Navigator.pop(context, true);
+     Navigator.popAndPushNamed(context, AppRoutes.selectLocation, result: true);
 }
     } catch (e) {
       if (mounted) {

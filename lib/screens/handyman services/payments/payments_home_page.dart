@@ -17,7 +17,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
   late Razorpay _razorpay;
   List<dynamic> _gateways = [];
   bool _isLoading = true;
-  String selectedMethod = "cash"; // Default type
+  String selectedMethod = "cash";
   dynamic _selectedGateway;
 
   @override
@@ -46,18 +46,6 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
 
     if (mounted) {
       setState(() {
-        // Filter out flutterwave and only keep active ones
-        // _gateways = gateways.where((g) => g['status'] == 1 && g['type'] != 'flutterwave').toList();
-
-        // // Add manual Wallet option
-        // _gateways.add({
-        //   "id": 99,
-        //   "title": "Wallet",
-        //   "type": "wallet",
-        //   "status": 1,
-        // });
-
-        // Show only Razorpay
         _gateways = gateways
             .where((g) => g['status'] == 1 && g['type'] == 'razorPay')
             .toList();
@@ -73,6 +61,53 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     }
   }
 
+  // Helper method to calculate bill details with correct order
+  Map<String, double> calculateBillDetails(Map<String, dynamic>? bookingData) {
+    final detail = bookingData?['booking_detail'];
+    final service = bookingData?['service'];
+
+    // Step 1: Service Price
+    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
+
+    // Step 2: Add Addons
+    final List bookingAddons = detail?['BookingAddonService'] ?? [];
+    final double addonsPrice = bookingAddons.fold(
+      0.0,
+      (sum, addon) => sum + ((addon['price'] ?? 0).toDouble()),
+    );
+
+    // Subtotal after adding addons (before discount)
+    final double subtotalAfterAddons = baseServicePrice + addonsPrice;
+
+    // Step 3: Apply Discount on the subtotal (Service + Addons)
+    final double discountPercent = (detail?['discount'] ?? 0).toDouble();
+    final double discountAmount = (subtotalAfterAddons * discountPercent) / 100;
+
+    // Amount after discount
+    final double amountAfterDiscount = subtotalAfterAddons - discountAmount;
+
+    // Step 4: Add Extra Charges after discount
+    final List extraCharges = detail?['extra_charges'] ?? [];
+    final double extraChargesTotal = extraCharges.fold(
+      0.0,
+      (sum, charge) => sum + ((charge['price'] ?? 0).toDouble()),
+    );
+
+    // Final total after adding extra charges
+    final double totalAmount = amountAfterDiscount + extraChargesTotal;
+
+    return {
+      'baseServicePrice': baseServicePrice,
+      'addonsPrice': addonsPrice,
+      'subtotalAfterAddons': subtotalAfterAddons,
+      'discountPercent': discountPercent,
+      'discountAmount': discountAmount,
+      'amountAfterDiscount': amountAfterDiscount,
+      'extraChargesTotal': extraChargesTotal,
+      'totalAmount': totalAmount,
+    };
+  }
+
   Widget paymentTile({
     required String title,
     required String value,
@@ -80,7 +115,6 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
   }) {
     final bool isSelected = selectedMethod == value;
 
-    // Map gateway types to icons
     String icon = UserMessages.paymentsCashOnDelivery;
     if (value == 'razorPay') icon = UserMessages.paymentsCreditCard;
     if (value == 'wallet') icon = UserMessages.paymentsWallet;
@@ -155,57 +189,26 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final bookingData = args?['booking_data'];
     final detail = bookingData?['booking_detail'];
     final service = bookingData?['service'];
 
-    print(service?['attchments']?[0]);
-
-    // Data extraction
-    final serviceName =
-        detail?['service_name'] ??
+    // Calculate all bill details
+    final billDetails = calculateBillDetails(bookingData);
+    
+    final serviceName = detail?['service_name'] ??
         service?['name'] ??
         UserMessages.fullHomeCleaning;
-    final serviceImage =
-        service?['attchments']?[0] ?? UserMessages.fullHouseCleaningImage;
-
+    final serviceImage = service?['attchments']?[0] ?? UserMessages.fullHouseCleaningImage;
     final serviceDate = detail?['booking_date'] ?? UserMessages.serviceDateTime;
+    
+    final extraCharges = detail?['extra_charges'] ?? [];
 
-    // Priority: 1. Passed in args, 2. Booking detail price, 3. Base service price
-    // Base service price
-    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
-
-    // Selected addons/options price
-    final double addonsPrice =
-        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
-          0,
-          double.infinity,
-        );
-
-    // Total service + addon
-    final double subTotal = baseServicePrice + addonsPrice;
-
-    // Discount
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-
-    final double discountAmount = (subTotal * discountPercent) / 100;
-
-    // Extra charges
-    final List extraCharges = detail?['extra_charges'] ?? [];
-
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
-        .toDouble();
-
-    // Final amount
-    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
         if (didPop) return;
-
         _handleBack();
       },
       child: Scaffold(
@@ -261,9 +264,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                                   serviceDate,
                                   style: TextStyle(
                                     fontSize: AppSizes.w(context, 11),
-                                    color: AppColors.naturalBlack.withOpacity(
-                                      0.54,
-                                    ),
+                                    color: AppColors.naturalBlack.withOpacity(0.54),
                                   ),
                                 ),
                               ],
@@ -297,57 +298,63 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                         ),
                       ),
                       SizedBox(height: AppSizes.h(context, 10)),
+                      
+                      // Service Price
                       billRow(
                         "Service Price",
-                        "₹${baseServicePrice.toStringAsFixed(0)}",
+                        "₹${billDetails['baseServicePrice']!.toStringAsFixed(0)}",
                         AppColors.naturalBlack,
                       ),
 
-                      if (addonsPrice > 0)
+                      // Addons (if any)
+                      if (billDetails['addonsPrice']! > 0)
                         billRow(
                           "Addons",
-                          "+ ₹${addonsPrice.toStringAsFixed(0)}",
+                          "+ ₹${billDetails['addonsPrice']!.toStringAsFixed(0)}",
                           AppColors.neonGreen,
                         ),
 
-                      if (discountAmount > 0)
+                      // Subtotal after addons (before discount)
+                      // Container(
+                      //   margin: EdgeInsets.only(top: Insets.xsm, bottom: Insets.xsm),
+                      //   child: billRow(
+                      //     "Subtotal (Service + Addons)",
+                      //     "₹${billDetails['subtotalAfterAddons']!.toStringAsFixed(0)}",
+                      //     AppColors.naturalBlack,
+                      //   ),
+                      // ),
+
+                      // Discount
+                      if (billDetails['discountAmount']! > 0)
                         billRow(
-                          "Discount",
-                          "- ₹${discountAmount.toStringAsFixed(0)}",
+                          "Discount (${billDetails['discountPercent']!.toStringAsFixed(0)}%)",
+                          "- ₹${billDetails['discountAmount']!.toStringAsFixed(0)}",
                           Colors.red,
                         ),
 
+                      // After Discount
+                      // Container(
+                      //   margin: EdgeInsets.only(bottom: Insets.xsm),
+                      //   child: billRow(
+                      //     "After Discount",
+                      //     "₹${billDetails['amountAfterDiscount']!.toStringAsFixed(0)}",
+                      //     AppColors.billGreen,
+                      //   ),
+                      // ),
+
+                      // Extra Charges (added after discount)
                       ...extraCharges.map((charge) {
                         final title = charge['title'] ?? "Extra Charge";
-                        final value = charge['price'] ?? 0;
-
-                        return billRow(title, "+ ₹$value", AppColors.neonGreen);
+                        final value = (charge['price'] ?? 0).toDouble();
+                        return billRow(
+                          title,
+                          "+ ₹${value.toStringAsFixed(0)}",
+                          AppColors.neonGreen,
+                        );
                       }).toList(),
 
-                      // if (discountAmount > 0)
-                      //   billRow(
-                      //     UserMessages.coupon,
-                      //     "- ₹${discountAmount.toStringAsFixed(0)}",
-                      //     AppColors.softBlue,
-                      //   ),
+                      // Divider
                       SizedBox(height: AppSizes.h(context, 12)),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            UserMessages.totalAmount,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            "₹${totalAmount.toStringAsFixed(0)}",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: AppSizes.w(context, 18),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: AppSizes.h(context, 10)),
                       Container(
                         height: AppSizes.h(context, 2),
                         decoration: BoxDecoration(
@@ -360,6 +367,26 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                           ],
                         ),
                       ),
+                      
+                      // Total Amount
+                      SizedBox(height: AppSizes.h(context, 12)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            UserMessages.totalAmount,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            "₹${billDetails['totalAmount']!.toStringAsFixed(0)}",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: AppSizes.w(context, 18),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
                       SizedBox(height: AppSizes.h(context, 20)),
                       Text(
                         UserMessages.paymentMethod,
@@ -369,6 +396,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                         ),
                       ),
                       SizedBox(height: AppSizes.h(context, 12)),
+                      
                       if (_isLoading)
                         const Center(child: CircularProgressIndicator())
                       else if (_gateways.isEmpty)
@@ -376,17 +404,15 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                           child: Text("No payment methods available"),
                         )
                       else
-                        ..._gateways
-                            .map(
-                              (g) => paymentTile(
-                                title: g['type'] == 'razorPay'
-                                    ? "Pay Online"
-                                    : (g['title'] ?? "Payment Method"),
-                                value: g['type'] ?? "",
-                                gateway: g,
-                              ),
-                            )
-                            .toList(),
+                        ..._gateways.map(
+                          (g) => paymentTile(
+                            title: g['type'] == 'razorPay'
+                                ? "Pay Online"
+                                : (g['title'] ?? "Payment Method"),
+                            value: g['type'] ?? "",
+                            gateway: g,
+                          ),
+                        ).toList(),
 
                       SizedBox(height: AppSizes.h(context, 20)),
                       GestureDetector(
@@ -424,123 +450,17 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
 
   Future<void> _handlePayment() async {
     if (_selectedGateway == null) return;
-
     _processRazorPay();
-    // final type = _selectedGateway['type'];
-    // if (type == 'cash') {
-    //    _processCashPayment();
-    // } else if (type == 'razorPay') {
-    //    _processRazorPay();
-    // } else if (type == 'wallet') {
-    //    _processWalletPayment();
-    // } else {
-    //    ScaffoldMessenger.of(context).showSnackBar(
-    //      SnackBar(content: Text("${_selectedGateway['title']} not implemented yet"))
-    //    );
-    // }
-  }
-
-  void _processCashPayment() async {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final bookingData = args?['booking_data'];
-    final bookingId =
-        (bookingData?['booking_detail']?['id'] ?? bookingData?['id'])
-            ?.toString();
-
-    if (bookingId == null) return;
-
-    // Calculate total amount (same logic as build)
-    final detail = bookingData?['booking_detail'];
-    final service = bookingData?['service'];
-    // Base service price
-    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
-
-    // Selected addons/options price
-    final double addonsPrice =
-        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
-          0,
-          double.infinity,
-        );
-
-    // Total service + addon
-    final double subTotal = baseServicePrice + addonsPrice;
-
-    // Discount
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-
-    final double discountAmount = (subTotal * discountPercent) / 100;
-
-    // Extra charges
-    final List extraCharges = detail?['extra_charges'] ?? [];
-
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
-        .toDouble();
-
-    // Final amount
-    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
-
-    setState(() => _isLoading = true);
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-
-    final success = await _paymentService.savePayment(
-      bookingId: bookingId,
-      customerId: userProvider.backendUserId ?? "0",
-      discount: discountAmount,
-      totalAmount: totalAmount,
-      paymentType: 'cash',
-      status: 'pending',
-      datetime: DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
-      token: userProvider.apiToken,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (success) {
-      _showCODSuccessDialog();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to save payment status")),
-      );
-    }
   }
 
   void _processRazorPay() {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final bookingData = args?['booking_data'];
     final detail = bookingData?['booking_detail'];
-    final service = bookingData?['service'];
-
-    // Calculate total amount
-    // Base service price
-    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
-
-    // Selected addons/options price
-    final double addonsPrice =
-        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
-          0,
-          double.infinity,
-        );
-
-    // Total service + addon
-    final double subTotal = baseServicePrice + addonsPrice;
-
-    // Discount
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-
-    final double discountAmount = (subTotal * discountPercent) / 100;
-
-    // Extra charges
-    final List extraCharges = detail?['extra_charges'] ?? [];
-
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
-        .toDouble();
-
-    // Final amount
-    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
+    
+    // Calculate total amount using the helper method
+    final billDetails = calculateBillDetails(bookingData);
+    final totalAmount = billDetails['totalAmount']!;
 
     final value = _selectedGateway['value'];
     final key = value?['razor_key'] ?? "rzp_test_SlXdLiPsjndXjm";
@@ -549,11 +469,10 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
 
     var options = {
       'key': key,
-      'amount': (totalAmount * 100)
-          .toInt(), // amount in the smallest currency unit
+      'amount': (totalAmount * 100).toInt(),
       'name': 'Unfazzed Services LLP',
       'description': detail?['service_name'] ?? 'Service Payment',
-      'timeout': 300, // in seconds
+      'timeout': 300,
       'prefill': {
         'contact': userProvider.user?.phoneNumber ?? '',
         'email': userProvider.user?.email ?? '',
@@ -568,45 +487,16 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
   }
 
   void _handleRazorPaySuccess(PaymentSuccessResponse response) async {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final bookingData = args?['booking_data'];
-    final bookingId =
-        (bookingData?['booking_detail']?['id'] ?? bookingData?['id'])
-            ?.toString();
+    final bookingId = (bookingData?['booking_detail']?['id'] ?? bookingData?['id'])?.toString();
 
     if (bookingId == null) return;
 
-    // Recalculate amount
-    final detail = bookingData?['booking_detail'];
-    final service = bookingData?['service'];
-    // Base service price
-    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
-
-    // Selected addons/options price
-    final double addonsPrice =
-        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
-          0,
-          double.infinity,
-        );
-
-    // Total service + addon
-    final double subTotal = baseServicePrice + addonsPrice;
-
-    // Discount
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-
-    final double discountAmount = (subTotal * discountPercent) / 100;
-
-    // Extra charges
-    final List extraCharges = detail?['extra_charges'] ?? [];
-
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
-        .toDouble();
-
-    // Final amount
-    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
+    // Calculate using helper method
+    final billDetails = calculateBillDetails(bookingData);
+    final discountAmount = billDetails['discountAmount']!;
+    final totalAmount = billDetails['totalAmount']!;
 
     setState(() => _isLoading = true);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -631,7 +521,6 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
       _showErrorDialog(
         "Payment successful but failed to update status on server. Please contact support.",
       );
-      // Show success dialog anyway because payment was successful
       _showSuccessDialog();
     }
   }
@@ -657,163 +546,98 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     );
   }
 
-  void _processWalletPayment() async {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final bookingData = args?['booking_data'];
-    final bookingId =
-        (bookingData?['booking_detail']?['id'] ?? bookingData?['id'])
-            ?.toString();
-
-    if (bookingId == null) return;
-
-    // Calculate total amount
-    final detail = bookingData?['booking_detail'];
-    final service = bookingData?['service'];
-    // Base service price
-    final double baseServicePrice = (service?['price'] ?? 0).toDouble();
-
-    // Selected addons/options price
-    final double addonsPrice =
-        ((detail?['price'] ?? 0).toDouble() - baseServicePrice).clamp(
-          0,
-          double.infinity,
-        );
-
-    // Total service + addon
-    final double subTotal = baseServicePrice + addonsPrice;
-
-    // Discount
-    final double discountPercent =
-        (detail?['discount'] ?? service?['discount'] ?? 0).toDouble();
-
-    final double discountAmount = (subTotal * discountPercent) / 100;
-
-    // Extra charges
-    final List extraCharges = detail?['extra_charges'] ?? [];
-
-    final double extraChargesTotal = (detail?['extra_charges_value'] ?? 0)
-        .toDouble();
-
-    // Final amount
-    final double totalAmount = subTotal - discountAmount + extraChargesTotal;
-
-    setState(() => _isLoading = true);
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-
-    // We use the same payment-save API with 'wallet' type
-    final success = await _paymentService.savePayment(
-      bookingId: bookingId,
-      customerId: userProvider.backendUserId ?? "0",
-      discount: discountAmount,
-      totalAmount: totalAmount,
-      paymentType: 'wallet',
-      status: 'paid', // Deducted instantly on server
-      datetime: DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
-      token: userProvider.apiToken,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (success) {
-      _showSuccessDialog();
-    } else {
-      _showErrorDialog(
-        "Insufficient wallet balance or failed to process wallet payment.",
-      );
-    }
-  }
-
   void _showSuccessDialog() {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final bookingData = args?['booking_data'];
+    
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F8E9),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.green.withOpacity(0.2),
-                    width: 4,
-                  ),
+      builder: (context) => PopScope(
+        canPop: false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
                 ),
-                child: const Icon(
-                  Icons.check_circle_rounded,
-                  color: Colors.green,
-                  size: 48,
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                "Payment Successful!",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                "Your service booking has been successfully completed, and the payment was received successfully. Thank you for choosing our service. We hope you had a great experience!",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.ratingsAndReview,
-                      arguments: {'booking_data': bookingData},
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryRed,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    "ok",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F8E9),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.green.withOpacity(0.2),
+                      width: 4,
                     ),
                   ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.green,
+                    size: 48,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+                const Text(
+                  "Payment Successful!",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "Your service booking has been successfully completed, and the payment was received successfully. Thank you for choosing our service.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.ratingsAndReview,
+                        arguments: {'booking_data': bookingData},
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryRed,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "Continue",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -910,99 +734,6 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                   style: TextStyle(
                     color: Colors.grey,
                     fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showCODSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE3F2FD),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.blue.withOpacity(0.2),
-                    width: 4,
-                  ),
-                ),
-                child: const Icon(
-                  Icons.handshake_rounded,
-                  color: Colors.blue,
-                  size: 48,
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                "Booking Confirmed!",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                "Your request for Cash on Delivery has been received. Please pay the professional after the service is completed.",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      AppRoutes.homePage,
-                      (route) => false,
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryRed,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    "Go to Home",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
                   ),
                 ),
               ),

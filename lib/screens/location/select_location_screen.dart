@@ -25,59 +25,76 @@ class SelectLocationScreen extends StatelessWidget {
       ),
     );
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Custom Header
-              Padding(
-                padding: const EdgeInsets.only(left: 12, right: 20, top: 16),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Colors.white,
-                        size: 28,
+              void _handleBack() {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.landingPage,
+      (route) => false,
+    );
+  }
+
+
+    return PopScope(
+             canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+
+        _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1A1A1A),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Custom Header
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 20, top: 16),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        onPressed: () => Navigator.pop(context),
                       ),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Text(
-                      'Select a location',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 24,
+                      Text(
+                        'Select a location',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 24,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-
-              // Search Bar
-              _buildSearchBar(),
-
-              // Current Location & Add Address Card
-              _buildLocationOptionsCard(context),
-
-              // SAVED ADDRESSES label with dividers
-              _buildSectionLabel('SAVED ADDRESSES'),
-
-              // Saved Address Cards
-              ...savedAddresses.asMap().entries.map(
-                (entry) => _buildSavedAddressCard(
-                  context, 
-                  entry.value, 
-                  isSelected: _isAddressSelected(entry.value, selectedLocation),
+      
+                // Search Bar
+                _buildSearchBar(),
+      
+                // Current Location & Add Address Card
+                _buildLocationOptionsCard(context),
+      
+                // SAVED ADDRESSES label with dividers
+                _buildSectionLabel('SAVED ADDRESSES'),
+      
+                // Saved Address Cards
+                ...savedAddresses.asMap().entries.map(
+                  (entry) => _buildSavedAddressCard(
+                    context, 
+                    entry.value, 
+                    isSelected: _isAddressSelected(entry.value, selectedLocation),
+                  ),
                 ),
-              ),
-
-              const SizedBox(height: 24), // Bottom padding
-            ],
+      
+                const SizedBox(height: 24), // Bottom padding
+              ],
+            ),
           ),
         ),
       ),
@@ -246,7 +263,7 @@ class SelectLocationScreen extends StatelessWidget {
           context,
           listen: false,
         ).setSelectedLocation(data);
-        Navigator.pop(context);
+        Navigator.pushNamed(context, AppRoutes.landingPage, arguments: true);
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

@@ -94,7 +94,7 @@ class _CategoryItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: AppSizes.w(context, 95),
+      width: AppSizes.w(context, 90),
 
       margin: EdgeInsets.zero,
 
@@ -125,42 +125,38 @@ class _CategoryItem extends StatelessWidget {
                   ],
                 ),
 
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-
-                    child: image.startsWith('http')
-                        ? CachedNetworkImage(
-                       
-                            imageUrl: image,
-                            fit: BoxFit.cover,
-
-                            placeholder: (context, url) => Center(
-                              child: SizedBox(
-                                height: 16,
-                                width: 16,
-
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.red.shade300,
-                                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                
+                  child: image.startsWith('http')
+                      ? CachedNetworkImage(
+                     
+                          imageUrl: image,
+                          fit: BoxFit.cover,
+                
+                          placeholder: (context, url) => Center(
+                            child: SizedBox(
+                              height: 16,
+                              width: 16,
+                
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.red.shade300,
                               ),
                             ),
-
-                            errorWidget: (context, url, error) =>
-                                const Icon(Icons.broken_image),
-                          )
-                        : Image.asset(
-                            image,
-                            fit: BoxFit.cover,
-
-                            errorBuilder:
-                                (context, error, stackTrace) =>
-                                    const Icon(Icons.broken_image),
                           ),
-                  ),
+                
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.broken_image),
+                        )
+                      : Image.asset(
+                          image,
+                          fit: BoxFit.cover,
+                
+                          errorBuilder:
+                              (context, error, stackTrace) =>
+                                  const Icon(Icons.broken_image),
+                        ),
                 ),
               ),
             ),

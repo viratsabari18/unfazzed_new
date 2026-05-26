@@ -542,10 +542,10 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
                 children: [
                   const Icon(Icons.star, color: Color(0xFFFFB300), size: 16),
                   const SizedBox(width: 4),
-                  Text(
-                    "4.2",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                Text(
+  rating.toStringAsFixed(1),
+  style: const TextStyle(fontWeight: FontWeight.bold),
+),
                   const SizedBox(width: 4),
                   Text(
                     "($jobsDone jobs done)",

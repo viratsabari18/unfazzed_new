@@ -222,31 +222,18 @@ class _ProfessionalAssignedScreenState
     };
   }
 
-  double _getRatingWithFallback(dynamic handyman, dynamic provider) {
-    final rating =
-        (handyman?['handyman_rating'] ??
-        provider?['providers_service_rating'] ??
-        provider?['handyman_rating'] ??
-        0);
-
-    if (rating != 0) {
-      return rating.toDouble();
-    }
-
-    // Generate a unique ID for this professional
-    final id =
-        handyman?['id']?.toString() ??
-        handyman?['uid']?.toString() ??
-        provider?['id']?.toString() ??
-        provider?['uid']?.toString() ??
-        'default';
-
-    // Get cached rating or generate new one
-    return _dummyRatingsCache.putIfAbsent(
-      id,
-      () => 4.2 + (4.9 - 4.2) * Random().nextDouble(),
-    );
-  }
+double _getRatingWithFallback(dynamic handyman, dynamic provider) {
+  return double.tryParse(
+        (
+          handyman?['handyman_rating'] ??
+          provider?['handyman_rating'] ??
+          handyman?['providers_service_rating'] ??
+          provider?['providers_service_rating'] ??
+          0
+        ).toString(),
+      ) ??
+      0.0;
+}
 
   Future<void> _determinePosition() async {
     bool serviceEnabled;

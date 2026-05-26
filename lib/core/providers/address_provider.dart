@@ -152,60 +152,113 @@ class AddressProvider with ChangeNotifier {
   }
 
   /// DELETE ADDRESS - Deletes from both local and backend
-  Future<bool> deleteAddress(BuildContext context, Map<String, dynamic> address) async {
-    final addressId = address['id'];
-    
-    if (addressId != null && addressId is int) {
-      try {
-        final response = await AddressService.deleteAddress(addressId);
-        
-        if (response != null) {
-          _savedAddresses.remove(address);
-          
-          // If deleted address was selected, clear selection
-          if (_selectedLocation != null && _selectedLocation!['id'] == addressId) {
+Future<bool> deleteAddress(
+  BuildContext context,
+  Map<String, dynamic> address,
+) async {
+  final addressId = address['id'];
+
+  if (addressId != null && addressId is int) {
+    try {
+      final response = await AddressService.deleteAddress(addressId);
+
+      if (response != null) {
+        // Remove deleted address first
+        _savedAddresses.removeWhere(
+          (item) => item['id'] == addressId,
+        );
+
+        // If deleted address was selected
+        if (_selectedLocation != null &&
+            _selectedLocation!['id'] == addressId) {
+
+          // CASE 1 : Other saved addresses available
+          if (_savedAddresses.isNotEmpty) {
+
+            _selectedLocation = _savedAddresses.first;
+
+            await _saveSelectedToPrefs(_selectedLocation);
+
+          } else {
+
+            // CASE 2 : No saved addresses available
+            // Clear old deleted location immediately
             _selectedLocation = null;
-            await _saveSelectedToPrefs(null);
+
+            notifyListeners();
+
+            // Fetch current GPS location
+            await setCurrentLocationAutomatically();
           }
-          
-          await _saveAllToPrefs();
-          notifyListeners();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Address deleted successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          return true;
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to delete address'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return false;
         }
-      } catch (e) {
-        debugPrint("Delete address error: $e");
+
+        // Save latest addresses
+        await _saveAllToPrefs();
+
+        notifyListeners();
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Network error. Please try again.'),
+          const SnackBar(
+            content: Text('Address deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        return true;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to delete address'),
             backgroundColor: Colors.red,
           ),
         );
+
         return false;
       }
-    } else {
-      // Local-only deletion (for addresses not yet synced)
-      _savedAddresses.remove(address);
-      await _saveAllToPrefs();
-      notifyListeners();
-      return true;
-    }
-  }
+    } catch (e) {
+      debugPrint("Delete address error: $e");
 
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Network error. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return false;
+    }
+  } else {
+
+    // LOCAL DELETE
+
+    _savedAddresses.remove(address);
+
+    if (_selectedLocation != null &&
+        _selectedLocation!['address'] == address['address']) {
+
+      if (_savedAddresses.isNotEmpty) {
+
+        _selectedLocation = _savedAddresses.first;
+
+        await _saveSelectedToPrefs(_selectedLocation);
+
+      } else {
+
+        _selectedLocation = null;
+
+        notifyListeners();
+
+        await setCurrentLocationAutomatically();
+      }
+    }
+
+    await _saveAllToPrefs();
+
+    notifyListeners();
+
+    return true;
+  }
+}
   void setSelectedLocation(Map<String, dynamic> location) {
     _selectedLocation = location;
     _saveSelectedToPrefs(location);
@@ -277,6 +330,9 @@ class AddressProvider with ChangeNotifier {
     } catch (e) {
       debugPrint("Error loading from prefs: $e");
     }
+    if (_selectedLocation == null) {
+  await setCurrentLocationAutomatically();
+}
   }
 
   IconData _getIconForLabel(String? label) {
@@ -322,18 +378,27 @@ class AddressProvider with ChangeNotifier {
 
       Placemark place = placemarks.first;
       String fullAddress = "${place.street}, ${place.locality}, ${place.administrativeArea}";
+final locationData = {
+  'label': 'Current Location',
+  'address': fullAddress,
+  'latitude': position.latitude,
+  'longitude': position.longitude,
+  'icon': Icons.location_on_outlined,
+};
 
-      final locationData = {
-        'label': 'Current Location',
-        'address': fullAddress,
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'icon': Icons.location_on_outlined,
-      };
+_selectedLocation = Map<String, dynamic>.from(locationData);
 
-      _selectedLocation = locationData;
-      await _saveSelectedToPrefs(locationData);
-      notifyListeners();
+await _saveSelectedToPrefs(_selectedLocation);
+
+// FORCE UI UPDATE
+notifyListeners();
+
+await Future.delayed(const Duration(milliseconds: 300));
+
+notifyListeners();
+
+debugPrint("Current location updated successfully");
+notifyListeners();
       debugPrint("Current location updated successfully");
     } catch (e) {
       debugPrint("Current location error: $e");

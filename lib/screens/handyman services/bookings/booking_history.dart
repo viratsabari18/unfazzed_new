@@ -130,6 +130,8 @@ Future<void> _fetchBookings({
         },
       );
 
+      
+
       Map<dynamic, dynamic> data = item;
 
       if (response.statusCode == 200) {
@@ -139,6 +141,8 @@ Future<void> _fetchBookings({
             ? Map<String, dynamic>.from(raw.first)
             : Map<String, dynamic>.from(raw);
       }
+
+      
 
       // Extract booking detail
       final rawDetail = data['booking_detail'];
@@ -184,10 +188,12 @@ Future<void> _fetchBookings({
               'Service Provider',
           'handyman_image':
               handyman['profile_image'] ?? provider['profile_image'],
-          'handyman_rating':
-              handyman['providers_service_rating'] ??
-              provider['providers_service_rating'] ??
-              0.0,
+   'handyman_rating':
+    handyman['handyman_rating'] ??
+    provider['handyman_rating'] ??
+    handyman['providers_service_rating'] ??
+    provider['providers_service_rating'] ??
+    0.0,
           'handyman_jobs':
               handyman['total_services_booked'] ??
               provider['total_services_booked'] ??

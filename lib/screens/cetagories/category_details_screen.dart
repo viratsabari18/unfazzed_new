@@ -964,26 +964,35 @@ class _ServiceCardState extends State<_ServiceCard> {
                                       borderRadius: BorderRadius.circular(12),
                                       child: Builder(
                                         builder: (context) {
-                                          String? imageUrl;
-                                          if (addon['image_url'] != null)
-                                            imageUrl = addon['image_url'];
-                                          else if (addon['image'] != null)
-                                            imageUrl = addon['image'];
-                                          else if (addon['attchments_array'] !=
-                                                  null &&
-                                              (addon['attchments_array']
-                                                      as List)
-                                                  .isNotEmpty) {
-                                            imageUrl =
-                                                addon['attchments_array'][0]['url'];
-                                          } else if (addon['attachments_array'] !=
-                                                  null &&
-                                              (addon['attachments_array']
-                                                      as List)
-                                                  .isNotEmpty) {
-                                            imageUrl =
-                                                addon['attachments_array'][0]['url'];
-                                          }
+                                        String? imageUrl;
+
+if (addon['serviceaddon_image'] != null &&
+    addon['serviceaddon_image'].toString().isNotEmpty) {
+  imageUrl = addon['serviceaddon_image'];
+} else if (addon['image_url'] != null &&
+    addon['image_url'].toString().isNotEmpty) {
+  imageUrl = addon['image_url'];
+} else if (addon['image'] != null &&
+    addon['image'].toString().isNotEmpty) {
+  imageUrl = addon['image'];
+} else if (addon['service_image'] != null &&
+    addon['service_image'].toString().isNotEmpty) {
+  imageUrl = addon['service_image'];
+} else if (addon['attchments'] != null &&
+    (addon['attchments'] as List).isNotEmpty) {
+  imageUrl = addon['attchments'][0];
+} else if (addon['attachments'] != null &&
+    (addon['attachments'] as List).isNotEmpty) {
+  imageUrl = addon['attachments'][0];
+} else if (addon['attchments_array'] != null &&
+    (addon['attchments_array'] as List).isNotEmpty) {
+  imageUrl = addon['attchments_array'][0]['url'];
+} else if (addon['attachments_array'] != null &&
+    (addon['attachments_array'] as List).isNotEmpty) {
+  imageUrl = addon['attachments_array'][0]['url'];
+}
+
+debugPrint("ADDON IMAGE URL => $imageUrl");
 
                                           if (imageUrl != null &&
                                               imageUrl.isNotEmpty) {
