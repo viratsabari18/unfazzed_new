@@ -1,8 +1,8 @@
 import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/models/favorite_service.dart';
-
 import 'package:provider/provider.dart';
 import 'package:zeerah/core/providers/favorites_provider.dart';
+import 'package:zeerah/core/providers/user_provider.dart';
 
 class FavorieServiceHistory extends StatefulWidget {
   const FavorieServiceHistory({super.key});
@@ -12,7 +12,41 @@ class FavorieServiceHistory extends StatefulWidget {
 }
 
 class _FavorieServiceHistoryState extends State<FavorieServiceHistory> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<FavoritesProvider>(
+        context,
+        listen: false,
+      ).fetchFavorites(context);
+    });
+  }
 
+  // Calculate dynamic aspect ratio - similar to CategoryDetailsScreen
+  double getCardAspectRatio(BuildContext context) {
+    // Card width is half of screen width minus padding
+    // For 2 columns: (screen width - horizontal padding - spacing) / 2
+    double cardWidth = (MediaQuery.of(context).size.width - 48) / 2; // 16*2 padding + 16 gap
+    
+    // Calculate total card height based on your ServiceCard content
+    // Image height: 110
+    // Title: ~20 (including margin)
+    // Rating: ~20
+    // Reviews: ~20  
+    // Price: ~20
+    // Total content height
+    double imageHeight = AppSizes.h(context, 110);
+    double titleHeight = AppSizes.h(context, 20);
+    double ratingHeight = AppSizes.h(context, 20);
+    double reviewsHeight = AppSizes.h(context, 20);
+    double priceHeight = AppSizes.h(context, 20);
+    double totalSpacing = AppSizes.h(context, 20); // Various SizedBox heights
+    
+    double cardHeight = imageHeight + titleHeight + ratingHeight + reviewsHeight + priceHeight + totalSpacing;
+    
+    return cardWidth / cardHeight;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,8 +64,7 @@ class _FavorieServiceHistoryState extends State<FavorieServiceHistory> {
           onPressed: () {
             Navigator.pop(context);
           },
-         icon: Icon(Icons.arrow_back_ios,
-          color: AppColors.naturalWhite,)
+          icon: Icon(Icons.arrow_back_ios, color: AppColors.naturalWhite),
         ),
       ),
       body: Column(
@@ -73,18 +106,21 @@ class _FavorieServiceHistoryState extends State<FavorieServiceHistory> {
                 return GridView.builder(
                   padding: EdgeInsets.symmetric(horizontal: Insets.xsm),
                   itemCount: services.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.63,
+                    mainAxisSpacing: AppSizes.h(context, 12),
+                    crossAxisSpacing: AppSizes.w(context, 12),
+                    childAspectRatio: getCardAspectRatio(context), // Dynamic ratio
                   ),
                   itemBuilder: (_, index) {
                     final item = services[index];
                     return ServiceCard(
                       item: item,
-                      onFavoriteTap: () {
-                        favoritesProvider.toggleFavorite(item);
+                      onFavoriteTap: () async {
+                        await favoritesProvider.toggleFavorite(
+                          service: item,
+                          context: context,
+                        );
                       },
                     );
                   },
@@ -122,6 +158,7 @@ class ServiceCard extends StatelessWidget {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // Important: Don't expand unnecessarily
         children: [
           _buildImage(context),
           SizedBox(height: AppSizes.h(context, 6)),
@@ -132,8 +169,6 @@ class ServiceCard extends StatelessWidget {
           _buildReviews(context),
           SizedBox(height: AppSizes.h(context, 4)),
           _buildPrice(context),
-          SizedBox(height: AppSizes.h(context, 6)),
-          _buildButton(context),
         ],
       ),
     );
@@ -180,15 +215,18 @@ class ServiceCard extends StatelessWidget {
   }
 
   Widget _buildTitle(BuildContext context) {
-    return Text(
-      item.serviceTitle,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: AppSizes.w(context, 12),
-        fontWeight: FontWeight.w600,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSizes.w(context, 8)),
+      child: Text(
+        item.serviceTitle,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: AppSizes.w(context, 12),
+          fontWeight: FontWeight.w600,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -217,30 +255,14 @@ class ServiceCard extends StatelessWidget {
   }
 
   Widget _buildPrice(BuildContext context) {
-    return Text(
-      "₹${item.rate}",
-      style: TextStyle(
-        color: AppColors.priceYellow,
-        fontWeight: FontWeight.bold,
-      ),
-    );
-  }
-
-  Widget _buildButton(BuildContext context) {
-    return Container(
-      height: AppSizes.h(context, 32),
-      width: AppSizes.w(context, 70),
-      decoration: BoxDecoration(
-        color: AppColors.primaryRed,
-        borderRadius: BorderRadius.circular(Insets.xs),
-      ),
-      child: Center(
-        child: Text(
-          UserMessages.bookNow,
-          style: TextStyle(
-            color: AppColors.naturalWhite,
-            fontSize: AppSizes.w(context, 10),
-          ),
+    return Padding(
+      padding: EdgeInsets.only(bottom: AppSizes.h(context, 8)),
+      child: Text(
+        "₹${item.rate}",
+        style: TextStyle(
+          color: AppColors.primaryRed,
+          fontWeight: FontWeight.bold,
+          fontSize: AppSizes.w(context, 14),
         ),
       ),
     );

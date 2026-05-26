@@ -12,6 +12,7 @@ import 'package:zeerah/core/models/service_list_model.dart';
 import 'package:zeerah/core/providers/favorites_provider.dart';
 import 'package:zeerah/core/models/favorite_service.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
+import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/screens/handyman services/bookings/booking_home_page.dart';
 
 class CategoryDetailsScreen extends StatefulWidget {
@@ -964,35 +965,61 @@ class _ServiceCardState extends State<_ServiceCard> {
                                       borderRadius: BorderRadius.circular(12),
                                       child: Builder(
                                         builder: (context) {
-                                        String? imageUrl;
+                                          String? imageUrl;
 
-if (addon['serviceaddon_image'] != null &&
-    addon['serviceaddon_image'].toString().isNotEmpty) {
-  imageUrl = addon['serviceaddon_image'];
-} else if (addon['image_url'] != null &&
-    addon['image_url'].toString().isNotEmpty) {
-  imageUrl = addon['image_url'];
-} else if (addon['image'] != null &&
-    addon['image'].toString().isNotEmpty) {
-  imageUrl = addon['image'];
-} else if (addon['service_image'] != null &&
-    addon['service_image'].toString().isNotEmpty) {
-  imageUrl = addon['service_image'];
-} else if (addon['attchments'] != null &&
-    (addon['attchments'] as List).isNotEmpty) {
-  imageUrl = addon['attchments'][0];
-} else if (addon['attachments'] != null &&
-    (addon['attachments'] as List).isNotEmpty) {
-  imageUrl = addon['attachments'][0];
-} else if (addon['attchments_array'] != null &&
-    (addon['attchments_array'] as List).isNotEmpty) {
-  imageUrl = addon['attchments_array'][0]['url'];
-} else if (addon['attachments_array'] != null &&
-    (addon['attachments_array'] as List).isNotEmpty) {
-  imageUrl = addon['attachments_array'][0]['url'];
-}
+                                          if (addon['serviceaddon_image'] !=
+                                                  null &&
+                                              addon['serviceaddon_image']
+                                                  .toString()
+                                                  .isNotEmpty) {
+                                            imageUrl =
+                                                addon['serviceaddon_image'];
+                                          } else if (addon['image_url'] !=
+                                                  null &&
+                                              addon['image_url']
+                                                  .toString()
+                                                  .isNotEmpty) {
+                                            imageUrl = addon['image_url'];
+                                          } else if (addon['image'] != null &&
+                                              addon['image']
+                                                  .toString()
+                                                  .isNotEmpty) {
+                                            imageUrl = addon['image'];
+                                          } else if (addon['service_image'] !=
+                                                  null &&
+                                              addon['service_image']
+                                                  .toString()
+                                                  .isNotEmpty) {
+                                            imageUrl = addon['service_image'];
+                                          } else if (addon['attchments'] !=
+                                                  null &&
+                                              (addon['attchments'] as List)
+                                                  .isNotEmpty) {
+                                            imageUrl = addon['attchments'][0];
+                                          } else if (addon['attachments'] !=
+                                                  null &&
+                                              (addon['attachments'] as List)
+                                                  .isNotEmpty) {
+                                            imageUrl = addon['attachments'][0];
+                                          } else if (addon['attchments_array'] !=
+                                                  null &&
+                                              (addon['attchments_array']
+                                                      as List)
+                                                  .isNotEmpty) {
+                                            imageUrl =
+                                                addon['attchments_array'][0]['url'];
+                                          } else if (addon['attachments_array'] !=
+                                                  null &&
+                                              (addon['attachments_array']
+                                                      as List)
+                                                  .isNotEmpty) {
+                                            imageUrl =
+                                                addon['attachments_array'][0]['url'];
+                                          }
 
-debugPrint("ADDON IMAGE URL => $imageUrl");
+                                          debugPrint(
+                                            "ADDON IMAGE URL => $imageUrl",
+                                          );
 
                                           if (imageUrl != null &&
                                               imageUrl.isNotEmpty) {
@@ -1336,16 +1363,22 @@ debugPrint("ADDON IMAGE URL => $imageUrl");
                         widget.service.id!,
                       );
                       return GestureDetector(
-                        onTap: () {
+                        onTap: () async {
                           HapticFeedback.lightImpact();
-                          favoritesProvider.toggleFavorite(
-                            FavoriteService(
+                          await favoritesProvider.toggleFavorite(
+                            context: context,
+                            service: FavoriteService(
                               id: widget.service.id!,
                               serviceImage: widget.service.providerImage ?? "",
+
                               serviceTitle: widget.service.name ?? "Service",
+
                               rating: widget.service.serviceRating ?? 0,
-                              reviewsCount: 0,
+                           reviewsCount:
+      widget.service.serviceReview ?? "0",
+                             
                               rate: widget.service.price ?? 0,
+
                               isFavorite: true,
                             ),
                           );
