@@ -378,7 +378,13 @@ class _SignInScreenState extends State<SignInScreen> {
                                     },
                                     child: _bottomText("Privacy Policy"),
                                   ),
-                                  _bottomText("Content Policies"),
+                                  GestureDetector(
+                                    onTap: () => Navigator.pushNamed(
+                                      context,
+                                      AppRoutes.helpAndSupport,
+                                    ),
+                                    
+                                    child: _bottomText("Help & Support")),
                                 ],
                               ),
                             ],

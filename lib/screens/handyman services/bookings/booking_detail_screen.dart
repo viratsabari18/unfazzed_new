@@ -369,7 +369,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   const Icon(Icons.star, color: Colors.amber, size: 16),
                   const SizedBox(width: 4),
                   Text(
-                    (handyman['handyman_rating'] ?? detail['total_rating'] ?? 5.0).toString(),
+                    (handyman['handyman_rating'] ?? detail['total_rating'] ?? 5.0).toStringAsFixed(1),
                     style: const TextStyle(fontSize: 12),
                   ),
                 ],

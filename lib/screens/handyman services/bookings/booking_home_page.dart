@@ -524,6 +524,11 @@ class _BookingHomePageState extends State<BookingHomePage> {
 
                             final displayTime = _selectedTime ?? "10:30 AM";
                             final timeStr = _convertTo24Hour(displayTime);
+                 final latestDisplayTime =
+    DateFormat('h:mm a').format(DateTime.now());
+
+final latestTime =
+    _convertTo24Hour(latestDisplayTime);
 
                             final url = Uri.parse(
                               '${ApiConfig.apiBaseUrl}/booking-save',
@@ -533,7 +538,7 @@ class _BookingHomePageState extends State<BookingHomePage> {
                                   ? widget.service['id']
                                   : widget.service.id,
                               "date": dateStr,
-                              "booking_slot": timeStr,
+                              "booking_slot": latestTime,
                               "address": addressText,
                               "latitude": lat,
                               "longitude": lng,

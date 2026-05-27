@@ -1,5 +1,5 @@
 class AppRoutes {
-  static const splash = '/';
+  // static const splash = '/';
   static const signIn = '/sign-in';
   static const landingPage = '/landingPage';
   static const otpVerifly = '/otpverifly';
@@ -41,4 +41,5 @@ class AppRoutes {
 
   static const String termsAndCondtions = '/termsandcondition';
    static const String privacyPolicy = '/privacyPolicy';
+  static const String helpAndSupport = '/helpAndSupport';
 }

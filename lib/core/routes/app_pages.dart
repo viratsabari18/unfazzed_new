@@ -16,6 +16,7 @@ import 'package:zeerah/screens/booking_flow/service_verification_screen.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/booking_home_page.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/bookig_sevice_progress_home.dart';
 import 'package:zeerah/screens/landing/landing_screen.dart';
+import 'package:zeerah/screens/profile/help_and_support.dart';
 import 'package:zeerah/screens/profile/privacy_policy.dart';
 import 'package:zeerah/screens/profile/profile_screen.dart';
 import 'package:zeerah/screens/profile/terms_and_condtion.dart';
@@ -44,9 +45,9 @@ import 'package:zeerah/screens/profile/my_reviews_screen.dart';
 
 class AppPages {
   static Map<String, WidgetBuilder> routes = {
-    AppRoutes.splash: (context) => SplashScreen(),
-    AppRoutes.signIn: (context) => SignInScreen(),
-    AppRoutes.landingPage: (context) => LandingScreen(),
+    // AppRoutes.splash: (context) => SplashScreen(),
+    AppRoutes.signIn: (context) =>const SignInScreen(),
+    AppRoutes.landingPage: (context) => const LandingScreen(),
     AppRoutes.otpVerifly: (context) {
       final args =
           ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
@@ -56,7 +57,7 @@ class AppPages {
       );
     },
     AppRoutes.completeProfile: (context) => const CompleteProfileScreen(),
-    AppRoutes.homePage: (context) => LandingScreen(),
+    AppRoutes.homePage: (context) => const HomePage(),
     AppRoutes.serviceCategories: (context) {
       final title = ModalRoute.of(context)!.settings.arguments as String;
       return ServiceCetagorices(title: title);
@@ -221,6 +222,7 @@ class AppPages {
     },
     AppRoutes.myReviews: (context) => const MyReviewsScreen(),
     AppRoutes.termsAndCondtions:(context)=>const TermsAndCondtion(),
-    AppRoutes.privacyPolicy:(context)=>const PrivacyPolicy()
+    AppRoutes.privacyPolicy:(context)=>const PrivacyPolicy(),
+    AppRoutes.helpAndSupport:(context)=>const HelpAndSupport(),
   };
 }

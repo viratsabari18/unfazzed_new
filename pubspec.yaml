@@ -50,22 +50,20 @@ dev_dependencies:
 flutter_native_splash:
   color: "#DB0008"
 
-  image: lib/assets/icon/user_app_icon.png
+  image: lib/assets/icon/icon_app1.jpg
 
   android: true
   ios: true
 
   android_12:
     color: "#DB0008"
-    image: lib/assets/icon/user_app_icon.png
+    image: lib/assets/icon/icon_app1.jpg
 
-  android_gravity: center
-  ios_content_mode: center
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "lib/assets/icon/app_icon.png"
+  image_path: "lib/assets/icon/icon_app1.jpg"
 
 
 

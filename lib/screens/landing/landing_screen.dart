@@ -15,9 +15,11 @@ class LandingScreen extends StatefulWidget {
   State<LandingScreen> createState() => _LandingScreenState();
 }
 
-class _LandingScreenState extends State<LandingScreen> {
+class _LandingScreenState extends State<LandingScreen> with AutomaticKeepAliveClientMixin {
   int currentIndex = 0;
   late PageController _pageController;
+  @override
+bool get wantKeepAlive => true;
 
   final List<Widget> pages = [
     const HomePage(),
@@ -56,7 +58,10 @@ class _LandingScreenState extends State<LandingScreen> {
 
   @override
   Widget build(BuildContext context) {
+      super.build(context);
     return SafeArea(
+
+
       child: Scaffold(
         extendBody: true, // allows body to go behind the navbar
         backgroundColor: Colors.transparent, // no background color to interfere

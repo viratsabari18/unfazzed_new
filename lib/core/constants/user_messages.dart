@@ -68,8 +68,8 @@ static const String choosePreferredSchedule = "Choose your preferred schedule";
 static const String morning = "Morning";
 static const String afternoon = "Afternoon";
 static const String evening = "Evening";
-static const String availableTimeSlots = "Available Time Slots";
-static const String selected = "Selected";
+static const String availableTimeSlots = "Time Slots";
+static const String selected = "Service Time";
 static const List<String> weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 static const List<String> timeSlotsCategory = ["Morning", "Afternoon", "Evening"];
 // Add to UserMessages class in app_exports.dart

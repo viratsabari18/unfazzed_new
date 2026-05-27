@@ -149,6 +149,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: 'Privacy Policy',
                   onTap: () => Navigator.pushNamed(context, AppRoutes.privacyPolicy),
                 ),
+
+                  _ProfileMenuItem(
+                  icon: Icons.support_agent_outlined,
+                  title: 'Help And Support',
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.helpAndSupport),
+                ),
               ],
             ),
             const SizedBox(height: 20),

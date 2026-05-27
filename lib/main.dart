@@ -12,6 +12,8 @@ import 'package:zeerah/core/providers/favorites_provider.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/services/fcm_service.dart';
 import 'package:zeerah/firebase_options.dart';
+import 'package:zeerah/screens/auth/sign_in_screen.dart';
+import 'package:zeerah/screens/landing/landing_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey<NavigatorState>();
@@ -138,11 +140,11 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
 
-      initialRoute: _isLoggedIn
-          ? AppRoutes.landingPage
-          : AppRoutes.signIn,
+  home: _isLoggedIn
+      ? const LandingScreen()
+      : const SignInScreen(),
+  routes: AppPages.routes,
 
-      routes: AppPages.routes,
     );
   }
 }
