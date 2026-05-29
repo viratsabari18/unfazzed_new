@@ -43,7 +43,7 @@ class _ProfessionalAssignedScreenState
     extends State<ProfessionalAssignedScreen> {
   late GoogleMapController mapController;
   Timer? _movementTimer;
-  LatLng _userLocation = const LatLng(28.6139, 77.2090); // Default Delhi
+  LatLng _userLocation = const LatLng(28.6139, 77.2090);
   LatLng _currentRiderPos = const LatLng(28.6155, 77.2150);
   late int _remainingMins;
   late BookingState _simulatedState;
@@ -58,12 +58,12 @@ class _ProfessionalAssignedScreenState
   String? _bookingId;
 
   final Map<String, double> _dummyRatingsCache = {};
+
   @override
   void initState() {
     super.initState();
     _currentBookingData = widget.bookingData;
 
-    // Use passed locations if available for instant update
     if (widget.initialUserLocation != null) {
       _userLocation = widget.initialUserLocation!;
       _isLoadingLocation = false;
@@ -72,7 +72,7 @@ class _ProfessionalAssignedScreenState
     if (widget.initialRiderLocation != null) {
       _currentRiderPos = widget.initialRiderLocation!;
     } else {
-      _currentRiderPos = const LatLng(28.6155, 77.2150); // Fallback
+      _currentRiderPos = const LatLng(28.6155, 77.2150);
     }
 
     _remainingMins = 12;
@@ -83,7 +83,6 @@ class _ProfessionalAssignedScreenState
   Future<void> _initializeTracking() async {
     _loadCustomIcons();
 
-    // Check if we can do real-time tracking
     if (widget.bookingData != null) {
       final bData = widget.bookingData is List
           ? (widget.bookingData as List).first
@@ -95,7 +94,7 @@ class _ProfessionalAssignedScreenState
     _setBookingLocation();
     if (_bookingId != null) {
       _startRealTimeTracking(_bookingId!);
-      _fetchAndRedirect(); // CRITICAL: Start polling status
+      _fetchAndRedirect();
     } else {
       _generateRoadSnappedRoute();
       _startMovementSimulation();
@@ -111,14 +110,12 @@ class _ProfessionalAssignedScreenState
       final bookingDetail = bData['booking_detail'];
 
       final lat = double.tryParse(bookingDetail?['latitude']?.toString() ?? '');
-
       final lng = double.tryParse(
         bookingDetail?['longitude']?.toString() ?? '',
       );
 
       if (lat != null && lng != null) {
         _userLocation = LatLng(lat, lng);
-
         debugPrint("BOOKING LOCATION => $lat , $lng");
       }
     } catch (e) {
@@ -131,32 +128,19 @@ class _ProfessionalAssignedScreenState
         ? (widget.bookingData as List).first
         : widget.bookingData;
 
-    // =====================================================
-    // PROVIDER
-    // =====================================================
-
     final rawProvider = bData?['provider_data'];
-
     final provider = rawProvider is List
         ? (rawProvider.isNotEmpty ? rawProvider.first : {})
         : (rawProvider ?? {});
 
-    // =====================================================
-    // HANDYMAN
-    // =====================================================
-
     final rawHandyman = bData?['handyman_data'];
-
     final handyman = rawHandyman is List
         ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
         : (rawHandyman ?? {});
 
     debugPrint("========== RAW DATA ==========");
-
     debugPrint("HANDYMAN => $handyman");
-
     debugPrint("PROVIDER => $provider");
-
     debugPrint("==============================");
 
     final handymanUserType = handyman['user_type']
@@ -164,76 +148,50 @@ class _ProfessionalAssignedScreenState
         .toLowerCase()
         .trim();
 
-    final isRealHandyman =
-        handyman.isNotEmpty &&
+    final isRealHandyman = handyman.isNotEmpty &&
         handyman['id'] != null &&
         handymanUserType != null &&
         handymanUserType == 'handyman';
 
-    // =====================================================
-    // REAL HANDYMAN
-    // =====================================================
-
     if (isRealHandyman) {
       final handymanId = handyman['id'].toString();
-
       return {
         'uid': 'handyman_$handymanId',
-
         'name': handyman['display_name'] ?? handyman['name'] ?? 'Handyman',
-
         'image': handyman['profile_image'] ?? '',
-
         'isHandyman': true,
       };
     }
 
-    // =====================================================
-    // PROVIDER SELF ASSIGNED
-    // =====================================================
-
     if (provider.isNotEmpty && provider['id'] != null) {
       final providerId = provider['id'].toString();
-
       return {
         'uid': 'provider_$providerId',
-
-        'name':
-            provider['company_name'] ?? provider['display_name'] ?? 'Provider',
-
+        'name': provider['company_name'] ?? provider['display_name'] ?? 'Provider',
         'image': provider['profile_image'] ?? '',
-
         'isHandyman': false,
       };
     }
 
-    // =====================================================
-    // FALLBACK
-    // =====================================================
-
     return {
       'uid': 'unknown',
-
       'name': 'Professional',
-
       'image': '',
-
       'isHandyman': false,
     };
   }
 
-double _getRatingWithFallback(dynamic handyman, dynamic provider) {
-  return double.tryParse(
-        (
-          handyman?['handyman_rating'] ??
-          provider?['handyman_rating'] ??
-          handyman?['providers_service_rating'] ??
-          provider?['providers_service_rating'] ??
-          0
-        ).toString(),
-      ) ??
-      0.0;
-}
+  double _getRatingWithFallback(dynamic handyman, dynamic provider) {
+    return double.tryParse(
+          (handyman?['handyman_rating'] ??
+                  provider?['handyman_rating'] ??
+                  handyman?['providers_service_rating'] ??
+                  provider?['providers_service_rating'] ??
+                  0)
+              .toString(),
+        ) ??
+        0.0;
+  }
 
   Future<void> _determinePosition() async {
     bool serviceEnabled;
@@ -262,7 +220,6 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     try {
       Position position = await Geolocator.getCurrentPosition();
       setState(() {
-        // _userLocation = LatLng(position.latitude, position.longitude);
         if (_bookingId == null) {
           _generateRoadSnappedRoute();
         }
@@ -277,28 +234,26 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
   }
 
   void _generateRoadSnappedRoute() {
-    // 1. Defining major road grid turns
     final List<LatLng> majorPoints = [
       LatLng(
         _userLocation.latitude + 0.005,
         _userLocation.longitude + 0.005,
-      ), // Start far
+      ),
       LatLng(
         _userLocation.latitude + 0.005,
         _userLocation.longitude + 0.002,
-      ), // First Turn
+      ),
       LatLng(
         _userLocation.latitude + 0.002,
         _userLocation.longitude + 0.002,
-      ), // Second Turn
+      ),
       LatLng(
         _userLocation.latitude + 0.001,
         _userLocation.longitude + 0.001,
-      ), // Near Turn
-      _userLocation, // Home
+      ),
+      _userLocation,
     ];
 
-    // 2. Interpolate hundreds of small points between major turns for smoothness
     final List<LatLng> smoothPoints = [];
     for (int i = 0; i < majorPoints.length - 1; i++) {
       final start = majorPoints[i];
@@ -327,7 +282,6 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
 
       PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
         googleApiKey: "AIzaSyAW3nH7YUQnZVx09h1wB9fBbwE6CpT8iRE",
-
         request: PolylineRequest(
           origin: PointLatLng(start.latitude, start.longitude),
           destination: PointLatLng(end.latitude, end.longitude),
@@ -378,7 +332,7 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     try {
       final Uint8List markerIcon = await _getBytesFromAsset(
         'lib/assets/images/rider_car.png',
-        130,
+        AppSizes.w(context, 130).toInt(),
       );
 
       debugPrint("Rider icon loaded successfully");
@@ -403,13 +357,10 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
 
   void _startRealTimeTracking(String bookingId) {
     _movementTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
-      // Faster updates (3s)
       if (mounted && !_isWaitingForBackendArrival) {
         _fetchRiderLocation(bookingId);
       }
     });
-
-    // Initial fetch
     _fetchRiderLocation(bookingId);
   }
 
@@ -439,7 +390,6 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
           if (lat != null && lng != null) {
             final newPos = LatLng(lat, lng);
 
-            // Calculate distance to user
             double distance = Geolocator.distanceBetween(
               lat,
               lng,
@@ -450,16 +400,13 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
             if (mounted) {
               setState(() {
                 _currentRiderPos = newPos;
-
-                // User request: 1km = 3 minutes
                 double distanceInKm = distance / 1000;
                 _remainingMins = (distanceInKm * 3).toInt().clamp(1, 999);
 
-                // Update simulated state based on distance (less than 100m = arrived/started)
                 if (distance < 100) {
                   _simulatedState = BookingState.started;
                   _movementTimer?.cancel();
-                  _fetchAndRedirect(); // Status reached arrived
+                  _fetchAndRedirect();
                 } else {
                   _simulatedState = BookingState.onTheWay;
                 }
@@ -483,7 +430,6 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
 
               if (shouldRefreshRoute) {
                 _lastPolylineFetchPosition = newPos;
-
                 await _getRoadPolyline(newPos, _userLocation);
               }
               if (distance > 50) {
@@ -514,7 +460,6 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
   void _startMovementSimulation() {
     if (_routePoints.isEmpty) _generateRoadSnappedRoute();
 
-    // Smooth Timer: Update every 100ms for fluid movement
     _movementTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_currentStep < _routePoints.length - 1) {
         if (mounted) {
@@ -522,11 +467,9 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
             _currentStep++;
             _currentRiderPos = _routePoints[_currentStep];
 
-            // ETA Calculation (Simulated total time 20 seconds / 200 ticks)
             double progress = _currentStep / _routePoints.length;
             _remainingMins = (12 - (progress * 11)).toInt().clamp(1, 12);
 
-            // Update progress state based on movement
             if (_currentStep > 0 && _currentStep < _routePoints.length * 0.9) {
               _simulatedState = BookingState.onTheWay;
             } else if (_currentStep >= _routePoints.length * 0.9 &&
@@ -537,11 +480,8 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
             }
           });
 
-          // If reached final destination
           if (_currentStep == _routePoints.length - 1) {
             _movementTimer?.cancel();
-
-            // Arrival Pause before redirect
             Future.delayed(const Duration(seconds: 2), () {
               if (mounted) {
                 _fetchAndRedirect();
@@ -556,7 +496,6 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
   }
 
   Future<void> _fetchAndRedirect() async {
-    // 1. Get booking ID
     String? bookingId;
     if (widget.bookingData != null) {
       final bData = widget.bookingData is List
@@ -574,11 +513,9 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
 
     if (bookingId == null || bookingId == "null") {
       debugPrint("ERROR: No Booking ID found for status polling!");
-      // Don't redirect immediately to avoid loops, just stop or retry
       return;
     }
 
-    // Status polling starts in the background
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final apiToken = userProvider.apiToken;
@@ -620,7 +557,6 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
           });
         }
 
-        // Only redirect if status is 'arrived', 'started', 'in_progress', 'pending_approval' or 'completed'
         if (currentStatus == 'arrived' ||
             currentStatus == 'started' ||
             currentStatus == 'in_progress' ||
@@ -631,7 +567,6 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
           );
           _performRedirect(data);
         } else {
-          // Wait and try again in 5 seconds
           debugPrint("No match for status '$currentStatus'. Retrying in 5s...");
           Future.delayed(const Duration(seconds: 5), () {
             if (mounted) _fetchAndRedirect();
@@ -677,173 +612,99 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     }
   }
 
-  // Silver Map Style for a premium look
   static const String _mapStyle = '''
 [
   {
     "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#f5f5f5"
-      }
-    ]
+    "stylers": [{"color": "#f5f5f5"}]
   },
   {
     "elementType": "labels.icon",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
+    "stylers": [{"visibility": "off"}]
   },
   {
     "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#616161"
-      }
-    ]
+    "stylers": [{"color": "#616161"}]
   },
   {
     "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#f5f5f5"
-      }
-    ]
+    "stylers": [{"color": "#f5f5f5"}]
   },
   {
     "featureType": "administrative.land_parcel",
     "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#bdbdbd"
-      }
-    ]
+    "stylers": [{"color": "#bdbdbd"}]
   },
   {
     "featureType": "poi",
     "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#eeeeee"
-      }
-    ]
+    "stylers": [{"color": "#eeeeee"}]
   },
   {
     "featureType": "poi",
     "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#757575"
-      }
-    ]
+    "stylers": [{"color": "#757575"}]
   },
   {
     "featureType": "poi.park",
     "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#e5e5e5"
-      }
-    ]
+    "stylers": [{"color": "#e5e5e5"}]
   },
   {
     "featureType": "poi.park",
     "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9e9e9e"
-      }
-    ]
+    "stylers": [{"color": "#9e9e9e"}]
   },
   {
     "featureType": "road",
     "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#ffffff"
-      }
-    ]
+    "stylers": [{"color": "#ffffff"}]
   },
   {
     "featureType": "road.arterial",
     "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#757575"
-      }
-    ]
+    "stylers": [{"color": "#757575"}]
   },
   {
     "featureType": "road.highway",
     "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#dadada"
-      }
-    ]
+    "stylers": [{"color": "#dadada"}]
   },
   {
     "featureType": "road.highway",
     "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#616161"
-      }
-    ]
+    "stylers": [{"color": "#616161"}]
   },
   {
     "featureType": "road.local",
     "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9e9e9e"
-      }
-    ]
+    "stylers": [{"color": "#9e9e9e"}]
   },
   {
     "featureType": "transit.line",
     "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#e5e5e5"
-      }
-    ]
+    "stylers": [{"color": "#e5e5e5"}]
   },
   {
     "featureType": "transit.station",
     "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#eeeeee"
-      }
-    ]
+    "stylers": [{"color": "#eeeeee"}]
   },
   {
     "featureType": "water",
     "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#c9c9c9"
-      }
-    ]
+    "stylers": [{"color": "#c9c9c9"}]
   },
   {
     "featureType": "water",
     "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9e9e9e"
-      }
-    ]
+    "stylers": [{"color": "#9e9e9e"}]
   }
 ]
 ''';
 
   @override
   Widget build(BuildContext context) {
-    // ── Always build pro from live API data — never use dummy ──
     final _bData = _currentBookingData is List
         ? (_currentBookingData as List).first
         : _currentBookingData;
@@ -889,54 +750,55 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     );
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[100],
       body: Stack(
         children: [
           SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
                 _buildMapHeader(context, _formatRemainingTime(_remainingMins)),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildProProfile(pro),
+                // SizedBox(height: AppSizes.h(context, 3)),
+                _buildProfessionalInfoCard(pro),
+                SizedBox(height: AppSizes.h(context, 3)),
+                _buildServiceProgress(),
+                SizedBox(height: AppSizes.h(context, 3)),
+                _buildServiceAndSupportCard(),
+                SizedBox(height: AppSizes.h(context, 3)),
+                _buildFooterButton(
+                  Icons.support_agent,
+                  "Support",
+                  Colors.black,
                 ),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildContactActions(),
-                ),
-                const SizedBox(height: 32),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildServiceProgress(),
-                ),
-                const Divider(
-                  thickness: 4,
-                  color: Color(0xFFEEEEEE),
-                  height: 80,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildServiceDetails(),
-                ),
-                const SizedBox(height: 32),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildActionFooter(),
-                ),
-                const SizedBox(height: 40),
+                SizedBox(height: AppSizes.h(context, 40)),
               ],
             ),
           ),
           Positioned(
-            top: 40,
-            left: 20,
-            child: CircleAvatar(
-              backgroundColor: Colors.white,
+            top: MediaQuery.of(context).padding.top + AppSizes.h(context, 8),
+            left: AppSizes.w(context, 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: AppSizes.w(context, 8),
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.landingPage)
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: Colors.black,
+                  size: AppSizes.w(context, 20),
+                ),
+                onPressed: () => Navigator.pushReplacementNamed(
+                  context,
+                  AppRoutes.landingPage,
+                ),
               ),
             ),
           ),
@@ -948,11 +810,11 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
                   child: Card(
                     elevation: 8,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
                     ),
-                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    margin: EdgeInsets.symmetric(horizontal: AppSizes.w(context, 40)),
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(AppSizes.w(context, 24)),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -960,20 +822,20 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
                             color: Colors.green,
                             strokeWidth: 3,
                           ),
-                          const SizedBox(height: 20),
-                          const Text(
+                          SizedBox(height: AppSizes.h(context, 20)),
+                          Text(
                             "Handyman Arriving...",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              fontSize: AppSizes.w(context, 18),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
+                          SizedBox(height: AppSizes.h(context, 8)),
+                          Text(
                             "Waiting for the professional to confirm their arrival on the system.",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: AppSizes.w(context, 13),
                               color: Colors.black54,
                             ),
                           ),
@@ -995,7 +857,7 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
       alignment: Alignment.bottomCenter,
       children: [
         SizedBox(
-          height: 300,
+          height: AppSizes.h(context, 300),
           width: double.infinity,
           child: GoogleMap(
             myLocationEnabled: true,
@@ -1027,9 +889,7 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
                       points: _routePoints,
                     ),
                   },
-
             markers: {
-              // Rider Marker (Custom Car)
               Marker(
                 markerId: const MarkerId('rider'),
                 rotation: 180,
@@ -1041,7 +901,6 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
                     ),
                 infoWindow: const InfoWindow(title: 'Rider On the Way'),
               ),
-              // User Marker (Orange/Red)
               Marker(
                 markerId: const MarkerId('user'),
                 position: _userLocation,
@@ -1064,23 +923,29 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
           ),
         ),
         Positioned(
-          bottom: 20,
+          bottom: AppSizes.h(context, 20),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSizes.w(context, 20),
+              vertical: AppSizes.h(context, 10),
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AppSizes.w(context, 20)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black12,
-                  blurRadius: 10,
+                  blurRadius: AppSizes.w(context, 10),
                   offset: const Offset(0, 5),
                 ),
               ],
             ),
             child: Text(
               "Arriving in $time",
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: AppSizes.w(context, 16),
+              ),
             ),
           ),
         ),
@@ -1088,7 +953,7 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     );
   }
 
-  Widget _buildProProfile(ProfessionalMatch pro) {
+  Widget _buildProfessionalInfoCard(ProfessionalMatch pro) {
     final bData = _currentBookingData is List
         ? (_currentBookingData as List).first
         : _currentBookingData;
@@ -1128,224 +993,232 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
       profileImageUrl = provider['profile_image'];
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundImage:
-              (profileImageUrl != null && profileImageUrl.startsWith('http'))
-              ? CachedNetworkImageProvider(profileImageUrl, headers: const {})
-                    as ImageProvider
-              : const AssetImage('lib/assets/images/rider_image.png')
-                    as ImageProvider,
-          backgroundColor: const Color(0xFFFFF3E0),
+    return Transform.translate(
+      offset: Offset(0, -AppSizes.h(context, 5)),
+      child: Container(
+        margin: EdgeInsets.only(
+      
+          bottom: AppSizes.h(context, 2),
         ),
-        const SizedBox(width: 12),
-        Expanded(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: AppSizes.w(context, 12),
+              offset: const Offset(0, 4),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(AppSizes.w(context, 16)),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  CircleAvatar(
+                    radius: AppSizes.w(context, 30),
+                    backgroundImage:
+                        (profileImageUrl != null && profileImageUrl.startsWith('http'))
+                        ? CachedNetworkImageProvider(profileImageUrl) as ImageProvider
+                        : const AssetImage('lib/assets/images/rider_image.png') as ImageProvider,
+                    backgroundColor: const Color(0xFFFFF3E0),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _backendStatus,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
+                  SizedBox(width: AppSizes.w(context, 12)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name,
+                                style: TextStyle(
+                                  fontSize: AppSizes.w(context, 16),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            SizedBox(width: AppSizes.w(context, 8)),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSizes.w(context, 10),
+                                vertical: AppSizes.h(context, 5),
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1),
+                                borderRadius: BorderRadius.circular(AppSizes.w(context, 8)),
+                              ),
+                              child: Text(
+                                _backendStatus,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: AppSizes.w(context, 11),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: AppSizes.h(context, 4)),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.star,
+                              color: const Color(0xFFFFB300),
+                              size: AppSizes.w(context, 14),
+                            ),
+                            SizedBox(width: AppSizes.w(context, 4)),
+                            Text(
+                              rating.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: AppSizes.w(context, 12),
+                              ),
+                            ),
+                            SizedBox(width: AppSizes.w(context, 4)),
+                            Text(
+                              "($jobsDone jobs done)",
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: AppSizes.w(context, 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: AppSizes.h(context, 4)),
+                        Text(
+                          _backendStatus == "Arrived"
+                              ? "Professional is at your door"
+                              : "On their way to your location",
+                          style: TextStyle(
+                            color: _backendStatus == "Arrived"
+                                ? const Color(0xFF4CAF50)
+                                : const Color(0xFF6366F1),
+                            fontWeight: FontWeight.bold,
+                            fontSize: AppSizes.w(context, 12),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: AppSizes.h(context, 20)),
               Row(
                 children: [
-                  const Icon(Icons.star, color: Color(0xFFFFB300), size: 14),
-                  const SizedBox(width: 4),
-                  Text(
-                    rating.toStringAsFixed(1),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final bData = _currentBookingData is List
+                            ? (_currentBookingData as List).first
+                            : _currentBookingData;
+      
+                        final rawHandyman = bData?['handyman_data'];
+                        final handyman = rawHandyman is List
+                            ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
+                            : rawHandyman;
+      
+                        final rawProvider = bData?['provider_data'];
+                        final provider = rawProvider is List
+                            ? (rawProvider.isNotEmpty ? rawProvider.first : {})
+                            : rawProvider;
+      
+                        final phone =
+                            (handyman?['contact_number'] ??
+                                    provider?['contact_number'])
+                                ?.toString()
+                                ?.replaceAll(' ', '');
+      
+                        if (phone != null && phone.isNotEmpty) {
+                          try {
+                            final url = Uri.parse('tel:$phone');
+                            await launchUrl(
+                              url,
+                              mode: LaunchMode.platformDefault,
+                            );
+                          } catch (e) {
+                            debugPrint('Could not launch call: $e');
+                          }
+                        }
+                      },
+                      child: _buildActionButton(
+                        icon: Icons.call,
+                        label: "Call",
+                        color: AppColors.discountRed,
+                        textColor: AppColors.naturalWhite,
+                        isOutlined: false,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    "($jobsDone jobs done)",
-                    style: const TextStyle(color: Colors.black54, fontSize: 12),
+                  SizedBox(width: AppSizes.w(context, 16)),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        final bData = _currentBookingData is List
+                            ? (_currentBookingData as List).first
+                            : _currentBookingData;
+                        final rawHandyman = bData?['handyman_data'];
+                        final handyman = rawHandyman is List
+                            ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
+                            : rawHandyman;
+                        final rawProvider = bData?['provider_data'];
+                        final provider = rawProvider is List
+                            ? (rawProvider.isNotEmpty ? rawProvider.first : {})
+                            : rawProvider;
+      
+                        Future<void> navigateToChat() async {
+                          final prefs = await SharedPreferences.getInstance();
+                          final backendUserId = prefs.getString('backend_user_id') ?? '';
+                          final target = getChatTarget();
+      
+                          debugPrint("========== OPEN CHAT ==========");
+                          debugPrint("MY CHAT ID => user_$backendUserId");
+                          debugPrint("TARGET UID => ${target['uid']}");
+                          debugPrint("================================");
+                          debugPrint("=========== CHAT DEBUG ===========");
+                          debugPrint("BOOKING ID => $_bookingId");
+                          debugPrint("TARGET => $target");
+                          debugPrint("MY ID => user_$backendUserId");
+                          debugPrint("==================================");
+      
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.chatHomeScreen,
+                            arguments: {
+                              'booking_id': _bookingId,
+                              'my_chat_id': 'user_$backendUserId',
+                              'provider_uid': target['uid'],
+                              'name': target['name'],
+                              'image': target['image'],
+                              'is_handyman_chat': target['isHandyman'],
+                            },
+                          );
+                        }
+      
+                        navigateToChat();
+                      },
+                      child: _buildActionButton(
+                        icon: Icons.chat_bubble_outline,
+                        label: "Chat",
+                        color: AppColors.borderRejected,
+                        textColor: AppColors.borderRejected,
+                        isOutlined: true,
+                      ),
+                    ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _backendStatus == "Arrived"
-                    ? "Professional is at your door"
-                    : "On their way to your location",
-                style: TextStyle(
-                  color: _backendStatus == "Arrived"
-                      ? const Color(0xFF4CAF50)
-                      : const Color(0xFF6366F1),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildContactActions() {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () async {
-              final bData = _currentBookingData is List
-                  ? (_currentBookingData as List).first
-                  : _currentBookingData;
-
-              final rawHandyman = bData?['handyman_data'];
-              final handyman = rawHandyman is List
-                  ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
-                  : rawHandyman;
-
-              final rawProvider = bData?['provider_data'];
-              final provider = rawProvider is List
-                  ? (rawProvider.isNotEmpty ? rawProvider.first : {})
-                  : rawProvider;
-
-              final phone =
-                  (handyman?['contact_number'] ?? provider?['contact_number'])
-                      ?.toString()
-                      ?.replaceAll(' ', '');
-
-              if (phone != null && phone.isNotEmpty) {
-                try {
-                  final url = Uri.parse('tel:$phone');
-                  await launchUrl(url, mode: LaunchMode.platformDefault);
-                } catch (e) {
-                  debugPrint('Could not launch call: $e');
-                }
-              }
-            },
-            child: _buildActionButton(
-              icon: Icons.call,
-              label: "Call",
-              color: const Color(0xFFFFB300),
-              textColor: Colors.black,
-              isOutlined: false,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              final bData = _currentBookingData is List
-                  ? (_currentBookingData as List).first
-                  : _currentBookingData;
-              final rawHandyman = bData?['handyman_data'];
-              final handyman = rawHandyman is List
-                  ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
-                  : rawHandyman;
-              final rawProvider = bData?['provider_data'];
-              final provider = rawProvider is List
-                  ? (rawProvider.isNotEmpty ? rawProvider.first : {})
-                  : rawProvider;
-              final rawDetail = bData?['booking_detail'];
-              final detail = rawDetail is List
-                  ? (rawDetail.isNotEmpty ? rawDetail.first : {})
-                  : rawDetail;
-              final rawService = bData?['service'];
-              final service = rawService is List
-                  ? (rawService.isNotEmpty ? rawService.first : {})
-                  : rawService;
-
-              bool hasHandyman =
-                  handyman != null &&
-                  (handyman['id'] != null || handyman['uid'] != null);
-              bool hasProvider =
-                  provider != null &&
-                  (provider['id'] != null || provider['uid'] != null);
-
-              Future<void> navigateToChat() async {
-                final prefs = await SharedPreferences.getInstance();
-
-                final backendUserId = prefs.getString('backend_user_id') ?? '';
-
-                final target = getChatTarget();
-
-                debugPrint("========== OPEN CHAT ==========");
-                debugPrint("MY CHAT ID => user_$backendUserId");
-                debugPrint("TARGET UID => ${target['uid']}");
-                debugPrint("================================");
-                debugPrint("=========== CHAT DEBUG ===========");
-
-                debugPrint("BOOKING ID => $_bookingId");
-
-                debugPrint("TARGET => $target");
-
-                debugPrint("MY ID => user_$backendUserId");
-
-                debugPrint("==================================");
-
-                Navigator.pushNamed(
-                  context,
-                  AppRoutes.chatHomeScreen,
-                  arguments: {
-                    'booking_id': _bookingId,
-
-                    // sender
-                    'my_chat_id': 'user_$backendUserId',
-
-                    // receiver
-                    'provider_uid': target['uid'],
-
-                    'name': target['name'],
-                    'image': target['image'],
-
-                    'is_handyman_chat': target['isHandyman'],
-                  },
-                );
-              }
-
-              navigateToChat();
-            },
-            child: _buildActionButton(
-              icon: Icons.chat_bubble_outline,
-              label: "Chat",
-              color: Colors.black,
-              textColor: Colors.black,
-              isOutlined: true,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -1357,23 +1230,23 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     required bool isOutlined,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: AppSizes.h(context, 8)),
       decoration: BoxDecoration(
         color: isOutlined ? Colors.white : color,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppSizes.w(context, 8)),
         border: isOutlined ? Border.all(color: color) : null,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: textColor, size: 20),
-          const SizedBox(width: 8),
+          Icon(icon, color: textColor, size: AppSizes.w(context, 20)),
+          SizedBox(width: AppSizes.w(context, 4)),
           Text(
             label,
             style: TextStyle(
               color: textColor,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: AppSizes.w(context, 14),
             ),
           ),
         ],
@@ -1386,7 +1259,7 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
         widget.bookingStatus.steps ??
         [
           const ProgressStepModel(
-            title: "Booking confirmed",
+            title: "Booking Confirmed",
             subtitle: "",
             state: BookingState.assigned,
           ),
@@ -1397,7 +1270,7 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
           ),
           const ProgressStepModel(
             title: "On the Way",
-            subtitle: "On thier way to your location",
+            subtitle: "Your professional is on the way",
             state: BookingState.onTheWay,
           ),
           const ProgressStepModel(
@@ -1412,38 +1285,51 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
           ),
         ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Service Progress",
-          style: TextStyle(
-            color: Color(0xFFD90000),
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+    return Container(
+      width: double.infinity,
+
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSizes.w(context, 18),
+        vertical: AppSizes.h(context, 12),
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSizes.w(context, 24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: AppSizes.w(context, 18),
+            offset: const Offset(0, 6),
           ),
-        ),
-        const SizedBox(height: 20),
-        ...List.generate(steps.length, (index) {
-          final int currentIndex = _getStepIndex(_simulatedState);
-          bool isCompleted = index < currentIndex;
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Service Progress",
+            style: TextStyle(
+              fontSize: AppSizes.w(context, 17),
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: AppSizes.h(context, 13)),
+          ...List.generate(steps.length, (index) {
+            final int currentIndex = _getStepIndex(_simulatedState);
+            bool isCompleted = index < currentIndex;
+            final bool isActive = index == currentIndex;
 
-          // User request: On the Way (index 2) turns green as soon as movement starts
-          if (index == 2 && _currentStep > 0) {
-            isCompleted = true;
-          }
-
-          final bool isActive = !isCompleted && index == currentIndex;
-
-          return _buildProgressStep(
-            steps[index].title,
-            subtitle: steps[index].subtitle,
-            isCompleted: isCompleted,
-            isActive: isActive,
-            isLast: index == steps.length - 1,
-          );
-        }),
-      ],
+            return _buildProgressStep(
+              steps[index].title,
+              subtitle: steps[index].subtitle,
+              isCompleted: isCompleted,
+              isActive: isActive,
+              isLast: index == steps.length - 1,
+            );
+          }),
+        ],
+      ),
     );
   }
 
@@ -1456,7 +1342,7 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
       case BookingState.onTheWay:
         return 2;
       case BookingState.started:
-        return 3;
+        return 2;
       case BookingState.completed:
         return 4;
       default:
@@ -1471,101 +1357,134 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
     bool isActive = false,
     required bool isLast,
   }) {
-    Color bgColor = Colors.white;
-    if (isCompleted) {
-      bgColor = const Color(0xFFE8F5E9); // Light Green
-    } else if (isActive) {
-      bgColor = const Color(0xFFFEDC85); // Light Yellow
-    }
-
-    return Row(
+    return Column(
       children: [
-        Column(
-          children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isCompleted
-                    ? const Color(0xFFC8E6C9)
-                    : (isActive ? const Color(0xFFFEDC85) : Colors.white),
-                border: Border.all(
-                  color: (isCompleted || isActive)
-                      ? Colors.transparent
-                      : Colors.black26,
-                ),
-              ),
-              child: Icon(
-                isCompleted ? Icons.check : (isActive ? Icons.sensors : null),
-                size: 14,
-                color: isCompleted
-                    ? Colors.green[800]
-                    : (isActive ? Colors.orange[800] : Colors.transparent),
-              ),
-            ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 30,
-                color: isCompleted ? Colors.green[200] : Colors.black12,
-              ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              margin: const EdgeInsets.only(bottom: 12),
-              width: 280,
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Column(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: (isCompleted || isActive)
-                                ? Colors.black
-                                : Colors.black54,
+                  Container(
+                    width: AppSizes.w(context, 28),
+                    height: AppSizes.h(context, 35),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isCompleted
+                          ? const Color(0xFFE9F9EE)
+                          : isActive
+                          ? const Color(0xFFFFF6E1)
+                          : Colors.white,
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: AppSizes.w(context, 18),
+                        height: AppSizes.w(context, 18),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isCompleted
+                              ? const Color(0xFF22C55E)
+                              : isActive
+                              ? const Color(0xFFFFC107)
+                              : Colors.white,
+                          border: Border.all(
+                            color: isCompleted || isActive
+                                ? Colors.transparent
+                                : Colors.black45,
+                            width: 1.5,
                           ),
                         ),
-                        if (isActive && subtitle.isNotEmpty)
-                          Text(
-                            subtitle,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.black54,
-                            ),
-                          ),
-                      ],
+                        child: isCompleted
+                            ? Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: AppSizes.w(context, 12),
+                              )
+                            : isActive
+                            ? Icon(
+                                Icons.sensors,
+                                color: Colors.white,
+                                size: AppSizes.w(context, 11),
+                              )
+                            : null,
+                      ),
                     ),
                   ),
-                  if (isActive)
-                    const Icon(
-                      Icons.sensors,
-                      color: Color(0xFFD90000),
-                      size: 16,
+                  if (!isLast)
+                    Container(
+                      width: 2,
+                      height: AppSizes.h(context, 12),
+                      color: isCompleted || isActive
+                          ? const Color(0xFFD7F3DF)
+                          : Colors.black12,
                     ),
                 ],
               ),
-            ),
-          ],
+              SizedBox(width: AppSizes.w(context, 10)),
+              Expanded(
+                child: Container(
+                  padding: isActive
+                      ? EdgeInsets.symmetric(horizontal: AppSizes.w(context, 14))
+                      : EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? const Color(0xFFFFF6E1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: AppSizes.w(context, 14),
+                                fontWeight: FontWeight.w600,
+                                color: isCompleted || isActive
+                                    ? Colors.black
+                                    : Colors.black87,
+                              ),
+                            ),
+                            if (subtitle.isNotEmpty) ...[
+                              SizedBox(height: AppSizes.h(context, 1)),
+                              Text(
+                                subtitle,
+                                style: TextStyle(
+                                  fontSize: AppSizes.w(context, 13),
+                                  color: const Color(0xFFB7791F),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+        if (!isLast)
+          Padding(
+            padding: EdgeInsets.only(left: AppSizes.w(context, 40)),
+            child: Container(
+              height: 1,
+              margin: EdgeInsets.symmetric(vertical: AppSizes.h(context, 4)),
+              color: Colors.black12,
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildServiceDetails() {
+  Widget _buildServiceAndSupportCard() {
     String title = "Service";
     String image = UserMessages.serviceBookingDummy1;
     bool isNetworkImage = false;
@@ -1598,107 +1517,150 @@ double _getRatingWithFallback(dynamic handyman, dynamic provider) {
       }
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Service Details",
-          style: TextStyle(
-            color: Color(0xFF2E7D32),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+    return Container(
+      margin: EdgeInsets.symmetric(
+
+        vertical: AppSizes.h(context, 8),
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: AppSizes.w(context, 12),
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
           ),
-        ),
-        const SizedBox(height: 12),
-        Row(
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(AppSizes.w(context, 16)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "${widget.bookingStatus.appointmentDate} ~ ${widget.bookingStatus.appointmentTime}",
-                    style: const TextStyle(fontSize: 13, color: Colors.black54),
-                  ),
-                ],
+            Text(
+              "Service Details",
+              style: TextStyle(
+                color: const Color(0xFF2E7D32),
+                fontWeight: FontWeight.bold,
+                fontSize: AppSizes.w(context, 16),
               ),
             ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: isNetworkImage
-                  ? CachedNetworkImage(
-                      imageUrl: image,
-                      width: 100,
-                      height: 70,
-                      fit: BoxFit.cover,
-                      httpHeaders: const {},
-                    )
-                  : Image.asset(
-                      image,
-                      width: 100,
-                      height: 70,
-                      fit: BoxFit.cover,
-                    ),
+            SizedBox(height: AppSizes.h(context, 12)),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: AppSizes.w(context, 18),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: AppSizes.h(context, 8)),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today_outlined,
+                            size: AppSizes.w(context, 15),
+                            color: Colors.black54,
+                          ),
+                          SizedBox(width: AppSizes.w(context, 6)),
+                          Text(
+                            widget.bookingStatus.appointmentDate,
+                            style: TextStyle(
+                              fontSize: AppSizes.w(context, 13),
+                              color: Colors.black54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: AppSizes.h(context, 8)),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: AppSizes.w(context, 15),
+                            color: Colors.black54,
+                          ),
+                          SizedBox(width: AppSizes.w(context, 6)),
+                          Text(
+                            widget.bookingStatus.appointmentTime,
+                            style: TextStyle(
+                              fontSize: AppSizes.w(context, 13),
+                              color: Colors.black54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppSizes.w(context, 12)),
+                  child: isNetworkImage
+                      ? CachedNetworkImage(
+                          imageUrl: image,
+                          width: AppSizes.w(context, 100),
+                          height: AppSizes.h(context, 70),
+                          fit: BoxFit.cover,
+                          httpHeaders: const {},
+                        )
+                      : Image.asset(
+                          image,
+                          width: AppSizes.w(context, 100),
+                          height: AppSizes.h(context, 70),
+                          fit: BoxFit.cover,
+                        ),
+                ),
+              ],
             ),
+            SizedBox(height: AppSizes.h(context, 20)),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildActionFooter() {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () => Navigator.pushNamed(context, AppRoutes.helpDesk),
-            child: _buildFooterButton(
-              Icons.support_agent,
-              "Support",
-              Colors.black,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
   Widget _buildFooterButton(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.helpDesk),
+      child: Container(
+    
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: AppSizes.h(context, 3)),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
+          border: Border.all(color: Colors.black12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: AppSizes.w(context, 4),
+              offset: const Offset(0, 2),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: AppSizes.w(context, 24)),
+            SizedBox(height: AppSizes.h(context, 4)),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: AppSizes.w(context, 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

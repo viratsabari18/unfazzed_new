@@ -21,7 +21,7 @@ class _ServiceProgressWidgetState extends State<ServiceProgressWidget> {
   final List<String> subtitles = [
     "",
     "",
-    "On their way to your location",
+    "",
     "Professional has started the work",
     ""
   ];
@@ -29,25 +29,34 @@ class _ServiceProgressWidgetState extends State<ServiceProgressWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: AppSizes.h(context, 16)),
-      padding: EdgeInsets.all(Insets.sm),
       width: double.infinity,
+   
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.naturalWhite,
-        borderRadius: BorderRadius.circular(Insets.sm),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            UserMessages.serviceProgress,
+          /// TITLE
+          const Text(
+            "Service Progress",
             style: TextStyle(
-              color: const Color(0xFFD90000),
-              fontWeight: FontWeight.bold,
-              fontSize: AppSizes.w(context, 18),
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 13),
+          /// STEPS
           ...List.generate(steps.length, (index) {
             final bool isCompleted = index < widget.currentStep;
             final bool isActive = index == widget.currentStep;
@@ -67,85 +76,139 @@ class _ServiceProgressWidgetState extends State<ServiceProgressWidget> {
   }
 
   Widget _buildProgressStep(String title, {required String subtitle, required bool isCompleted, bool isActive = false, required bool isLast}) {
-    Color bgColor = Colors.white;
-    if (isCompleted) {
-      bgColor = const Color(0xFFE8F5E9); // Light Green
-    } else if (isActive) {
-      bgColor = const Color(0xFFFEDC85); // Light Yellow
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Column(
-          children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isCompleted ? const Color(0xFFC8E6C9) : (isActive ? const Color(0xFFFEDC85) : Colors.white),
-                border: Border.all(color: (isCompleted || isActive) ? Colors.transparent : Colors.black26),
-              ),
-              child: Icon(
-                isCompleted ? Icons.check : (isActive ? Icons.sensors : null),
-                size: 14,
-                color: isCompleted ? Colors.green[800] : (isActive ? Colors.orange[800] : Colors.transparent),
-              ),
-            ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 40,
-                color: isCompleted ? Colors.green[200] : Colors.black12,
-              ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                margin: const EdgeInsets.only(bottom: 12),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: (isCompleted || isActive) ? Colors.black : Colors.black54,
-                            ),
+              /// LEFT SIDE INDICATOR
+              Column(
+                children: [
+                  /// CIRCLE
+                  Container(
+                    width: 28,
+                    height: 35,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isCompleted
+                          ? const Color(0xFFE9F9EE)
+                          : isActive
+                          ? const Color(0xFFFFF6E1)
+                          : Colors.white,
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isCompleted
+                              ? const Color(0xFF22C55E)
+                              : isActive
+                              ? const Color(0xFFFFC107)
+                              : Colors.white,
+                          border: Border.all(
+                            color: isCompleted || isActive
+                                ? Colors.transparent
+                                : Colors.black45,
+                            width: 1.5,
                           ),
-                          if (isActive && subtitle.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                subtitle,
-                                style: const TextStyle(fontSize: 10, color: Colors.black54),
-                              ),
-                            ),
-                        ],
+                        ),
+                        child: isCompleted
+                            ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 12,
+                              )
+                            : isActive
+                            ? const Icon(
+                                Icons.sensors,
+                                color: Colors.white,
+                                size: 11,
+                              )
+                            : null,
                       ),
                     ),
-                    if (isActive) const Icon(Icons.sensors, color: Color(0xFFD90000), size: 16),
-                  ],
+                  ),
+
+                  /// CONNECTING LINE
+                  if (!isLast)
+                    Container(
+                      width: 2,
+                      height: 12,
+                      color: isCompleted || isActive
+                          ? const Color(0xFFD7F3DF)
+                          : Colors.black12,
+                    ),
+                ],
+              ),
+
+              const SizedBox(width: 10),
+
+              /// RIGHT CONTENT
+              Expanded(
+                child: Container(
+                  padding: isActive
+                      ? const EdgeInsets.symmetric(horizontal: 14)
+                      : EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? const Color(0xFFFFF6E1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      /// TITLE + SUBTITLE
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: isCompleted || isActive
+                                    ? Colors.black
+                                    : Colors.black87,
+                              ),
+                            ),
+                            if (subtitle.isNotEmpty) ...[
+                              const SizedBox(height: 1),
+                              Text(
+                                subtitle,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFFB7791F),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
+
+        /// DIVIDER BETWEEN STEPS
+        if (!isLast)
+          Padding(
+            padding: const EdgeInsets.only(left: 40),
+            child: Container(
+              height: 1,
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              color: Colors.black12,
+            ),
+          ),
       ],
     );
   }

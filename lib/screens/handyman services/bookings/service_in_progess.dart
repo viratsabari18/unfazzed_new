@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -83,7 +84,7 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
 
     final id = detail?['id']?.toString() ?? bData?['id']?.toString();
 
-    debugPrint("EXTRACTED BOOKING ID => $id");
+
 
     return id;
   }
@@ -143,24 +144,19 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
           });
         }
 
-     if (currentStatus == 'completed') {
-  if (!_completionAlreadyHandled) {
-    _completionAlreadyHandled = true;
+        if (currentStatus == 'completed') {
+          if (!_completionAlreadyHandled) {
+            _completionAlreadyHandled = true;
 
-    _handleServiceCompletion(
-      stopPolling: true,
-    );
-  }
-} else if (currentStatus ==
-    'pending_approval') {
-  if (!_pendingApprovalSaved) {
-    _pendingApprovalSaved = true;
+            _handleServiceCompletion(stopPolling: true);
+          }
+        } else if (currentStatus == 'pending_approval') {
+          if (!_pendingApprovalSaved) {
+            _pendingApprovalSaved = true;
 
-    _handleServiceCompletion(
-      stopPolling: false,
-    );
-  }
-}
+            _handleServiceCompletion(stopPolling: false);
+          }
+        }
       }
     } catch (_) {}
   }
@@ -205,9 +201,7 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
       await prefs.setString(startKey, startTime.toIso8601String());
     }
 
-    // IF SERVICE ALREADY COMPLETED/PENDING APPROVAL
     if (isCompleted) {
-      // use saved total time
       debugPrint("ENTERED COMPLETED BLOCK");
       final rawAllPrefs = prefs.getKeys();
 
@@ -257,7 +251,6 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
       return;
     }
 
-    // RUNNING TIMER
     totalSeconds = DateTime.now().difference(startTime).inSeconds;
 
     if (mounted) {
@@ -274,19 +267,16 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
   }
 
   Future<void> _handleServiceCompletion({bool stopPolling = true}) async {
-    // Stop timer
     if (_timer != null && _timer!.isActive) {
       _timer!.cancel();
     }
 
-    // Stop polling if needed
     if (stopPolling &&
         _statusPollingTimer != null &&
         _statusPollingTimer!.isActive) {
       _statusPollingTimer?.cancel();
     }
 
-    // REMOVE SAVED TIMER FOR THIS BOOKING
     final prefs = await SharedPreferences.getInstance();
 
     String? bookingId;
@@ -301,28 +291,19 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
     }
 
     if (bookingId != null) {
-DateTime endTime;
+      DateTime endTime;
 
-final existingEndTime =
-    prefs.getString(
-      'service_end_time_$bookingId',
-    );
+      final existingEndTime = prefs.getString('service_end_time_$bookingId');
 
-if (existingEndTime != null) {
-  endTime = DateTime.parse(
-    existingEndTime,
-  );
+      if (existingEndTime != null) {
+        endTime = DateTime.parse(existingEndTime);
 
-  debugPrint(
-    "USING OLD END TIME => $endTime",
-  );
-} else {
-  endTime = DateTime.now();
+        debugPrint("USING OLD END TIME => $endTime");
+      } else {
+        endTime = DateTime.now();
 
-  debugPrint(
-    "CREATING NEW END TIME => $endTime",
-  );
-}
+        debugPrint("CREATING NEW END TIME => $endTime");
+      }
 
       final startTimeString = prefs.getString('service_start_time_$bookingId');
 
@@ -336,27 +317,20 @@ if (existingEndTime != null) {
 
       totalSeconds = finalSeconds;
 
-if (existingEndTime == null) {
-  await prefs.setString(
-    'service_end_time_$bookingId',
-    endTime.toIso8601String(),
-  );
-}
+      if (existingEndTime == null) {
+        await prefs.setString(
+          'service_end_time_$bookingId',
+          endTime.toIso8601String(),
+        );
+      }
 
-    final alreadySaved =
-    prefs.getInt(
-      'service_total_time_$bookingId',
-    );
+      final alreadySaved = prefs.getInt('service_total_time_$bookingId');
 
-if (alreadySaved == null ||
-    alreadySaved <= 0) {
-  await prefs.setInt(
-    'service_total_time_$bookingId',
-    finalSeconds,
-  );
-}
+      if (alreadySaved == null || alreadySaved <= 0) {
+        await prefs.setInt('service_total_time_$bookingId', finalSeconds);
+      }
     }
-    // Mark completed
+
     if (mounted && !isCompleted) {
       final now = DateTime.now();
 
@@ -369,7 +343,6 @@ if (alreadySaved == null ||
       print("Service completed at $now");
     }
 
-    // Navigate only once
     if (stopPolling && mounted) {
       if (!_hasNavigatedToPayments) {
         _hasNavigatedToPayments = true;
@@ -388,6 +361,55 @@ if (alreadySaved == null ||
         });
       }
     }
+  }
+
+  String? getExtraTimeTaken() {
+    final bData = _currentBookingData is List
+        ? (_currentBookingData as List).first
+        : _currentBookingData;
+
+    final rawService = bData?['service'];
+
+    final service = rawService is List
+        ? (rawService.isNotEmpty ? rawService.first : {})
+        : rawService;
+
+    final durationString = service?['duration']?.toString().trim() ?? "00:00";
+
+    int estimatedSeconds = 0;
+
+    try {
+      if (durationString.contains(":")) {
+        final parts = durationString.split(':');
+
+        final hours = int.tryParse(parts[0]) ?? 0;
+        final minutes = int.tryParse(parts[1]) ?? 0;
+
+        estimatedSeconds = (hours * 3600) + (minutes * 60);
+      } else {
+        final estimatedHours = double.tryParse(durationString) ?? 0;
+
+        estimatedSeconds = (estimatedHours * 3600).toInt();
+      }
+    } catch (e) {
+      print("DURATION PARSE ERROR => $e");
+      estimatedSeconds = 0;
+    }
+
+    final extraSeconds = totalSeconds - estimatedSeconds;
+
+    if (extraSeconds <= 0) {
+      return null;
+    }
+
+    final hours = extraSeconds ~/ 3600;
+    final minutes = (extraSeconds % 3600) ~/ 60;
+
+    if (hours > 0) {
+      return "${hours}hr ${minutes}mins";
+    }
+
+    return "${minutes}mins";
   }
 
   final Map<String, double> _dummyRatingsCache = {};
@@ -411,9 +433,10 @@ if (alreadySaved == null ||
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.naturalWhite,
+      backgroundColor: Colors.grey[200],
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
               Stack(
@@ -421,15 +444,15 @@ if (alreadySaved == null ||
                 children: [
                   Image.asset(
                     !isCompleted
-                        ? UserMessages.serviceInProgressImage
-                        : UserMessages.serviceCompletedImage,
+                        ? "lib/assets/images/test_service_in.PNG"
+                        : "lib/assets/images/service_is_complted.PNG",
                     height: AppSizes.h(context, 240),
                     width: double.infinity,
                     fit: BoxFit.cover,
                   ),
                   if (!isCompleted) ...[
                     Padding(
-                      padding: EdgeInsets.only(left: AppSizes.w(context, 90)),
+                      padding: EdgeInsets.only(left: AppSizes.w(context, 130)),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,26 +484,6 @@ if (alreadySaved == null ||
                             ),
                           ),
                           SizedBox(height: AppSizes.h(context, 4)),
-                          // Text(
-                          //   () {
-                          //     final userProvider = Provider.of<UserProvider>(
-                          //       context,
-                          //       listen: false,
-                          //     );
-                          //     final time =
-                          //         widget.startTime ??
-                          //         userProvider.serviceStartTime;
-                          //     if (time != null) {
-                          //       return "Started at ${DateFormat('hh:mm a').format(time)}";
-                          //     }
-                          //     return UserMessages.startedAt;
-                          //   }(),
-                          //   style: TextStyle(
-                          //     fontSize: AppSizes.w(context, 11),
-                          //     color: AppColors.primaryRed,
-                          //   ),
-                          // ),
-                          // SizedBox(height: AppSizes.h(context, 3)),
                           Text.rich(
                             TextSpan(
                               children: [
@@ -526,692 +529,30 @@ if (alreadySaved == null ||
                         ],
                       ),
                     ),
-                  ] else ...[
-                    Positioned(
-                      bottom: AppSizes.h(context, 25),
-                      left: 0,
-                      right: 0,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Image.asset(
-                            UserMessages.progressClock,
-                            width: AppSizes.w(context, 140),
-                            height: AppSizes.h(context, 140),
-                          ),
-                          Text(
-                            UserMessages.serviceComplete,
-                            style: TextStyle(
-                              color: AppColors.completedBlue,
-                              fontSize: AppSizes.w(context, 26),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: AppSizes.h(context, 8)),
-                          Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: UserMessages.handymanHas,
-                                  style: TextStyle(
-                                    color: AppColors.naturalBlack,
-                                    fontSize: AppSizes.w(context, 16),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: UserMessages.finished,
-                                  style: TextStyle(
-                                    color: AppColors.completedBlue,
-                                    fontSize: AppSizes.w(context, 16),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: " the service",
-                                  style: TextStyle(
-                                    color: AppColors.naturalBlack,
-                                    fontSize: AppSizes.w(context, 16),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ],
               ),
               Transform.translate(
-                offset: Offset(0, -Insets.sm),
+                offset: Offset(0, -AppSizes.h(context, 8)),
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.naturalWhite,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(Insets.md),
-                      topRight: Radius.circular(Insets.md),
-                    ),
+                    borderRadius: isCompleted
+                        ? null
+                        : BorderRadius.only(
+                            topLeft: Radius.circular(AppSizes.w(context, 16)),
+                            topRight: Radius.circular(AppSizes.w(context, 16)),
+                          ),
                   ),
                   child: Column(
                     children: [
-                      Padding(
-                        padding: EdgeInsets.all(Insets.sm),
-                        child: Builder(
-                          builder: (context) {
-                            final bData = _currentBookingData is List
-                                ? (_currentBookingData as List).first
-                                : _currentBookingData;
-                            final rawHandyman = bData?['handyman_data'];
-                            final handyman = rawHandyman is List
-                                ? (rawHandyman.isNotEmpty
-                                      ? rawHandyman.first
-                                      : {})
-                                : rawHandyman;
-                            final rawProvider = bData?['provider_data'];
-                            final provider = rawProvider is List
-                                ? (rawProvider.isNotEmpty
-                                      ? rawProvider.first
-                                      : {})
-                                : rawProvider;
-                            final rawService = bData?['service'];
-                            final service = rawService is List
-                                ? (rawService.isNotEmpty
-                                      ? rawService.first
-                                      : {})
-                                : rawService;
-
-                            final providerName =
-                                handyman?['display_name']?.toString() ??
-                                provider?['display_name']?.toString() ??
-                                bData?['booking_detail']?['provider_name']
-                                    ?.toString() ??
-                                "";
-                            final providerImage =
-                                handyman?['profile_image'] ??
-                                service?['provider_image'] ??
-                                provider?['profile_image'] ??
-                                provider?['employee_image'] ??
-                                provider?['provider_image'] ??
-                                bData?['booking_detail']?['provider_image'];
-
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                CircleAvatar(
-                                  radius: AppSizes.w(context, 28),
-                                  backgroundColor: Colors.grey.shade200,
-                                  backgroundImage:
-                                      (providerImage != null &&
-                                          providerImage.toString().startsWith(
-                                            'http',
-                                          ))
-                                      ? NetworkImage(
-                                          providerImage,
-                                          headers: const {},
-                                        )
-                                      : null,
-                                  child:
-                                      (providerImage == null ||
-                                          !providerImage.toString().startsWith(
-                                            'http',
-                                          ))
-                                      ? const Icon(
-                                          Icons.person,
-                                          color: AppColors.naturalBlack,
-                                        )
-                                      : null,
-                                ),
-                                SizedBox(width: Insets.sm),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              providerName,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: AppSizes.w(
-                                                  context,
-                                                  16,
-                                                ),
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: Insets.xsm,
-                                              vertical: Insets.xxs,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isCompleted
-                                                  ? AppColors.completedBlue
-                                                  : AppColors.progressGreen,
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                    Insets.xs,
-                                                  ),
-                                            ),
-                                            child: Text(
-                                              () {
-                                                final bData =
-                                                    _currentBookingData is List
-                                                    ? (_currentBookingData
-                                                              as List)
-                                                          .first
-                                                    : _currentBookingData;
-                                                final rawDetail =
-                                                    bData?['booking_detail'];
-                                                final detail = rawDetail is List
-                                                    ? (rawDetail.isNotEmpty
-                                                          ? rawDetail.first
-                                                          : {})
-                                                    : rawDetail;
-                                                final status = detail?['status']
-                                                    ?.toString()
-                                                    .toLowerCase();
-
-                                                if (status ==
-                                                    'pending_approval')
-                                                  return "Pending Approval";
-                                                return isCompleted
-                                                    ? UserMessages.completed
-                                                    : UserMessages.inProgress;
-                                              }(),
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.naturalWhite,
-                                                fontSize: AppSizes.w(
-                                                  context,
-                                                  12,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      // Find the rating display section and replace it
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.star,
-                                            color: Color(0xFFFFB300),
-                                            size: 14,
-                                          ),
-                                          const SizedBox(width: 4),
-                                        Text(
-  double.tryParse(
-        (
-          handyman?['handyman_rating'] ??
-          provider?['handyman_rating'] ??
-          handyman?['providers_service_rating'] ??
-          provider?['providers_service_rating'] ??
-          0
-        ).toString(),
-      )!
-      .toStringAsFixed(1),
-  style: const TextStyle(
-    fontWeight: FontWeight.bold,
-    fontSize: 12,
-  ),
-),
-                                          
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            "(${handyman?['total_services_booked'] ?? provider?['total_services_booked'] ?? 0} jobs done)",
-                                            style: const TextStyle(
-                                              color: Colors.black54,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: AppSizes.h(context, 6)),
-                                      Text(
-                                        () {
-                                          final bData =
-                                              _currentBookingData is List
-                                              ? (_currentBookingData as List)
-                                                    .first
-                                              : _currentBookingData;
-                                          final rawDetail =
-                                              bData?['booking_detail'];
-                                          final detail = rawDetail is List
-                                              ? (rawDetail.isNotEmpty
-                                                    ? rawDetail.first
-                                                    : {})
-                                              : rawDetail;
-                                          final status = detail?['status']
-                                              ?.toString()
-                                              .toLowerCase();
-
-                                          if (status == 'pending_approval')
-                                            return "Service Pending Approval";
-                                          if (status == 'completed')
-                                            return UserMessages
-                                                .serviceCompletedText;
-                                          return UserMessages
-                                              .serviceInProgressText;
-                                        }(),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: isCompleted
-                                              ? AppColors.completedBlue
-                                              : AppColors.primaryRed,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: AppSizes.w(context, 12),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                      SizedBox(height: AppSizes.h(context, 15)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: Insets.sm),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () async {
-                                  final bData = _currentBookingData is List
-                                      ? (_currentBookingData as List).first
-                                      : _currentBookingData;
-
-                                  final rawHandyman = bData?['handyman_data'];
-                                  final handyman = rawHandyman is List
-                                      ? (rawHandyman.isNotEmpty
-                                            ? rawHandyman.first
-                                            : {})
-                                      : rawHandyman;
-
-                                  final rawProvider = bData?['provider_data'];
-                                  final provider = rawProvider is List
-                                      ? (rawProvider.isNotEmpty
-                                            ? rawProvider.first
-                                            : {})
-                                      : rawProvider;
-
-                                  final phone =
-                                      (handyman?['contact_number'] ??
-                                              provider?['contact_number'])
-                                          ?.toString()
-                                          ?.replaceAll(' ', '');
-
-                                  if (phone != null && phone.isNotEmpty) {
-                                    try {
-                                      final Uri url = Uri(
-                                        scheme: 'tel',
-                                        path: phone,
-                                      );
-                                      if (await canLaunchUrl(url)) {
-                                        await launchUrl(
-                                          url,
-                                          mode: LaunchMode.externalApplication,
-                                        );
-                                      } else {
-                                        await launchUrl(
-                                          url,
-                                          mode: LaunchMode.externalApplication,
-                                        );
-                                      }
-                                    } catch (e) {
-                                      debugPrint('Could not launch call: $e');
-                                    }
-                                  }
-                                },
-                                child: Container(
-                                  height: AppSizes.h(context, 45),
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: Insets.xs,
-                                    horizontal: Insets.md,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isCompleted
-                                        ? AppColors.darkRed
-                                        : AppColors.primaryYellow,
-                                    borderRadius: BorderRadius.circular(
-                                      Insets.xsm,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.phone_outlined,
-                                        color: isCompleted
-                                            ? AppColors.naturalWhite
-                                            : Colors.black,
-                                      ),
-                                      SizedBox(width: Insets.xxs),
-                                      Text(
-                                        UserMessages.call,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color: isCompleted
-                                              ? AppColors.naturalWhite
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: AppSizes.w(context, 16)),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () async {
-                                  final bData = _currentBookingData is List
-                                      ? (_currentBookingData as List).first
-                                      : _currentBookingData;
-
-                                  final rawHandyman = bData?['handyman_data'];
-                                  final handyman = rawHandyman is List
-                                      ? (rawHandyman.isNotEmpty
-                                            ? rawHandyman.first
-                                            : {})
-                                      : rawHandyman;
-
-                                  final rawProvider = bData?['provider_data'];
-                                  final provider = rawProvider is List
-                                      ? (rawProvider.isNotEmpty
-                                            ? rawProvider.first
-                                            : {})
-                                      : rawProvider;
-
-                                  final rawDetail = bData?['booking_detail'];
-                                  final detail = rawDetail is List
-                                      ? (rawDetail.isNotEmpty
-                                            ? rawDetail.first
-                                            : {})
-                                      : rawDetail;
-
-                                  final rawService = bData?['service'];
-                                  final service = rawService is List
-                                      ? (rawService.isNotEmpty
-                                            ? rawService.first
-                                            : {})
-                                      : rawService;
-
-                                  final prefs =
-                                      await SharedPreferences.getInstance();
-
-                                  final backendUserId =
-                                      prefs.getString('backend_user_id') ?? '';
-
-                                  final handymanUserType =
-                                      handyman?['user_type']
-                                          ?.toString()
-                                          .toLowerCase();
-
-                                  final isRealHandyman =
-                                      handyman != null &&
-                                      handyman['id'] != null &&
-                                      handymanUserType == 'handyman';
-
-                                  final targetId = isRealHandyman
-                                      ? 'handyman_${handyman['id']}'
-                                      : 'provider_${provider['id']}';
-
-                                  debugPrint(
-                                    "=========== CHAT TARGET DEBUG ===========",
-                                  );
-
-                                  debugPrint("HANDYMAN => $handyman");
-
-                                  debugPrint(
-                                    "HANDYMAN USER TYPE => $handymanUserType",
-                                  );
-
-                                  debugPrint(
-                                    "IS REAL HANDYMAN => $isRealHandyman",
-                                  );
-
-                                  debugPrint("TARGET ID => $targetId");
-
-                                  debugPrint(
-                                    "=========================================",
-                                  );
-
-                                  Navigator.pushNamed(
-                                    context,
-                                    AppRoutes.chatHomeScreen,
-                                    arguments: {
-                                      'name':
-                                          handyman?['display_name'] ??
-                                          provider?['display_name'] ??
-                                          detail?['provider_name'] ??
-                                          "Professional",
-
-                                      'image':
-                                          handyman?['profile_image'] ??
-                                          service?['provider_image'] ??
-                                          provider?['profile_image'] ??
-                                          "lib/assets/images/rider_image.png",
-
-                                      'phone':
-                                          (handyman?['contact_number'] ??
-                                                  provider?['contact_number'])
-                                              ?.toString(),
-
-                                      'booking_id': detail?['id']?.toString(),
-
-                                      // sender
-                                      'my_chat_id': 'user_$backendUserId',
-
-                                      // receiver
-                                      'provider_uid': targetId,
-                                      'is_handyman_chat': isRealHandyman,
-                                    },
-                                  );
-                                },
-                                child: Container(
-                                  height: AppSizes.h(context, 45),
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: Insets.xxs,
-                                    horizontal: Insets.md,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.black),
-                                    borderRadius: BorderRadius.circular(
-                                      Insets.xsm,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.chat, color: Colors.black),
-                                      SizedBox(width: Insets.xxs),
-                                      Text(
-                                        UserMessages.chat,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: AppSizes.h(context, 20)),
-                      if (isCompleted) ...[
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: Insets.sm),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.check_circle,
-                                    color: AppColors.completedBlue,
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: Insets.xxs),
-                                  Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: () {
-                                            final bData =
-                                                _currentBookingData is List
-                                                ? (_currentBookingData as List)
-                                                      .first
-                                                : _currentBookingData;
-                                            final rawDetail =
-                                                bData?['booking_detail'];
-                                            final detail = rawDetail is List
-                                                ? (rawDetail.isNotEmpty
-                                                      ? rawDetail.first
-                                                      : {})
-                                                : rawDetail;
-                                            return (detail?['status'] ==
-                                                    'pending_approval')
-                                                ? "Pending Approval: "
-                                                : "Completed: ";
-                                          }(),
-                                          style: TextStyle(
-                                            color: AppColors.completedBlue,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: AppSizes.w(context, 16),
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text: () {
-                                            final userProvider =
-                                                Provider.of<UserProvider>(
-                                                  context,
-                                                  listen: false,
-                                                );
-                                            DateTime? time;
-
-                                            final prefsData =
-                                                Provider.of<UserProvider>(
-                                                  context,
-                                                  listen: false,
-                                                );
-
-                                            time =
-                                                widget.completionTime ??
-                                                prefsData.serviceEndTime;
-
-                                            if (time == null) {
-                                              final bookingId = getBookingId(
-                                                _currentBookingData,
-                                              );
-
-                                              if (bookingId != null) {
-                                                final prefs =
-                                                    SharedPreferences.getInstance();
-
-                                                prefs.then((sp) {
-                                                  final saved = sp.getString(
-                                                    'service_end_time_$bookingId',
-                                                  );
-
-                                                  debugPrint(
-                                                    "UI SAVED END TIME => $saved",
-                                                  );
-
-                                                  if (saved != null &&
-                                                      mounted) {
-                                                    final parsed =
-                                                        DateTime.parse(saved);
-
-                                                    setState(() {
-                                                      _savedCompletionTime =
-                                                          parsed;
-                                                    });
-                                                  }
-                                                });
-                                              }
-                                            }
-                                            final finalTime =
-                                                time ?? _savedCompletionTime;
-
-                                            if (finalTime != null) {
-                                              return DateFormat(
-                                                'hh:mm a',
-                                              ).format(finalTime);
-                                            }
-
-                                            return "--:--"; // Fallback
-                                          }(),
-                                          style: TextStyle(
-                                            color: AppColors.naturalBlack,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: AppSizes.w(context, 16),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: AppSizes.h(context, 12)),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.check_circle,
-                                    color: AppColors.completedBlue,
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: Insets.xxs),
-                                  Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: "Stoppage time: ",
-                                          style: TextStyle(
-                                            color: AppColors.completedBlue,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: AppSizes.w(context, 16),
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text: formatTime(totalSeconds),
-                                          style: TextStyle(
-                                            color: AppColors.naturalBlack,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: AppSizes.w(context, 16),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: AppSizes.h(context, 20)),
-                            ],
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: AppSizes.h(context, 15)),
+                      _buildProfessionalInfoAndActionsCard(),
+                      if (!isCompleted)
+                        SizedBox(height: AppSizes.h(context, 10)),
                       Column(
                         children: [
                           ServiceDetailsCard(bookingData: _currentBookingData),
-                          SizedBox(height: AppSizes.h(context, 15)),
+                          SizedBox(height: AppSizes.h(context, 10)),
                           if (isCompleted ||
                               _currentBookingData?['booking_detail']?['status'] ==
                                   'pending_approval') ...[
@@ -1254,12 +595,14 @@ if (alreadySaved == null ||
                           ],
                         ],
                       ),
-
-                      SizedBox(height: AppSizes.h(context, 15)),
+                      SizedBox(height: AppSizes.h(context, 4)),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSizes.w(context, 10),
+                        ),
                         child: _buildActionButtonRow(),
                       ),
+                      SizedBox(height: AppSizes.h(context, 20)),
                     ],
                   ),
                 ),
@@ -1290,23 +633,644 @@ if (alreadySaved == null ||
 
   Widget _buildFooterButton(IconData icon, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: EdgeInsets.symmetric(vertical: AppSizes.h(context, 14)),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
+
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppSizes.w(context, 12)),
         border: Border.all(color: Colors.black12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: AppSizes.w(context, 6),
+            spreadRadius: 1,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
+          Icon(icon, color: color, size: AppSizes.w(context, 18)),
+          SizedBox(width: AppSizes.w(context, 8)),
           Text(
             label,
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.bold,
-              fontSize: 13,
+              fontSize: AppSizes.w(context, 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfessionalInfoAndActionsCard() {
+    final bData = _currentBookingData is List
+        ? (_currentBookingData as List).first
+        : _currentBookingData;
+    final rawHandyman = bData?['handyman_data'];
+    final handyman = rawHandyman is List
+        ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
+        : rawHandyman;
+    final rawProvider = bData?['provider_data'];
+    final provider = rawProvider is List
+        ? (rawProvider.isNotEmpty ? rawProvider.first : {})
+        : rawProvider;
+    final rawService = bData?['service'];
+    final service = rawService is List
+        ? (rawService.isNotEmpty ? rawService.first : {})
+        : rawService;
+
+    final providerName =
+        handyman?['display_name']?.toString() ??
+        provider?['display_name']?.toString() ??
+        bData?['booking_detail']?['provider_name']?.toString() ??
+        "";
+
+    final providerImage =
+        handyman?['profile_image'] ??
+        service?['provider_image'] ??
+        provider?['profile_image'] ??
+        provider?['employee_image'] ??
+        provider?['provider_image'] ??
+        bData?['booking_detail']?['provider_image'];
+
+    final rating =
+        double.tryParse(
+          (handyman?['handyman_rating'] ??
+                  provider?['handyman_rating'] ??
+                  handyman?['providers_service_rating'] ??
+                  provider?['providers_service_rating'] ??
+                  0)
+              .toString(),
+        ) ??
+        0.0;
+
+    final jobsDone =
+        (handyman?['total_services_booked'] ??
+                provider?['total_services_booked'] ??
+                0)
+            as int;
+
+    final rawDetail = bData?['booking_detail'];
+    final detail = rawDetail is List
+        ? (rawDetail.isNotEmpty ? rawDetail.first : {})
+        : rawDetail;
+    final currentStatus = detail?['status']?.toString().toLowerCase() ?? "";
+
+    String getStatusText() {
+      if (currentStatus == 'pending_approval') return "Pending Approval";
+      if (currentStatus == 'completed') return "Completed";
+      return "In Progress";
+    }
+
+    String getSubtitleText() {
+      if (currentStatus == 'pending_approval')
+        return "Service Pending Approval";
+      if (currentStatus == 'completed') return "Service Completed Successfully";
+      return "Service is in progress";
+    }
+
+    return Transform.translate(
+      offset: isCompleted ? Offset(0, -AppSizes.h(context, 8)) : Offset.zero,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: AppSizes.w(context, 12),
+              spreadRadius: 1,
+              offset: const Offset(0, -2),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: AppSizes.w(context, 8),
+              spreadRadius: 2,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(AppSizes.w(context, 16)),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: AppSizes.w(context, 30),
+                    backgroundColor: Colors.grey.shade200,
+                    backgroundImage:
+                        (providerImage != null &&
+                            providerImage.toString().startsWith('http'))
+                        ? CachedNetworkImageProvider(
+                                providerImage.toString(),
+                                headers: const {},
+                              )
+                              as ImageProvider
+                        : null,
+                    child:
+                        (providerImage == null ||
+                            !providerImage.toString().startsWith('http'))
+                        ? Icon(
+                            Icons.person,
+                            color: Colors.black54,
+                            size: AppSizes.w(context, 30),
+                          )
+                        : null,
+                  ),
+                  SizedBox(width: AppSizes.w(context, 12)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                providerName,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: AppSizes.w(context, 16),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            SizedBox(width: AppSizes.w(context, 8)),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSizes.w(context, 10),
+                                vertical: AppSizes.h(context, 5),
+                              ),
+                              decoration: BoxDecoration(
+                                color: isCompleted
+                                    ? const Color(0xFF2196F3)
+                                    : const Color(0xFF22C55E),
+                                borderRadius: BorderRadius.circular(
+                                  AppSizes.w(context, 8),
+                                ),
+                              ),
+                              child: Text(
+                                getStatusText(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontSize: AppSizes.w(context, 11),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: AppSizes.h(context, 4)),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.star,
+                              color: const Color(0xFFFFB300),
+                              size: AppSizes.w(context, 14),
+                            ),
+                            SizedBox(width: AppSizes.w(context, 4)),
+                            Text(
+                              rating.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: AppSizes.w(context, 12),
+                              ),
+                            ),
+                            SizedBox(width: AppSizes.w(context, 4)),
+                            Text(
+                              "($jobsDone jobs done)",
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: AppSizes.w(context, 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: AppSizes.h(context, 6)),
+                        Text(
+                          getSubtitleText(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isCompleted
+                                ? const Color(0xFF2196F3)
+                                : const Color(0xFFEF4444),
+                            fontWeight: FontWeight.bold,
+                            fontSize: AppSizes.w(context, 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: AppSizes.h(context, 20)),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final rawHandyman = bData?['handyman_data'];
+                        final handyman = rawHandyman is List
+                            ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
+                            : rawHandyman;
+                        final rawProvider = bData?['provider_data'];
+                        final provider = rawProvider is List
+                            ? (rawProvider.isNotEmpty ? rawProvider.first : {})
+                            : rawProvider;
+
+                        final phone =
+                            (handyman?['contact_number'] ??
+                                    provider?['contact_number'])
+                                ?.toString()
+                                ?.replaceAll(' ', '');
+
+                        if (phone != null && phone.isNotEmpty) {
+                          try {
+                            final url = Uri.parse('tel:$phone');
+                            await launchUrl(
+                              url,
+                              mode: LaunchMode.platformDefault,
+                            );
+                          } catch (e) {
+                            debugPrint('Could not launch call: $e');
+                          }
+                        }
+                      },
+                      child: _buildActionButton(
+                        icon: Icons.call,
+                        label: "Call",
+                        color: AppColors.discountRed,
+                        textColor: AppColors.naturalWhite,
+                        isOutlined: false,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: AppSizes.w(context, 16)),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        final backendUserId =
+                            prefs.getString('backend_user_id') ?? '';
+
+                        final handymanUserType = handyman?['user_type']
+                            ?.toString()
+                            .toLowerCase();
+
+                        final isRealHandyman =
+                            handyman != null &&
+                            handyman['id'] != null &&
+                            handymanUserType == 'handyman';
+
+                        final targetId = isRealHandyman
+                            ? 'handyman_${handyman['id']}'
+                            : 'provider_${provider['id']}';
+
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.chatHomeScreen,
+                          arguments: {
+                            'name':
+                                handyman?['display_name'] ??
+                                provider?['display_name'] ??
+                                detail?['provider_name'] ??
+                                "Professional",
+                            'image':
+                                handyman?['profile_image'] ??
+                                service?['provider_image'] ??
+                                provider?['profile_image'] ??
+                                "lib/assets/images/rider_image.png",
+                            'phone':
+                                (handyman?['contact_number'] ??
+                                        provider?['contact_number'])
+                                    ?.toString(),
+                            'booking_id': detail?['id']?.toString(),
+                            'my_chat_id': 'user_$backendUserId',
+                            'provider_uid': targetId,
+                            'is_handyman_chat': isRealHandyman,
+                          },
+                        );
+                      },
+                      child: _buildActionButton(
+                        icon: Icons.chat_bubble_outline,
+                        label: "Chat",
+                        color: AppColors.borderRejected,
+                        textColor: AppColors.borderRejected,
+                        isOutlined: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (isCompleted) ...[
+                SizedBox(height: AppSizes.h(context, 12)),
+
+                Container(
+                  margin: EdgeInsets.symmetric(
+                    horizontal: AppSizes.w(context, 8),
+                  ),
+                  decoration: BoxDecoration(color: Colors.white),
+                  child: Column(
+                    children: [
+                      // COMPLETED AT
+                      _buildSummaryRow(
+                        icon: Icons.check_circle,
+                        iconColor: const Color(0xFF4CAF50),
+                        bgColor: const Color(0xFFE8F5E9),
+                        title: "Completed At",
+                        value: () {
+                          final userProvider = Provider.of<UserProvider>(
+                            context,
+                            listen: false,
+                          );
+
+                          DateTime? time;
+
+                          time =
+                              widget.completionTime ??
+                              userProvider.serviceEndTime;
+
+                          if (time == null) {
+                            final bookingId = getBookingId(_currentBookingData);
+
+                            if (bookingId != null) {
+                              final prefs = SharedPreferences.getInstance();
+
+                              prefs.then((sp) {
+                                final saved = sp.getString(
+                                  'service_end_time_$bookingId',
+                                );
+
+                                if (saved != null && mounted) {
+                                  setState(() {
+                                    _savedCompletionTime = DateTime.parse(
+                                      saved,
+                                    );
+                                  });
+                                }
+                              });
+                            }
+                          }
+
+                          final finalTime = time ?? _savedCompletionTime;
+
+                          if (finalTime != null) {
+                            return DateFormat('hh:mm a').format(finalTime);
+                          }
+
+                          return "--:--";
+                        }(),
+                      ),
+
+                      if (getExtraTimeTaken() != null &&
+                          getExtraTimeTaken() != "0 mins") ...[
+                        Divider(height: 1, color: Colors.grey.shade200),
+
+                        _buildSummaryRow(
+                          icon: Icons.warning_amber_rounded,
+                          iconColor: const Color(0xFFFF9800),
+                          bgColor: const Color(0xFFFFF3E0),
+                          title: "Extra Time Taken",
+                          value: getExtraTimeTaken()!,
+                        ),
+                      ],
+
+                      Divider(height: 1, color: Colors.grey.shade200),
+
+                      // TOTAL TIME
+                      _buildSummaryRow(
+                        icon: Icons.access_time_filled,
+                        iconColor: const Color(0xFF4285F4),
+                        bgColor: const Color(0xFFE8F0FF),
+                        title: "Total Time Taken",
+                        value: formatTime(totalSeconds),
+                      ),
+
+                      Divider(height: 1, color: Colors.grey.shade200),
+
+                      // SERVICE
+                      Padding(
+                        padding: EdgeInsets.all(AppSizes.w(context, 16)),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: AppSizes.w(context, 23),
+                              height: AppSizes.w(context, 23),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFF4D6),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.description,
+                                color: const Color(0xFFFFB300),
+                                size: AppSizes.w(context, 19),
+                              ),
+                            ),
+
+                            SizedBox(width: AppSizes.w(context, 14)),
+
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Service Name",
+                                    style: TextStyle(
+                                      fontSize: AppSizes.w(context, 14),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+
+                                  SizedBox(height: AppSizes.h(context, 4)),
+
+                                  Text(
+                                    (() {
+                                      final bData = _currentBookingData is List
+                                          ? (_currentBookingData as List).first
+                                          : _currentBookingData;
+
+                                      final rawService = bData?['service'];
+
+                                      final service = rawService is List
+                                          ? (rawService.isNotEmpty
+                                                ? rawService.first
+                                                : {})
+                                          : rawService;
+
+                                      return service?['name']?.toString() ??
+                                          service?['service_name']
+                                              ?.toString() ??
+                                          "N/A";
+                                    })(),
+                                    style: TextStyle(
+                                      fontSize: AppSizes.w(context, 13),
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: AppSizes.h(context, 14)),
+
+                Container(
+                  margin: EdgeInsets.symmetric(
+                    horizontal: AppSizes.w(context, 8),
+                    vertical: AppSizes.w(context, 8),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSizes.w(context, 12),
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7FBF5),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFDDEED7)),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 55,
+                        height: 55,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Icon(
+                              Icons.shield,
+                              size: 35,
+                              color: Color(0xFF4CAF50),
+                            ),
+                            Icon(
+                              Icons.check_circle,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Your home is in safe hands!",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: AppSizes.w(context, 12),
+                              ),
+                            ),
+                            SizedBox(height: AppSizes.h(context, 4)),
+                            Text(
+                              "We're always here when you need us again.",
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: AppSizes.w(context, 10),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Image.asset(
+                        "lib/assets/images/completed_bottom.png",
+                        height: AppSizes.h(context, 35),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: AppSizes.h(context, 20)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color textColor,
+    required bool isOutlined,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: AppSizes.h(context, 12)),
+      decoration: BoxDecoration(
+        color: isOutlined ? Colors.white : color,
+        borderRadius: BorderRadius.circular(AppSizes.w(context, 12)),
+        border: isOutlined ? Border.all(color: color) : null,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: textColor, size: AppSizes.w(context, 20)),
+          SizedBox(width: AppSizes.w(context, 8)),
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: AppSizes.w(context, 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow({
+    required IconData icon,
+    required Color iconColor,
+    required Color bgColor,
+    required String title,
+    required String value,
+  }) {
+    return Padding(
+      padding: EdgeInsets.all(AppSizes.w(context, 8)),
+      child: Row(
+        children: [
+          Container(
+            width: AppSizes.w(context, 22),
+            height: AppSizes.w(context, 22),
+            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+            child: Icon(icon, color: iconColor, size: AppSizes.w(context, 18)),
+          ),
+
+          SizedBox(width: AppSizes.w(context, 14)),
+
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: AppSizes.w(context, 14),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: AppSizes.w(context, 14),
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
