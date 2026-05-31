@@ -186,7 +186,7 @@ class _BookingHomePageState extends State<BookingHomePage> {
         title: Padding(
           padding: EdgeInsets.only(top: AppSizes.h(context, 10)),
           child: Text(
-            "${_getServiceName()} Booking",
+            "${_getServiceName()}",
             style: TextStyle(
               color: AppColors.naturalBlack,
               fontWeight: FontWeight.w600,

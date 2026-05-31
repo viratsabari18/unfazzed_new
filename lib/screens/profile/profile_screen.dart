@@ -418,7 +418,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (mounted) {
             Provider.of<UserProvider>(context, listen: false).clearUser();
             // User Request: Keep addresses persistent across login/logout
-            // Provider.of<AddressProvider>(context, listen: false).clearAddressData();
+            Provider.of<AddressProvider>(context, listen: false).clearAddressData();
             Navigator.pushNamedAndRemoveUntil(
               context,
               AppRoutes.signIn,

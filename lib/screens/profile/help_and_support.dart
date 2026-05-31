@@ -43,7 +43,7 @@ import 'package:zeerah/core/services/policy_service.dart';
         backgroundColor: AppColors.naturalWhite,
       appBar: AppBar(
         backgroundColor:AppColors.naturalWhite ,
-        title: const Text('Privacy Policy'),
+        title: const Text('Help & Support'),
       ),
       body: isLoading
           ? const Center(

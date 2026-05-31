@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:zeerah/core/common/app_exports.dart';
+import 'package:zeerah/core/models/faq_model.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
+import 'package:zeerah/core/services/faq_service.dart';
 import 'package:zeerah/core/services/helpdesk_service.dart';
 
 class HelpDeskScreen extends StatefulWidget {
@@ -17,16 +19,22 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
   final HelpDeskService _helpDeskService = HelpDeskService();
   List<dynamic> _tickets = [];
   bool _isLoadingTickets = false;
+  final FaqService _faqService = FaqService();
+
+  List<FaqModel> _faqs = [];
+
+  bool _isFaqLoading = false;
 
   @override
   void initState() {
     super.initState();
     _fetchTickets();
+    _fetchFaqs();
   }
 
   Future<void> _fetchTickets() async {
     setState(() => _isLoadingTickets = true);
-    
+
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final employeeId = userProvider.backendUserId;
 
@@ -47,6 +55,21 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
     }
   }
 
+  Future<void> _fetchFaqs() async {
+    setState(() {
+      _isFaqLoading = true;
+    });
+
+    final result = await _faqService.fetchFaqs();
+
+    if (mounted) {
+      setState(() {
+        _faqs = result;
+        _isFaqLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,10 +78,7 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+
         title: Text(
           'Help Desk',
           style: GoogleFonts.poppins(
@@ -68,19 +88,21 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSearchHeader(),
-            const SizedBox(height: 30),
-            _buildQuickHelpFilters(),
-            const SizedBox(height: 30),
-            _buildContactSection(),
-            const SizedBox(height: 30),
-            _buildFAQSection(),
-            const SizedBox(height: 40),
-          ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSearchHeader(),
+              const SizedBox(height: 30),
+              _buildQuickHelpFilters(),
+              const SizedBox(height: 30),
+              _buildContactSection(),
+              const SizedBox(height: 30),
+              _buildFAQSection(),
+              const SizedBox(height: 90),
+            ],
+          ),
         ),
       ),
     );
@@ -119,7 +141,10 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Search for issues...',
-                hintStyle: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
+                hintStyle: GoogleFonts.poppins(
+                  color: Colors.grey,
+                  fontSize: 14,
+                ),
                 icon: const Icon(Icons.search, color: AppColors.primaryRed),
                 border: InputBorder.none,
               ),
@@ -149,7 +174,10 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
               ),
               GestureDetector(
                 onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.createSupportTicket).then((value) {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.createSupportTicket,
+                  ).then((value) {
                     if (value == true) _fetchTickets();
                   });
                 },
@@ -159,7 +187,11 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
                     color: AppColors.primaryRed.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.add, color: AppColors.primaryRed, size: 20),
+                  child: const Icon(
+                    Icons.add,
+                    color: AppColors.primaryRed,
+                    size: 20,
+                  ),
                 ),
               ),
             ],
@@ -197,14 +229,18 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primaryRed : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? AppColors.primaryRed : const Color(0xFFEEEEEE)),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: AppColors.primaryRed.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            )
-          ] : null,
+          border: Border.all(
+            color: isSelected ? AppColors.primaryRed : const Color(0xFFEEEEEE),
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primaryRed.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -243,10 +279,7 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
             const SizedBox(height: 12),
             Text(
               'No ${_selectedFilter.toLowerCase()} queries found',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -288,8 +321,8 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         onTap: () {
           Navigator.pushNamed(
-            context, 
-            AppRoutes.supportTicketDetail, 
+            context,
+            AppRoutes.supportTicketDetail,
             arguments: ticketId,
           ).then((_) => _fetchTickets());
         },
@@ -311,7 +344,9 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: status == 'OPEN' ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+            color: status == 'OPEN'
+                ? Colors.green.withOpacity(0.1)
+                : Colors.grey.withOpacity(0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
@@ -344,9 +379,17 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
           const SizedBox(height: 15),
           Row(
             children: [
-              _buildContactCard(Icons.email_outlined, 'Email Support', 'Active now'),
+              _buildContactCard(
+                Icons.email_outlined,
+                'Email Support',
+                'Active now',
+              ),
               const SizedBox(width: 15),
-              _buildContactCard(Icons.phone_outlined, 'Call Support', '24/7 Service'),
+              _buildContactCard(
+                Icons.phone_outlined,
+                'Call Support',
+                '24/7 Service',
+              ),
             ],
           ),
         ],
@@ -369,11 +412,18 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
             const SizedBox(height: 10),
             Text(
               title,
-              style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600),
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             Text(
               subtitle,
-              style: GoogleFonts.poppins(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w500),
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: Colors.green,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -382,25 +432,6 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
   }
 
   Widget _buildFAQSection() {
-    final List<Map<String, String>> faqs = [
-      {
-        'question': 'What happen when my cancel booking?',
-        'answer': 'When you cancel a booking, the refund process depends on the cancellation timing. If canceled within the free window, you get a full refund to your wallet.'
-      },
-      {
-        'question': 'How long does a refund take?',
-        'answer': 'Refunds to the Zeerah wallet are instant. Bank account refunds typically take 5-7 business days depending on your bank.'
-      },
-      {
-        'question': 'What if handyman is late?',
-        'answer': 'If the professional is late by more than 15 minutes, you can contact support directly or use the "Reschedule" option in your booking details.'
-      },
-      {
-        'question': 'How to report on handyman?',
-        'answer': 'You can report an issue after the service is completed via the "My Reviews" section or by contacting our Help Desk directly with the booking ID.'
-      },
-    ];
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -414,11 +445,31 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
               color: Colors.black,
             ),
           ),
+
           const SizedBox(height: 10),
-          ...faqs.map((faq) => _DynamicFAQItem(
-            question: faq['question']!,
-            answer: faq['answer']!,
-          )).toList(),
+
+          if (_isFaqLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(color: AppColors.primaryRed),
+              ),
+            )
+          else if (_faqs.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Text('No FAQs available', style: GoogleFonts.poppins()),
+            )
+          else
+            ..._faqs.map(
+              (faq) =>
+                  _DynamicFAQItem(question: faq.title, answer: faq.description),
+            ),
         ],
       ),
     );
@@ -429,10 +480,7 @@ class _DynamicFAQItem extends StatefulWidget {
   final String question;
   final String answer;
 
-  const _DynamicFAQItem({
-    required this.question,
-    required this.answer,
-  });
+  const _DynamicFAQItem({required this.question, required this.answer});
 
   @override
   State<_DynamicFAQItem> createState() => _DynamicFAQItemState();

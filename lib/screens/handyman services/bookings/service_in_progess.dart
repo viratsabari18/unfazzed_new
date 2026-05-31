@@ -551,7 +551,7 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                         SizedBox(height: AppSizes.h(context, 10)),
                       Column(
                         children: [
-                          ServiceDetailsCard(bookingData: _currentBookingData),
+                      
                           SizedBox(height: AppSizes.h(context, 10)),
                           if (isCompleted ||
                               _currentBookingData?['booking_detail']?['status'] ==
@@ -565,6 +565,8 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                                           _currentBookingData?['otp'])
                                       ?.toString(),
                             ),
+                                ServiceDetailsCard(bookingData: _currentBookingData),
+                                if(isCompleted) SizedBox(height: AppSizes.h(context, 10)),
                           ] else ...[
                             ServiceProgressWidget(
                               currentStep: () {

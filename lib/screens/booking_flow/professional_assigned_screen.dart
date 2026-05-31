@@ -15,6 +15,7 @@ import 'package:zeerah/core/models/service_list_model.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfessionalAssignedScreen extends StatefulWidget {
   final dynamic service;
@@ -148,7 +149,8 @@ class _ProfessionalAssignedScreenState
         .toLowerCase()
         .trim();
 
-    final isRealHandyman = handyman.isNotEmpty &&
+    final isRealHandyman =
+        handyman.isNotEmpty &&
         handyman['id'] != null &&
         handymanUserType != null &&
         handymanUserType == 'handyman';
@@ -167,7 +169,8 @@ class _ProfessionalAssignedScreenState
       final providerId = provider['id'].toString();
       return {
         'uid': 'provider_$providerId',
-        'name': provider['company_name'] ?? provider['display_name'] ?? 'Provider',
+        'name':
+            provider['company_name'] ?? provider['display_name'] ?? 'Provider',
         'image': provider['profile_image'] ?? '',
         'isHandyman': false,
       };
@@ -235,22 +238,10 @@ class _ProfessionalAssignedScreenState
 
   void _generateRoadSnappedRoute() {
     final List<LatLng> majorPoints = [
-      LatLng(
-        _userLocation.latitude + 0.005,
-        _userLocation.longitude + 0.005,
-      ),
-      LatLng(
-        _userLocation.latitude + 0.005,
-        _userLocation.longitude + 0.002,
-      ),
-      LatLng(
-        _userLocation.latitude + 0.002,
-        _userLocation.longitude + 0.002,
-      ),
-      LatLng(
-        _userLocation.latitude + 0.001,
-        _userLocation.longitude + 0.001,
-      ),
+      LatLng(_userLocation.latitude + 0.005, _userLocation.longitude + 0.005),
+      LatLng(_userLocation.latitude + 0.005, _userLocation.longitude + 0.002),
+      LatLng(_userLocation.latitude + 0.002, _userLocation.longitude + 0.002),
+      LatLng(_userLocation.latitude + 0.001, _userLocation.longitude + 0.001),
       _userLocation,
     ];
 
@@ -494,6 +485,44 @@ class _ProfessionalAssignedScreenState
       }
     });
   }
+
+Stream<int> getUnreadCount() async* {
+  final prefs = await SharedPreferences.getInstance();
+
+  final backendUserId =
+      prefs.getString('backend_user_id') ?? '';
+
+  final target = getChatTarget();
+
+  final roomId =
+      'booking_${_bookingId}_${target['uid']}';
+
+  debugPrint("=========== UNREAD DEBUG ===========");
+  debugPrint("ROOM ID => $roomId");
+  debugPrint("USER ID => user_$backendUserId");
+  debugPrint("TARGET => ${target['uid']}");
+  debugPrint("====================================");
+
+  yield* FirebaseFirestore.instance
+      .collection('chats')
+      .doc(roomId)
+      .collection('messages')
+      .where(
+        'receiverId',
+        isEqualTo: 'user_$backendUserId',
+      )
+      .where(
+        'isRead',
+        isEqualTo: false,
+      )
+      .snapshots()
+      .map((e) {
+        debugPrint(
+          "UNREAD COUNT => ${e.docs.length}",
+        );
+        return e.docs.length;
+      });
+}
 
   Future<void> _fetchAndRedirect() async {
     String? bookingId;
@@ -810,9 +839,13 @@ class _ProfessionalAssignedScreenState
                   child: Card(
                     elevation: 8,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
+                      borderRadius: BorderRadius.circular(
+                        AppSizes.w(context, 16),
+                      ),
                     ),
-                    margin: EdgeInsets.symmetric(horizontal: AppSizes.w(context, 40)),
+                    margin: EdgeInsets.symmetric(
+                      horizontal: AppSizes.w(context, 40),
+                    ),
                     child: Padding(
                       padding: EdgeInsets.all(AppSizes.w(context, 24)),
                       child: Column(
@@ -996,10 +1029,7 @@ class _ProfessionalAssignedScreenState
     return Transform.translate(
       offset: Offset(0, -AppSizes.h(context, 5)),
       child: Container(
-        margin: EdgeInsets.only(
-      
-          bottom: AppSizes.h(context, 2),
-        ),
+        margin: EdgeInsets.only(bottom: AppSizes.h(context, 2)),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
@@ -1022,9 +1052,12 @@ class _ProfessionalAssignedScreenState
                   CircleAvatar(
                     radius: AppSizes.w(context, 30),
                     backgroundImage:
-                        (profileImageUrl != null && profileImageUrl.startsWith('http'))
-                        ? CachedNetworkImageProvider(profileImageUrl) as ImageProvider
-                        : const AssetImage('lib/assets/images/rider_image.png') as ImageProvider,
+                        (profileImageUrl != null &&
+                            profileImageUrl.startsWith('http'))
+                        ? CachedNetworkImageProvider(profileImageUrl)
+                              as ImageProvider
+                        : const AssetImage('lib/assets/images/rider_image.png')
+                              as ImageProvider,
                     backgroundColor: const Color(0xFFFFF3E0),
                   ),
                   SizedBox(width: AppSizes.w(context, 12)),
@@ -1053,7 +1086,9 @@ class _ProfessionalAssignedScreenState
                               ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF6366F1),
-                                borderRadius: BorderRadius.circular(AppSizes.w(context, 8)),
+                                borderRadius: BorderRadius.circular(
+                                  AppSizes.w(context, 8),
+                                ),
                               ),
                               child: Text(
                                 _backendStatus,
@@ -1119,23 +1154,23 @@ class _ProfessionalAssignedScreenState
                         final bData = _currentBookingData is List
                             ? (_currentBookingData as List).first
                             : _currentBookingData;
-      
+
                         final rawHandyman = bData?['handyman_data'];
                         final handyman = rawHandyman is List
                             ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
                             : rawHandyman;
-      
+
                         final rawProvider = bData?['provider_data'];
                         final provider = rawProvider is List
                             ? (rawProvider.isNotEmpty ? rawProvider.first : {})
                             : rawProvider;
-      
+
                         final phone =
                             (handyman?['contact_number'] ??
                                     provider?['contact_number'])
                                 ?.toString()
                                 ?.replaceAll(' ', '');
-      
+
                         if (phone != null && phone.isNotEmpty) {
                           try {
                             final url = Uri.parse('tel:$phone');
@@ -1172,12 +1207,13 @@ class _ProfessionalAssignedScreenState
                         final provider = rawProvider is List
                             ? (rawProvider.isNotEmpty ? rawProvider.first : {})
                             : rawProvider;
-      
+
                         Future<void> navigateToChat() async {
                           final prefs = await SharedPreferences.getInstance();
-                          final backendUserId = prefs.getString('backend_user_id') ?? '';
+                          final backendUserId =
+                              prefs.getString('backend_user_id') ?? '';
                           final target = getChatTarget();
-      
+
                           debugPrint("========== OPEN CHAT ==========");
                           debugPrint("MY CHAT ID => user_$backendUserId");
                           debugPrint("TARGET UID => ${target['uid']}");
@@ -1187,7 +1223,7 @@ class _ProfessionalAssignedScreenState
                           debugPrint("TARGET => $target");
                           debugPrint("MY ID => user_$backendUserId");
                           debugPrint("==================================");
-      
+
                           Navigator.pushNamed(
                             context,
                             AppRoutes.chatHomeScreen,
@@ -1201,15 +1237,71 @@ class _ProfessionalAssignedScreenState
                             },
                           );
                         }
-      
+
                         navigateToChat();
                       },
-                      child: _buildActionButton(
-                        icon: Icons.chat_bubble_outline,
-                        label: "Chat",
-                        color: AppColors.borderRejected,
-                        textColor: AppColors.borderRejected,
-                        isOutlined: true,
+                      child: StreamBuilder<int>(
+                        stream: getUnreadCount(),
+                        builder: (context, snapshot) {
+                          final unread = snapshot.data ?? 0;
+
+                          return Container(
+                            padding: EdgeInsets.symmetric(
+                              vertical: AppSizes.h(context, 8),
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(
+                                AppSizes.w(context, 8),
+                              ),
+                              border: Border.all(
+                                color: AppColors.borderRejected,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.chat_bubble_outline,
+                                  color: AppColors.borderRejected,
+                                ),
+
+                                SizedBox(width: 6),
+
+                                Text(
+                                  "Chat",
+                                  style: TextStyle(
+                                    color: AppColors.borderRejected,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                if (unread > 0) ...[
+                                  SizedBox(width: 6),
+
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      unread > 99 ? "99+" : unread.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -1424,13 +1516,17 @@ class _ProfessionalAssignedScreenState
               Expanded(
                 child: Container(
                   padding: isActive
-                      ? EdgeInsets.symmetric(horizontal: AppSizes.w(context, 14))
+                      ? EdgeInsets.symmetric(
+                          horizontal: AppSizes.w(context, 14),
+                        )
                       : EdgeInsets.zero,
                   decoration: BoxDecoration(
                     color: isActive
                         ? const Color(0xFFFFF6E1)
                         : Colors.transparent,
-                    borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
+                    borderRadius: BorderRadius.circular(
+                      AppSizes.w(context, 16),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1518,10 +1614,7 @@ class _ProfessionalAssignedScreenState
     }
 
     return Container(
-      margin: EdgeInsets.symmetric(
-
-        vertical: AppSizes.h(context, 8),
-      ),
+      margin: EdgeInsets.symmetric(vertical: AppSizes.h(context, 8)),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppSizes.w(context, 16)),
@@ -1632,7 +1725,6 @@ class _ProfessionalAssignedScreenState
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, AppRoutes.helpDesk),
       child: Container(
-    
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: AppSizes.h(context, 3)),
         decoration: BoxDecoration(

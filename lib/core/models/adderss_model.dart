@@ -90,25 +90,29 @@ class AddressData {
     this.userPhone,
   });
 
-  factory AddressData.fromJson(
-    Map<String, dynamic> json,
-  ) {
-    return AddressData(
-      id: json['id'] ?? 0,
-      userId: json['user_id'] ?? 0,
+factory AddressData.fromJson(
+  Map<String, dynamic> json,
+) {
+  return AddressData(
+    id: json['id'] ?? 0,
+    userId: json['user_id'] ?? 0,
 
-      latitude:
-          (json['latitude'] ?? 0).toDouble(),
+    latitude: double.tryParse(
+          json['latitude']?.toString() ?? '0',
+        ) ??
+        0.0,
 
-      longitude:
-          (json['longitude'] ?? 0).toDouble(),
+    longitude: double.tryParse(
+           json['longitude']?.toString() ?? '0',
+         ) ??
+         0.0,
 
-      status: json['status'] ?? 0,
-      address: json['address'] ?? '',
-      userName: json['user_name'] ?? '',
-      userPhone: json['user_phone'],
-    );
-  }
+    status: json['status'] ?? 0,
+    address: json['address'] ?? '',
+    userName: json['user_name'] ?? '',
+    userPhone: json['user_phone'],
+  );
+}
 }
 class DeleteAddressModel {
   final String message;

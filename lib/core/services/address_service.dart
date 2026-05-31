@@ -12,7 +12,7 @@ class AddressService {
   /// COMMON HEADERS
   static Future<Map<String, String>> _headers() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("token");
+    final token = prefs.getString("api_token");
 
     debugPrint("================================");
     debugPrint("TOKEN : $token");
@@ -89,7 +89,7 @@ class AddressService {
       debugPrint("========== FETCH ADDRESS LIST API ==========");
       debugPrint("URL : $url");
 
-      final response = await http.post(
+      final response = await http.get(
         url,
         headers: await _headers(),
       );

@@ -303,29 +303,7 @@ class _SelectDateState extends State<SelectDate> {
                       size: 28,
                     ),
                   ),
-                  Positioned(
-                    bottom: AppSizes.h(context, 4),
-                    right: AppSizes.w(context, 4),
-                    child: Container(
-                      width: AppSizes.w(context, 18),
-                      height: AppSizes.h(context, 18),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryRed,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primaryRed.withOpacity(0.3),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.check,
-                        size: 10,
-                        color: AppColors.naturalWhite,
-                      ),
-                    ),
-                  )
+                
                 ],
               ),
               

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/config/api_config.dart';
+import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/services/auth_service.dart';
 
@@ -218,18 +219,26 @@ class _OtpVerificationState extends State<OtpVerification> {
             if (data['status'] == true && data['data'] != null) {
               final apiToken = data['data']['api_token'];
 
-    if (apiToken != null && apiToken.isNotEmpty) {
+              if (apiToken != null && apiToken.isNotEmpty) {
+                await userProvider.setApiToken(apiToken);
+
+            
+
+             await userProvider.setApiToken(apiToken);
+          
+
+                if (apiToken != null) {
   await userProvider.setApiToken(apiToken);
 
-  final prefs = await SharedPreferences.getInstance();
-
-  await prefs.setString("token", apiToken);
-
-  final savedToken = prefs.getString("token");
-
-  debugPrint("TOKEN SAVED SUCCESSFULLY : $apiToken");
-  debugPrint("CHECK SAVED TOKEN : $savedToken");
+  await Provider.of<AddressProvider>(
+    context,
+    listen: false,
+  ).fetchAddressesFromBackend();
 }
+
+                debugPrint("TOKEN SAVED SUCCESSFULLY : $apiToken");
+             
+              }
 
               final backendId =
                   data['data']['employee_id']?.toString() ??
@@ -261,6 +270,7 @@ class _OtpVerificationState extends State<OtpVerification> {
           setState(() {
             isLoading = false;
           });
+          
 
           showOtpSuccessDialog(
             context,

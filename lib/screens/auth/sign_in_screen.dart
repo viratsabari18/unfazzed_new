@@ -88,23 +88,20 @@ class _SignInScreenState extends State<SignInScreen> {
 
     await _authService.verifyPhoneNumber(
       phoneNumber: formattedPhone,
-      onCodeSent: (verificationId) async {
-        await Provider.of<AddressProvider>(
-          context,
-          listen: false,
-        ).setCurrentLocationAutomatically();
+   onCodeSent: (verificationId) {
+  setState(() => isLoading = false);
 
-        setState(() => isLoading = false);
+  Navigator.pushNamed(
+    context,
+    AppRoutes.otpVerifly,
+    arguments: {
+      'verificationId': verificationId,
+      'phoneNumber': formattedPhone,
+    },
+  );
 
-        Navigator.pushNamed(
-          context,
-          AppRoutes.otpVerifly,
-          arguments: {
-            'verificationId': verificationId,
-            'phoneNumber': formattedPhone,
-          },
-        );
-      },
+
+},
       onVerificationFailed: (e) {
         setState(() {
           isLoading = false;

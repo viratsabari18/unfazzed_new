@@ -31,9 +31,6 @@ class _HomePageState extends State<HomePage> {
           onRefresh: () async {
             await context.read<DashboardProvider>().fetchCategories();
 
-            await context
-                .read<AddressProvider>()
-                .setCurrentLocationAutomatically();
           },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),

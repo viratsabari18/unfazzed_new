@@ -15,7 +15,7 @@ class SelectLocationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final addressProvider = Provider.of<AddressProvider>(context);
     final savedAddresses = addressProvider.savedAddresses;
-    final selectedLocation = addressProvider.selectedLocation;
+    final selectedLocation = addressProvider.selectedLocation; 
 
     // Set status bar to light icons on dark background
     SystemChrome.setSystemUIOverlayStyle(
