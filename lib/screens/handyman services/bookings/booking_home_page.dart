@@ -174,7 +174,7 @@ class _BookingHomePageState extends State<BookingHomePage> {
           padding: EdgeInsets.only(top: AppSizes.h(context, 10)),
           child: IconButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.homePage);
             },
             icon: const Icon(
               Icons.arrow_back_ios,

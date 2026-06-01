@@ -22,68 +22,87 @@ class AddressProvider with ChangeNotifier {
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  Future<void> _initializeAddresses() async {
-    await _loadFromPrefs();
+Future<void> _initializeAddresses() async {
+  await _loadFromPrefs();
 
-    await fetchAddressesFromBackend();
+  await fetchAddressesFromBackend();
+}
 
-    if (_savedAddresses.isEmpty) {
+Future<void> fetchAddressesFromBackend() async {
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
+
+  try {
+    final response = await AddressService.fetchAddressList();
+
+    // BACKEND HAS NO SAVED ADDRESSES
+    if (response != null &&
+        response.status &&
+        response.data.isEmpty) {
+      debugPrint("NO ADDRESS FROM BACKEND");
+
+      _savedAddresses.clear();
+
+      _selectedLocation = null;
+
+      await _saveAllToPrefs();
+      await _saveSelectedToPrefs(null);
+
+      notifyListeners();
+
       await setCurrentLocationAutomatically();
+
+      return;
     }
-  }
 
-  Future<void> fetchAddressesFromBackend() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+    // BACKEND HAS SAVED ADDRESSES
+    if (response != null &&
+        response.status &&
+        response.data.isNotEmpty) {
+      _savedAddresses.clear();
 
-    try {
-      final response = await AddressService.fetchAddressList();
-
-      if (response != null && response.status && response.data.isNotEmpty) {
-        _savedAddresses.clear();
-
-        for (var e in response.data) {
-          _savedAddresses.add({
-            "id": e.id,
-            "label": _getLabelFromStatus(e.status),
-            "address": e.address,
-            "latitude": e.latitude,
-            "longitude": e.longitude,
-            "icon": _getIconForLabel(_getLabelFromStatus(e.status)),
-            "phone": e.userPhone ?? "",
-            "receiver_name": e.userName,
-            "status": e.status,
-          });
-        }
-
-        await _saveAllToPrefs();
-
-        if (_savedAddresses.isNotEmpty) {
-          if (_selectedLocation == null ||
-              _selectedLocation!['label'] == 'Current Location') {
-            _selectedLocation = _savedAddresses.first;
-
-            await _saveSelectedToPrefs(_selectedLocation);
-          }
-          debugPrint("SELECTED ADDRESS => ${_selectedLocation?['address']}");
-
-          await _saveSelectedToPrefs(_selectedLocation);
-        }
-
-        debugPrint("ADDRESS COUNT : ${_savedAddresses.length}");
-
-        notifyListeners();
+      for (var e in response.data) {
+        _savedAddresses.add({
+          "id": e.id,
+          "label": _getLabelFromStatus(e.status),
+          "address": e.address,
+          "latitude": e.latitude,
+          "longitude": e.longitude,
+          "icon": _getIconForLabel(_getLabelFromStatus(e.status)),
+          "phone": e.userPhone ?? "",
+          "receiver_name": e.userName,
+          "status": e.status,
+        });
       }
-    } catch (e) {
-      _errorMessage = "Failed to fetch addresses";
-      debugPrint("Fetch addresses error: $e");
-    } finally {
-      _isLoading = false;
+
+      await _saveAllToPrefs();
+
+      if (_savedAddresses.isNotEmpty) {
+        if (_selectedLocation == null ||
+            _selectedLocation!['label'] == 'Current Location') {
+          _selectedLocation = _savedAddresses.first;
+        }
+
+        await _saveSelectedToPrefs(_selectedLocation);
+      }
+
+      debugPrint(
+        "SELECTED ADDRESS => ${_selectedLocation?['address']}",
+      );
+
+      debugPrint("ADDRESS COUNT : ${_savedAddresses.length}");
+
       notifyListeners();
     }
+  } catch (e) {
+    _errorMessage = "Failed to fetch addresses";
+    debugPrint("Fetch addresses error: $e");
+  } finally {
+    _isLoading = false;
+    notifyListeners();
   }
-
+}
   String _getLabelFromStatus(int status) {
     switch (status) {
       case 1:

@@ -33,7 +33,9 @@ class _BookingServiceProgressHomeState extends State<BookingServiceProgressHome>
       Icons.arrow_back,
       color: AppColors.naturalWhite,
     ),
-    onPressed: () => Navigator.of(context).pop(),
+    onPressed: (){
+      Navigator.pushNamed(context, AppRoutes.homePage);
+    },
   ),
   elevation: 0,
   toolbarHeight: AppSizes.h(context, 40),

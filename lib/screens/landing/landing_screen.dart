@@ -2,7 +2,11 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart';
+import 'package:provider/provider.dart';
 import 'package:zeerah/core/common/app_exports.dart';
+import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/booking_history.dart';
 import 'package:zeerah/screens/home/home_page.dart';
 import 'package:zeerah/screens/profile/help_desk_screen.dart';
@@ -15,11 +19,12 @@ class LandingScreen extends StatefulWidget {
   State<LandingScreen> createState() => _LandingScreenState();
 }
 
-class _LandingScreenState extends State<LandingScreen> with AutomaticKeepAliveClientMixin {
+class _LandingScreenState extends State<LandingScreen>
+    with AutomaticKeepAliveClientMixin {
   int currentIndex = 0;
   late PageController _pageController;
   @override
-bool get wantKeepAlive => true;
+  bool get wantKeepAlive => true;
 
   final List<Widget> pages = [
     const HomePage(),
@@ -43,6 +48,88 @@ bool get wantKeepAlive => true;
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: currentIndex);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLocationPermission();
+    });
+  }
+
+  Future<void> _checkLocationPermission() async {
+    final permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      _showLocationPermissionSheet();
+    }
+  }
+
+  void _showLocationPermissionSheet() {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.location_on, color: Colors.red, size: 80),
+
+              const SizedBox(height: 16),
+
+              const Text(
+                "Location Access Required",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 10),
+
+              const Text(
+                "Enable location access to find nearby services, track providers and get accurate addresses.",
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final permission = await Geolocator.requestPermission();
+
+                    if (permission == LocationPermission.whileInUse ||
+                        permission == LocationPermission.always) {
+                      Navigator.pop(context);
+
+                      Provider.of<AddressProvider>(
+                        context,
+                        listen: false,
+                      ).setCurrentLocationAutomatically();
+                    }
+                  },
+                  child: const Text("Enable Location"),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              TextButton(
+                onPressed: () async {
+                  await Geolocator.openAppSettings();
+                },
+                child: const Text("Open Settings"),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -58,10 +145,8 @@ bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
-      super.build(context);
+    super.build(context);
     return SafeArea(
-
-
       child: Scaffold(
         extendBody: true, // allows body to go behind the navbar
         backgroundColor: Colors.transparent, // no background color to interfere
@@ -80,7 +165,7 @@ bool get wantKeepAlive => true;
           ),
           child: ClipRRect(
             clipBehavior: Clip.antiAlias,
-            
+
             borderRadius: BorderRadius.circular(AppSizes.w(context, 32)),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
@@ -104,7 +189,7 @@ bool get wantKeepAlive => true;
                     ],
                   ),
                   border: Border.all(color: Colors.grey, width: 1),
-                              borderRadius: BorderRadius.circular(AppSizes.w(context, 32)),
+                  borderRadius: BorderRadius.circular(AppSizes.w(context, 32)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.06),

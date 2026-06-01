@@ -1374,9 +1374,8 @@ class _ServiceCardState extends State<_ServiceCard> {
                               serviceTitle: widget.service.name ?? "Service",
 
                               rating: widget.service.serviceRating ?? 0,
-                           reviewsCount:
-      widget.service.serviceReview ?? "0",
-                             
+                              reviewsCount: widget.service.serviceReview ?? "0",
+
                               rate: widget.service.price ?? 0,
 
                               isFavorite: true,
@@ -1478,13 +1477,36 @@ class _ServiceCardState extends State<_ServiceCard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "₹${widget.service.price ?? 0}",
-                      style: TextStyle(
-                        fontSize: AppSizes.w(context, 14),
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              "₹${widget.service.price ?? 0}",
+                              style: TextStyle(
+                                fontSize: AppSizes.w(context, 14),
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+
+                            SizedBox(width: AppSizes.w(context, 4)),
+
+                            if (widget.service.mockPrice != null &&
+                                widget.service.mockPrice.toString().isNotEmpty)
+                              Text(
+                                "₹${widget.service.mockPrice}",
+                                style: TextStyle(
+                                  fontSize: AppSizes.w(context, 11),
+                                  color: Colors.grey,
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationColor: Colors.grey,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                     GestureDetector(
                       onTap: () {

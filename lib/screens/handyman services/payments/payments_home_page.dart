@@ -462,7 +462,7 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
     final billDetails = calculateBillDetails(bookingData);
     final totalAmount = billDetails['totalAmount']!;
 
-    final value = _selectedGateway['value'];
+    final value = _selectedGateway['live_value'];
     final key = value?['razor_key'] ?? "rzp_test_SlXdLiPsjndXjm";
 
     final userProvider = Provider.of<UserProvider>(context, listen: false);

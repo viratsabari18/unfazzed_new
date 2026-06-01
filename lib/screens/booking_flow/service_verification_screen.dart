@@ -160,7 +160,7 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.homePage),
         ),
         title: const Text(
           "Arrived",

@@ -35,10 +35,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       final url = Uri.parse('${ApiConfig.apiBaseUrl}/service-detail');
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          
-        },
+        headers: {'Content-Type': 'application/json'},
         body: json.encode({'service_id': widget.service.id}),
       );
 
@@ -68,32 +65,36 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: AppColors.primaryRed))
-        : CustomScrollView(
-            slivers: [
-              _buildSliverAppBar(context),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHowItsDone(),
-                      const SizedBox(height: 32),
-                      _buildWhatsIncluded(),
-                      const SizedBox(height: 32),
-                      _buildWhatsNotIncluded(),
-                      const SizedBox(height: 32),
-                      _buildReviewsSection(),
-                      const SizedBox(height: 100), // Padding for bottom bar
-                    ],
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryRed),
+            )
+          : CustomScrollView(
+              slivers: [
+                _buildSliverAppBar(context),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 24,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildHowItsDone(),
+
+                        _buildWhatsIncluded(),
+
+                        _buildWhatsNotIncluded(),
+
+                        _buildReviewsSection(),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-      // bottomNavigationBar: _buildBottomBar(),
+              ],
+            ),
     );
   }
 
@@ -110,23 +111,33 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            (widget.service.attachmentsArray != null && widget.service.attachmentsArray!.isNotEmpty)
+            (widget.service.attachmentsArray != null &&
+                    widget.service.attachmentsArray!.isNotEmpty)
                 ? CachedNetworkImage(
                     imageUrl: widget.service.attachmentsArray!.first.url ?? '',
                     httpHeaders: const {},
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                    errorWidget: (context, url, error) => Image.asset('lib/assets/images/man.png', fit: BoxFit.cover),
+                    fit: BoxFit.fill,
+                    placeholder: (context, url) =>
+                        const Center(child: CircularProgressIndicator()),
+                    errorWidget: (context, url, error) => Image.asset(
+                      'lib/assets/images/man.png',
+                      fit: BoxFit.cover,
+                    ),
                   )
-                : widget.service.providerImage != null && widget.service.providerImage!.startsWith('http')
-                    ? CachedNetworkImage(
-                        imageUrl: widget.service.providerImage!,
-                        httpHeaders: const {},
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                        errorWidget: (context, url, error) => Image.asset('lib/assets/images/man.png', fit: BoxFit.cover),
-                      )
-                    : Image.asset('lib/assets/images/man.png', fit: BoxFit.cover),
+                : widget.service.providerImage != null &&
+                      widget.service.providerImage!.startsWith('http')
+                ? CachedNetworkImage(
+                    imageUrl: widget.service.providerImage!,
+                    httpHeaders: const {},
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) =>
+                        const Center(child: CircularProgressIndicator()),
+                    errorWidget: (context, url, error) => Image.asset(
+                      'lib/assets/images/man.png',
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Image.asset('lib/assets/images/man.png', fit: BoxFit.cover),
             Container(color: Colors.black.withOpacity(0.2)),
             Positioned(
               bottom: 20,
@@ -148,124 +159,92 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
   Widget _buildHowItsDone() {
     if (_howItDone.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         const Text(
           "How it’s done",
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 160,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _howItDone.length,
-            itemBuilder: (context, index) {
-              final step = _howItDone[index];
-              return Container(
-                width: 140,
-                margin: const EdgeInsets.only(right: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.black12),
-                ),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                        child: step['image'] != null && step['image'].toString().startsWith('http')
-                            ? CachedNetworkImage(
-                                imageUrl: step['image'],
-                                httpHeaders: const {},
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                placeholder: (context, url) => Container(
-                                  color: Colors.grey[200],
-                                  child: const Center(child: CircularProgressIndicator()),
-                                ),
-                                errorWidget: (context, url, error) => Container(
-                                  color: Colors.grey[200],
-                                  child: const Icon(Icons.image_not_supported, color: Colors.grey),
-                                ),
-                              )
-                            : Container(
-                                color: Colors.grey[200],
-                                child: const Icon(Icons.image_not_supported, color: Colors.grey),
-                              ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        "${index + 1}. ${step['title']}",
-                        maxLines: 2,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildWhatsIncluded() {
-    if (_whatsIncluded.isEmpty) return const SizedBox.shrink();
-
-    // Palette of colors from design
-    final List<Color> cardPalette = [
-      const Color(0xFFE3F2FD), // Light Blue
-      const Color(0xFFF3E5F5), // Light Purple
-      const Color(0xFFFFDB99), // Light Yellow/Mustard
-      const Color(0xFFEEEEEE), // Light Grey
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "What’s Included",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        // Two-column grid layout with rotating colors
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 2.2,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
+            crossAxisCount: 2, // 2 items per row
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio:
+                0.85, // Adjusted for better card proportions (width/height)
           ),
-          itemCount: _whatsIncluded.length,
+          itemCount: _howItDone.length,
           itemBuilder: (context, index) {
-            final item = _whatsIncluded[index];
-            final color = cardPalette[index % cardPalette.length]; // Rotate through palette
-            
+            final step = _howItDone[index];
             return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: color,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.black12),
               ),
-              child: Center(
-                child: Text(
-                  item is Map ? (item['title'] ?? item['name'] ?? item['text'] ?? item.toString()) : item.toString(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                    height: 1.2,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                      child:
+                          step['image'] != null &&
+                              step['image'].toString().startsWith('http')
+                          ? CachedNetworkImage(
+                              imageUrl: step['image'],
+                              httpHeaders: const {},
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              placeholder: (context, url) => Container(
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey[200],
+                                child: const Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            )
+                          : Container(
+                              color: Colors.grey[200],
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey,
+                              ),
+                            ),
+                    ),
                   ),
-                ),
+                  Expanded(
+                    flex: 1,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        "${index + 1}. ${step['title'] ?? ''}",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             );
           },
@@ -274,31 +253,106 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     );
   }
 
-  Widget _buildWhatsNotIncluded() {
-    if (_whatsNotIncluded.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "What’s Not Included",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.redAccent),
-        ),
-        const SizedBox(height: 16),
-        ..._whatsNotIncluded.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
+Widget _buildWhatsIncluded() {
+  if (_whatsIncluded.isEmpty) return const SizedBox.shrink();
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Text(
+        "What's Included",
+        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+      ),
+  
+      ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _whatsIncluded.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final item = _whatsIncluded[index];
+          
+          String text = item is Map
+              ? (item['title'] ??
+                    item['name'] ??
+                    item['text'] ??
+                    item.toString())
+              : item.toString();
+          
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.close, color: Colors.red, size: 20),
-              const SizedBox(width: 12),
+              const Icon(Icons.check_circle, color: Colors.green, size: 18),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  item is Map ? (item['title'] ?? item['name'] ?? item['text'] ?? item.toString()) : item.toString(),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black87),
+                  text,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                    height: 1.3,
+                  ),
                 ),
               ),
             ],
+          );
+        },
+      ),
+    ],
+  );
+}
+  Widget _buildWhatsNotIncluded() {
+    if (_whatsNotIncluded.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          "What's Not Included",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.redAccent,
           ),
-        )),
+        ),
+ 
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _whatsNotIncluded.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final item = _whatsNotIncluded[index];
+            String text = item is Map
+                ? (item['title'] ??
+                      item['name'] ??
+                      item['text'] ??
+                      item.toString())
+                : item.toString();
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.close, color: Colors.red, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
@@ -306,13 +360,12 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   Widget _buildReviewsSection() {
     final reviews = _customerReview;
     if (reviews.isEmpty) return const SizedBox.shrink();
-    
-    final displayReviews = _showAllReviews 
-        ? reviews 
-        : reviews.take(2).toList(); // Show initially 2 comments
+
+    final displayReviews = _showAllReviews ? reviews : reviews.take(2).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -338,9 +391,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        // Aggregated Rating Dashboard
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFFFFF9F0),
             borderRadius: BorderRadius.circular(20),
@@ -352,16 +404,33 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                 children: [
                   Text(
                     widget.service.totalRating?.toString() ?? '0.0',
-                    style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Row(
-                    children: List.generate(5, (i) => Icon(Icons.star, size: 14, color: i < 5 ? Colors.amber : Colors.grey[300])),
+                    children: List.generate(
+                      5,
+                      (i) => Icon(
+                        Icons.star,
+                        size: 14,
+                        color: i < 5 ? Colors.amber : Colors.grey[300],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text("(65K+ Reviews)", style: TextStyle(color: Colors.teal, fontWeight: FontWeight.w500, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "(65K+ Reviews)",
+                    style: TextStyle(
+                      color: Colors.teal,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(width: 32),
+              const SizedBox(width: 24),
               Expanded(
                 child: Column(
                   children: [
@@ -376,30 +445,39 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        // Individual Reviews
-        ...displayReviews.map((review) => _buildReviewCard(review as Map<String, dynamic>)),
+        const SizedBox(height: 20),
+        ...displayReviews.map(
+          (review) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildReviewCard(review as Map<String, dynamic>),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildRatingBar(int star, double percent) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Text("$star", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-          const SizedBox(width: 4),
-          const Icon(Icons.star, size: 12, color: Colors.amber),
-          const SizedBox(width: 8),
+          Text(
+            "$star",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          ),
+          const SizedBox(width: 3),
+          const Icon(Icons.star, size: 11, color: Colors.amber),
+          const SizedBox(width: 6),
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: percent,
                 backgroundColor: Colors.grey[200],
-                color: star >= 3 ? (star == 3 ? Colors.blue : Colors.green) : (star == 2 ? Colors.orange : Colors.red),
-                minHeight: 8,
+                color: star >= 3
+                    ? (star == 3 ? Colors.blue : Colors.green)
+                    : (star == 2 ? Colors.orange : Colors.red),
+                minHeight: 6,
               ),
             ),
           ),
@@ -410,38 +488,64 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
   Widget _buildReviewCard(Map<String, dynamic> review) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.black12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              CircleAvatar(backgroundColor: Colors.grey[200], radius: 20, child: const Icon(Icons.person, color: Colors.grey)),
-              const SizedBox(width: 12),
+              CircleAvatar(
+                backgroundColor: Colors.grey[200],
+                radius: 18,
+                child: const Icon(Icons.person, color: Colors.grey, size: 18),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(review['name'] ?? review['customer_name'] ?? 'Customer', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text(review['date'] ?? review['created_at'] ?? '', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                    Text(
+                      review['name'] ?? review['customer_name'] ?? 'Customer',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      review['date'] ?? review['created_at'] ?? '',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                    ),
                   ],
                 ),
               ),
               Row(
-                children: List.generate(5, (i) => Icon(Icons.star, size: 16, color: i < (review['rating'] ?? 5) ? Colors.red : Colors.grey[300])),
+                children: List.generate(
+                  5,
+                  (i) => Icon(
+                    Icons.star,
+                    size: 14,
+                    color: i < (review['rating'] ?? 5)
+                        ? Colors.red
+                        : Colors.grey[300],
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             review['comment'] ?? review['review'] ?? '',
-            style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.black87,
+              height: 1.3,
+            ),
           ),
         ],
       ),
@@ -455,51 +559,4 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     }
     return widget.service.price?.toString() ?? "0";
   }
-
-  // Widget _buildBottomBar() {
-  //   return Container(
-  //     padding: const EdgeInsets.all(20),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
-  //     ),
-  //     child: SafeArea(
-  //       child: Row(
-  //         children: [
-  //           Expanded(
-  //             child: Column(
-  //               mainAxisSize: MainAxisSize.min,
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 const Text("Price from", style: TextStyle(color: Colors.black54, fontSize: 12)),
-  //                 Text(
-  //                   "₹${_getDisplayPrice()}",
-  //                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //           GestureDetector(
-  //             onTap: () {
-  //               HapticFeedback.heavyImpact();
-  //               // Navigate to configuration
-  //               Navigator.pushNamed(context, AppRoutes.bookingConfig, arguments: widget.service);
-  //             },
-  //             child: Container(
-  //               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-  //               decoration: BoxDecoration(
-  //                 color: const Color(0xFF263238),
-  //                 borderRadius: BorderRadius.circular(12),
-  //               ),
-  //               child: const Text(
-  //                 'Book Now',
-  //                 style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-  //               ),
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 }

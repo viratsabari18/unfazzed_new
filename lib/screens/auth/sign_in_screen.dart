@@ -151,7 +151,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           return Image.network(
                             bannerImages[index],
                             width: double.infinity,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.fill,
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
 

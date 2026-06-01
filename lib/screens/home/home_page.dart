@@ -30,6 +30,8 @@ class _HomePageState extends State<HomePage> {
 
           onRefresh: () async {
             await context.read<DashboardProvider>().fetchCategories();
+         
+            await context.read<DashboardProvider>().fetchDashboardData();
 
           },
           child: CustomScrollView(

@@ -71,6 +71,7 @@ class ServiceData {
 
   double? serviceRating;
   String? serviceReview;
+  int? mockPrice;
 
   ServiceData({
     this.id,
@@ -109,6 +110,7 @@ class ServiceData {
     this.serviceRequestStatus,
     this.serviceRating,
     this.serviceReview,
+    this.mockPrice,
   });
 
   factory ServiceData.fromJson(Map<String, dynamic> json) {
@@ -185,6 +187,7 @@ class ServiceData {
 
       serviceReview:
           json['service_review']?.toString(),
+          mockPrice: json['mock_price'],
     );
   }
 
@@ -231,6 +234,7 @@ class ServiceData {
 
       "service_rating": serviceRating,
       "service_review": serviceReview,
+      "mock_price": mockPrice,
     };
   }
 }

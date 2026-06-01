@@ -424,6 +424,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               AppRoutes.signIn,
               (route) => false,
             );
+  
           }
         },
         style: ElevatedButton.styleFrom(

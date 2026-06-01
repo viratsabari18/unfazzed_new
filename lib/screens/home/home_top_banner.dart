@@ -202,7 +202,7 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                           imageUrl: image,
                           httpHeaders: const {},
                           width: double.infinity,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.fill,
                           placeholder: (context, url) => Container(
                             color: Colors.grey[200],
                             child: const Center(
@@ -215,7 +215,7 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                       : Image.asset(
                           image,
                           width: double.infinity,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                         );
                 }).toList(),
               ),
