@@ -69,7 +69,7 @@ class _ProfessionalAssignedScreenState
   bool _hasRiderLocationFromWidget = false;
 
   final Map<String, double> _dummyRatingsCache = {};
-  
+
   @override
   void initState() {
     super.initState();
@@ -109,20 +109,15 @@ class _ProfessionalAssignedScreenState
     debugPrint("RIDER LOCATION => $_currentRiderPos");
     debugPrint("=========================================");
     if (_bookingId == null) return;
-    
+
     final prefs = await SharedPreferences.getInstance();
 
-    final savedArrival = prefs.getString(
-      'arrival_time_${_bookingId}',
-    );
+    final savedArrival = prefs.getString('arrival_time_${_bookingId}');
 
     if (savedArrival != null) {
       _arrivalTime = DateTime.parse(savedArrival);
 
-      final remaining =
-          _arrivalTime!
-              .difference(DateTime.now())
-              .inMinutes;
+      final remaining = _arrivalTime!.difference(DateTime.now()).inMinutes;
 
       if (mounted && _routePoints.isNotEmpty) {
         setState(() {
@@ -132,7 +127,7 @@ class _ProfessionalAssignedScreenState
           if (_totalKm > 0 && _routePoints.isNotEmpty) {
             final totalMinutes = max(1, (_totalKm * 4).ceil());
             final progress = 1 - (_remainingMins / totalMinutes);
-            
+
             _currentStep = (progress * _routePoints.length).floor();
 
             if (_currentStep >= _routePoints.length) {
@@ -169,7 +164,7 @@ class _ProfessionalAssignedScreenState
       // Fetch rider location from API
       debugPrint("CURRENT BOOKING => $_bookingId");
       await _fetchRiderLocation(_bookingId!);
-      
+
       // FIX 4: Generate route even when provider location fails
       if (_currentRiderPos == null) {
         _currentRiderPos = _userLocation;
@@ -177,15 +172,19 @@ class _ProfessionalAssignedScreenState
 
       debugPrint("AFTER API CALL");
       debugPrint("RIDER LOCATION => $_currentRiderPos");
-      
+
       // FIX 4: Add debug logs to track route generation
-      debugPrint("ROUTE START => ${_currentRiderPos!.latitude}, ${_currentRiderPos!.longitude}");
-      debugPrint("ROUTE END => ${_userLocation!.latitude}, ${_userLocation!.longitude}");
-      
+      debugPrint(
+        "ROUTE START => ${_currentRiderPos!.latitude}, ${_currentRiderPos!.longitude}",
+      );
+      debugPrint(
+        "ROUTE END => ${_userLocation!.latitude}, ${_userLocation!.longitude}",
+      );
+
       await _getRoadPolyline(_currentRiderPos!, _userLocation!);
       debugPrint("ROUTE GENERATED");
       debugPrint("ROUTE POINTS => ${_routePoints.length}");
-      
+
       // Only initialize ETA and start simulation if route exists
       if (_routePoints.isNotEmpty) {
         await _initializeSavedEta();
@@ -193,7 +192,7 @@ class _ProfessionalAssignedScreenState
       } else {
         debugPrint("WARNING: Route generation failed - skipping simulation");
       }
-      
+
       _fetchAndRedirect();
     } else if (_hasUserLocationFromWidget) {
       _generateRoadSnappedRoute();
@@ -354,22 +353,10 @@ class _ProfessionalAssignedScreenState
 
   void _generateRoadSnappedRoute() {
     final List<LatLng> majorPoints = [
-      LatLng(
-        _userLocation.latitude + 0.005,
-        _userLocation.longitude + 0.005,
-      ),
-      LatLng(
-        _userLocation.latitude + 0.005,
-        _userLocation.longitude + 0.002,
-      ),
-      LatLng(
-        _userLocation.latitude + 0.002,
-        _userLocation.longitude + 0.002,
-      ),
-      LatLng(
-        _userLocation.latitude + 0.001,
-        _userLocation.longitude + 0.001,
-      ),
+      LatLng(_userLocation.latitude + 0.005, _userLocation.longitude + 0.005),
+      LatLng(_userLocation.latitude + 0.005, _userLocation.longitude + 0.002),
+      LatLng(_userLocation.latitude + 0.002, _userLocation.longitude + 0.002),
+      LatLng(_userLocation.latitude + 0.001, _userLocation.longitude + 0.001),
       _userLocation,
     ];
 
@@ -426,7 +413,7 @@ class _ProfessionalAssignedScreenState
       // Handle empty route response
       if (result.points.isEmpty) {
         debugPrint("GOOGLE ROUTE FAILED - No points returned");
-        
+
         if (mounted) {
           setState(() {
             // Use direct line as fallback route
@@ -434,7 +421,7 @@ class _ProfessionalAssignedScreenState
             _remainingRoute = [start, end];
           });
         }
-        
+
         return;
       }
 
@@ -450,11 +437,12 @@ class _ProfessionalAssignedScreenState
             _routePoints.clear();
             _routePoints.addAll(polylineCoordinates);
             _remainingRoute = List.from(polylineCoordinates);
-            
+
             // Only reset position if this is first load and no saved position exists
             if (_currentStep == 0 && _routePoints.isNotEmpty) {
               _currentRiderPos = _routePoints.first;
-            } else if (_routePoints.isNotEmpty && _currentStep < _routePoints.length) {
+            } else if (_routePoints.isNotEmpty &&
+                _currentStep < _routePoints.length) {
               // Restore saved position
               _currentRiderPos = _routePoints[_currentStep];
               _remainingRoute = _routePoints.sublist(_currentStep);
@@ -464,7 +452,7 @@ class _ProfessionalAssignedScreenState
       }
     } catch (e) {
       debugPrint("Road polyline error => $e");
-      
+
       // Fallback to direct line on error
       if (mounted) {
         setState(() {
@@ -509,7 +497,7 @@ class _ProfessionalAssignedScreenState
       }
     } catch (e) {
       debugPrint("Rider icon loading failed: $e");
-      
+
       if (mounted) {
         setState(() {
           _carIcon = BitmapDescriptor.defaultMarkerWithHue(
@@ -553,7 +541,7 @@ class _ProfessionalAssignedScreenState
             debugPrint("VALID LOCATION FOUND");
             debugPrint("LAT => $lat");
             debugPrint("LNG => $lng");
-            
+
             final newPos = LatLng(lat, lng);
 
             double distance = Geolocator.distanceBetween(
@@ -564,7 +552,7 @@ class _ProfessionalAssignedScreenState
             );
 
             double distanceInKm = distance / 1000;
-            
+
             // Always use latest distance from API
             _totalKm = distanceInKm;
 
@@ -572,7 +560,9 @@ class _ProfessionalAssignedScreenState
 
             // Only create arrival time if it doesn't exist
             final prefs = await SharedPreferences.getInstance();
-            final existingArrival = prefs.getString('arrival_time_${_bookingId}');
+            final existingArrival = prefs.getString(
+              'arrival_time_${_bookingId}',
+            );
 
             if (existingArrival == null) {
               _arrivalTime = DateTime.now().add(
@@ -589,7 +579,9 @@ class _ProfessionalAssignedScreenState
             if (mounted) {
               setState(() {
                 _currentRiderPos = newPos;
-                final remaining = _arrivalTime!.difference(DateTime.now()).inMinutes;
+                final remaining = _arrivalTime!
+                    .difference(DateTime.now())
+                    .inMinutes;
                 _remainingMins = remaining < 0 ? 0 : remaining;
                 _isEtaLoading = false;
 
@@ -601,9 +593,11 @@ class _ProfessionalAssignedScreenState
                   _simulatedState = BookingState.onTheWay;
                 }
               });
-              
+
               debugPrint("PROVIDER => ${newPos.latitude}, ${newPos.longitude}");
-              debugPrint("USER => ${_userLocation.latitude}, ${_userLocation.longitude}");
+              debugPrint(
+                "USER => ${_userLocation.latitude}, ${_userLocation.longitude}",
+              );
               debugPrint("DISTANCE => ${distance / 1000} KM");
 
               if (distance > 50 && _isMapReady) {
@@ -708,7 +702,7 @@ class _ProfessionalAssignedScreenState
 
             _remainingRoute = _routePoints.sublist(_currentStep);
           }
-          
+
           if (_tickCount % 12 == 0) {
             if (_remainingMins > 1) {
               _remainingMins--;
@@ -964,7 +958,7 @@ class _ProfessionalAssignedScreenState
     debugPrint("_routePoints => ${_routePoints.length}");
     debugPrint("_isLoadingLocation => $_isLoadingLocation");
     debugPrint("===========================");
-    
+
     // FIX 2: Remove infinite loading condition - only show loading for user location
     // Provider location should not block the entire screen
     if (!_hasUserLocationFromWidget && _isLoadingLocation) {
@@ -974,9 +968,7 @@ class _ProfessionalAssignedScreenState
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(
-                color: Color(0xFF6366F1),
-              ),
+              const CircularProgressIndicator(color: Color(0xFF6366F1)),
               SizedBox(height: AppSizes.h(context, 16)),
               Text(
                 "Loading location data...",
@@ -1228,10 +1220,10 @@ class _ProfessionalAssignedScreenState
             ),
             child: Text(
               _remainingMins <= 0
-                  ? "Arrived"
+                  ? "📍 Your professional is nearby"
                   : _remainingMins <= 1
-                      ? "📍 Your professional is nearby"
-                      : "Arriving in $time",
+                  ? "📍 Your professional is nearby"
+                  : "Arriving in $time",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: AppSizes.w(context, 16),
@@ -1666,7 +1658,7 @@ class _ProfessionalAssignedScreenState
             if (index == 2 && _currentStep > 0) {
               isCompleted = true;
             }
-            final bool isActive = !isCompleted && index == currentIndex;
+            final bool isActive = index == 2;
 
             return _buildProgressStep(
               steps[index].title,
@@ -1774,6 +1766,7 @@ class _ProfessionalAssignedScreenState
                   padding: isActive
                       ? EdgeInsets.symmetric(
                           horizontal: AppSizes.w(context, 14),
+                          vertical: AppSizes.h(context, 8),
                         )
                       : EdgeInsets.zero,
                   decoration: BoxDecoration(
@@ -1797,9 +1790,6 @@ class _ProfessionalAssignedScreenState
                               style: TextStyle(
                                 fontSize: AppSizes.w(context, 14),
                                 fontWeight: FontWeight.w600,
-                                color: isCompleted || isActive
-                                    ? Colors.black
-                                    : Colors.black87,
                               ),
                             ),
                             if (subtitle.isNotEmpty) ...[
