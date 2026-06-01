@@ -5,7 +5,8 @@ import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
 
 class AddressTypeBottomSheet extends StatelessWidget {
-  const AddressTypeBottomSheet({super.key});
+  const 
+  AddressTypeBottomSheet({super.key});
 
   @override
   Widget build(BuildContext context) {

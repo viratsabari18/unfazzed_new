@@ -15,7 +15,7 @@ class SelectLocationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final addressProvider = Provider.of<AddressProvider>(context);
     final savedAddresses = addressProvider.savedAddresses;
-    final selectedLocation = addressProvider.selectedLocation; 
+    final selectedLocation = addressProvider.selectedLocation;
 
     // Set status bar to light icons on dark background
     SystemChrome.setSystemUIOverlayStyle(
@@ -25,20 +25,18 @@ class SelectLocationScreen extends StatelessWidget {
       ),
     );
 
-              void _handleBack() {
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.landingPage,
-      (route) => false,
-    );
-  }
-
+    void _handleBack() {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.landingPage,
+        (route) => false,
+      );
+    }
 
     return PopScope(
-             canPop: false,
+      canPop: false,
       onPopInvoked: (didPop) {
         if (didPop) return;
-
         _handleBack();
       },
       child: Scaffold(
@@ -73,25 +71,29 @@ class SelectLocationScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-      
+
                 // Search Bar
                 _buildSearchBar(),
-      
+
                 // Current Location & Add Address Card
-                _buildLocationOptionsCard(context),
-      
+                _buildLocationOptionsCard(context, addressProvider),
+
                 // SAVED ADDRESSES label with dividers
-                _buildSectionLabel('SAVED ADDRESSES'),
-      
+                if (savedAddresses.isNotEmpty)
+                  _buildSectionLabel('SAVED ADDRESSES'),
+
                 // Saved Address Cards
                 ...savedAddresses.asMap().entries.map(
                   (entry) => _buildSavedAddressCard(
-                    context, 
-                    entry.value, 
-                    isSelected: _isAddressSelected(entry.value, selectedLocation),
+                    context,
+                    entry.value,
+                    isSelected: _isAddressSelected(
+                      entry.value,
+                      selectedLocation,
+                    ),
                   ),
                 ),
-      
+
                 const SizedBox(height: 24), // Bottom padding
               ],
             ),
@@ -101,13 +103,20 @@ class SelectLocationScreen extends StatelessWidget {
     );
   }
 
-  bool _isAddressSelected(Map<String, dynamic> address, Map<String, dynamic>? selectedLocation) {
+  bool _isAddressSelected(
+    Map<String, dynamic> address,
+    Map<String, dynamic>? selectedLocation,
+  ) {
     if (selectedLocation == null) return false;
-    
-    // Compare by address string or by coordinates
+
+    // Compare by id first, then by address string or coordinates
+    if (address['id'] != null && selectedLocation['id'] != null) {
+      return address['id'] == selectedLocation['id'];
+    }
+
     return address['address'] == selectedLocation['address'] ||
-        (address['latitude'] == selectedLocation['latitude'] && 
-         address['longitude'] == selectedLocation['longitude']);
+        (address['latitude'] == selectedLocation['latitude'] &&
+            address['longitude'] == selectedLocation['longitude']);
   }
 
   Widget _buildSearchBar() {
@@ -140,7 +149,14 @@ class SelectLocationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLocationOptionsCard(BuildContext context) {
+  Widget _buildLocationOptionsCard(
+    BuildContext context,
+    AddressProvider addressProvider,
+  ) {
+    final hasCurrentLocation =
+        addressProvider.selectedLocation != null &&
+        addressProvider.selectedLocation!['label'] == 'Current Location';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -149,14 +165,15 @@ class SelectLocationScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Divider(color: Color(0xFF3A3A3A), height: 1),
-          ),
-          // Add Address
+  
+
+         
+
+          // Add Address - NO CLICK EFFECT
           _buildLocationOptionItem(
             icon: Icons.add,
-            title: 'Add Address',
+            title: 'Add New Address',
+            subtitle: 'Home, Work, or Other',
             onTap: () {
               showModalBottomSheet(
                 context: context,
@@ -164,6 +181,8 @@ class SelectLocationScreen extends StatelessWidget {
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
+                isDismissible: false,
+                enableDrag: false,
                 builder: (_) {
                   return const AddressTypeBottomSheet();
                 },
@@ -181,9 +200,9 @@ class SelectLocationScreen extends StatelessWidget {
     String? subtitle,
     required VoidCallback onTap,
   }) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+    
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -257,123 +276,150 @@ class SelectLocationScreen extends StatelessWidget {
     Map<String, dynamic> data, {
     required bool isSelected,
   }) {
-    return GestureDetector(
-      onTap: () {
-        Provider.of<AddressProvider>(
-          context,
-          listen: false,
-        ).setSelectedLocation(data);
-        Navigator.pushNamed(context, AppRoutes.landingPage, arguments: true);
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE53935).withOpacity(0.15) : const Color(0xFF242424),
-          borderRadius: BorderRadius.circular(14),
-          border: isSelected 
-              ? Border.all(color: const Color(0xFFE53935), width: 1.5) 
-              : null,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Left Column: Icon + Distance
-            SizedBox(
-              width: 48,
-              child: Column(
-                children: [
-                  Icon(
-                    data['icon'], 
-                    color: isSelected ? const Color(0xFFE53935) : Colors.white, 
-                    size: 26,
-                  ),
-                  const SizedBox(height: 4),
-                  // Text(
-                  //   data['distance'] ?? '0 m',
-                  //   textAlign: TextAlign.center,
-                  //   style: GoogleFonts.poppins(
-                  //     color: isSelected ? const Color(0xFFE53935) : const Color(0xFF9E9E9E),
-                  //     fontSize: 11,
-                  //   ),
-                  // ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Right Column: Address Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        data['label'] ?? 'Other',
-                        style: GoogleFonts.poppins(
-                          color: isSelected ? const Color(0xFFE53935) : Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                  
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    data['address'] ?? '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      color: isSelected ? Colors.white : const Color(0xFFBDBDBD),
-                      fontSize: 13,
+    return Material(
+      color: Colors.transparent, // Removes Material splash effect
+      child: InkWell(
+        onTap: () {
+          // Step 8: User changes address manually
+          Provider.of<AddressProvider>(
+            context,
+            listen: false,
+          ).setSelectedLocation(data);
+          // Navigate back to landing page - location change will trigger all updates
+          Navigator.pushNamed(context, AppRoutes.landingPage);
+        },
+        splashColor: Colors.transparent, // Remove splash
+        highlightColor: Colors.transparent, // Remove highlight
+        hoverColor: Colors.transparent, // Remove hover
+        focusColor: Colors.transparent, // Remove focus
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFFE53935).withOpacity(0.15)
+                : const Color(0xFF242424),
+            borderRadius: BorderRadius.circular(14),
+            border: isSelected
+                ? Border.all(color: const Color(0xFFE53935), width: 1.5)
+                : null,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left Column: Icon
+              SizedBox(
+                width: 48,
+                child: Column(
+                  children: [
+                    Icon(
+                      data['icon'] ?? Icons.location_on_outlined,
+                      color: isSelected ? const Color(0xFFE53935) : Colors.white,
+                      size: 26,
                     ),
-                  ),
-                  if (data['phone'] != null) ...[
-                    const SizedBox(height: 4),
-                    RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.poppins(fontSize: 12),
-                        children: [
-                          const TextSpan(
-                            text: 'Phone number: ',
-                            style: TextStyle(color: Color(0xFF9E9E9E)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Right Column: Address Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          data['label'] ?? 'Other',
+                          style: GoogleFonts.poppins(
+                            color: isSelected
+                                ? const Color(0xFFE53935)
+                                : Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
-                          TextSpan(
-                            text: data['phone'],
-                            style: const TextStyle(
-                              color: Color(0xFFE53935),
-                              fontWeight: FontWeight.w600,
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE53935),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'SELECTED',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      data['address'] ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        color: isSelected
+                            ? Colors.white
+                            : const Color(0xFFBDBDBD),
+                        fontSize: 13,
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _buildActionButton(Icons.more_horiz),
-                      const SizedBox(width: 10),
-                      _buildActionButton(Icons.share, isShare: true),
-                      const SizedBox(width: 10),
-                      _buildDeleteButton(context, data),
+                    if (data['phone'] != null &&
+                        data['phone'].toString().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      RichText(
+                        text: TextSpan(
+                          style: GoogleFonts.poppins(fontSize: 12),
+                          children: [
+                            const TextSpan(
+                              text: 'Phone: ',
+                              style: TextStyle(color: Color(0xFF9E9E9E)),
+                            ),
+                            TextSpan(
+                              text: data['phone'],
+                              style: const TextStyle(
+                                color: Color(0xFFE53935),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
-                ],
-              ),
-            ),
-            // Add checkmark icon for selected address
-            if (isSelected)
-              const Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: Icon(
-                  Icons.check_circle,
-                  color: Color(0xFFE53935),
-                  size: 24,
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildActionButton(Icons.more_horiz),
+                        const SizedBox(width: 10),
+                        _buildActionButton(Icons.share, isShare: true),
+                        const SizedBox(width: 10),
+                        _buildDeleteButton(context, data),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-          ],
+              // Add checkmark icon for selected address
+              if (isSelected)
+                const Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Color(0xFFE53935),
+                    size: 24,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -396,18 +442,14 @@ class SelectLocationScreen extends StatelessWidget {
             ),
             content: Text(
               'Are you sure you want to delete this address?',
-              style: GoogleFonts.poppins(
-                color: Colors.white70,
-              ),
+              style: GoogleFonts.poppins(color: Colors.white70),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
                 child: Text(
                   'Cancel',
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFF9E9E9E),
-                  ),
+                  style: GoogleFonts.poppins(color: const Color(0xFF9E9E9E)),
                 ),
               ),
               TextButton(
@@ -425,10 +467,17 @@ class SelectLocationScreen extends StatelessWidget {
         );
 
         if (confirm == true) {
+          // Step 10 & 11: Delete address
           await Provider.of<AddressProvider>(
             context,
             listen: false,
           ).deleteAddress(context, data);
+
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.landingPage,
+            (route) => false,
+          );
         }
       },
       icon: const Icon(

@@ -10,8 +10,12 @@ class AddressProvider with ChangeNotifier {
   Map<String, dynamic>? _selectedLocation;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isRefreshing = false;
+  bool _isInitialized = false;
+  bool _isFetchingLocation = false;
 
   AddressProvider() {
+    _isLoading = true;
     _initializeAddresses();
   }
 
@@ -20,89 +24,96 @@ class AddressProvider with ChangeNotifier {
 
   Map<String, dynamic>? get selectedLocation => _selectedLocation;
 
-  bool get isLoading => _isLoading;
+  bool get isLoading => _isLoading || _isFetchingLocation;
+  bool get isInitialized => _isInitialized;
   String? get errorMessage => _errorMessage;
-Future<void> _initializeAddresses() async {
-  await _loadFromPrefs();
 
-  await fetchAddressesFromBackend();
-}
+  Future<void> _initializeAddresses() async {
+    await _loadFromPrefs();
+    await fetchAddressesFromBackend();
 
-Future<void> fetchAddressesFromBackend() async {
-  _isLoading = true;
-  _errorMessage = null;
-  notifyListeners();
-
-  try {
-    final response = await AddressService.fetchAddressList();
-
-    // BACKEND HAS NO SAVED ADDRESSES
-    if (response != null &&
-        response.status &&
-        response.data.isEmpty) {
-      debugPrint("NO ADDRESS FROM BACKEND");
-
-      _savedAddresses.clear();
-
-      _selectedLocation = null;
-
-      await _saveAllToPrefs();
-      await _saveSelectedToPrefs(null);
-
-      notifyListeners();
-
-      await setCurrentLocationAutomatically();
-
-      return;
-    }
-
-    // BACKEND HAS SAVED ADDRESSES
-    if (response != null &&
-        response.status &&
-        response.data.isNotEmpty) {
-      _savedAddresses.clear();
-
-      for (var e in response.data) {
-        _savedAddresses.add({
-          "id": e.id,
-          "label": _getLabelFromStatus(e.status),
-          "address": e.address,
-          "latitude": e.latitude,
-          "longitude": e.longitude,
-          "icon": _getIconForLabel(_getLabelFromStatus(e.status)),
-          "phone": e.userPhone ?? "",
-          "receiver_name": e.userName,
-          "status": e.status,
-        });
-      }
-
-      await _saveAllToPrefs();
-
-      if (_savedAddresses.isNotEmpty) {
-        if (_selectedLocation == null ||
-            _selectedLocation!['label'] == 'Current Location') {
-          _selectedLocation = _savedAddresses.first;
-        }
-
-        await _saveSelectedToPrefs(_selectedLocation);
-      }
-
-      debugPrint(
-        "SELECTED ADDRESS => ${_selectedLocation?['address']}",
-      );
-
-      debugPrint("ADDRESS COUNT : ${_savedAddresses.length}");
-
-      notifyListeners();
-    }
-  } catch (e) {
-    _errorMessage = "Failed to fetch addresses";
-    debugPrint("Fetch addresses error: $e");
-  } finally {
+    _isInitialized = true;
     _isLoading = false;
     notifyListeners();
+    
+    debugPrint("AddressProvider initialized - isLoading: $_isLoading, isInitialized: $_isInitialized");
   }
-}
+
+  Future<void> fetchAddressesFromBackend() async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await AddressService.fetchAddressList();
+
+      if (response == null || !response.status) {
+        debugPrint("Backend fetch failed, keeping local addresses");
+        _isRefreshing = false;
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      if (response.data.isEmpty) {
+        debugPrint("NO ADDRESS FROM BACKEND");
+        
+        if (_savedAddresses.isEmpty) {
+          _selectedLocation = null;
+          await _saveSelectedToPrefs(null);
+        }
+
+        await _saveAllToPrefs();
+        notifyListeners();
+
+        if (_savedAddresses.isEmpty && _selectedLocation == null) {
+          await _handleNoAddressFlow();
+        }
+        return;
+      }
+
+      // BACKEND HAS SAVED ADDRESSES
+      if (response.data.isNotEmpty) {
+        _savedAddresses.clear();
+
+        for (var e in response.data) {
+          _savedAddresses.add({
+            "id": e.id,
+            "label": _getLabelFromStatus(e.status),
+            "address": e.address,
+            "latitude": e.latitude,
+            "longitude": e.longitude,
+            "icon": _getIconForLabel(_getLabelFromStatus(e.status)),
+            "phone": e.userPhone ?? "",
+            "receiver_name": e.userName,
+            "status": e.status,
+          });
+        }
+
+        await _saveAllToPrefs();
+
+        if (_savedAddresses.isNotEmpty) {
+          _selectedLocation = _savedAddresses.first;
+          await _saveSelectedToPrefs(_selectedLocation);
+
+          debugPrint("BACKEND ADDRESS SELECTED => ${_selectedLocation?['address']}");
+          debugPrint("BACKEND ADDRESS ID => ${_selectedLocation?['id']}");
+          debugPrint("ADDRESS COUNT : ${_savedAddresses.length}");
+          
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint("Fetch addresses error: $e");
+    } finally {
+      _isLoading = false;
+      _isRefreshing = false;
+      notifyListeners();
+    }
+  }
+
   String _getLabelFromStatus(int status) {
     switch (status) {
       case 1:
@@ -114,19 +125,97 @@ Future<void> fetchAddressesFromBackend() async {
     }
   }
 
-  /// ADD ADDRESS - Saves to both local and backend
-  Future<bool> addAddress(
-    BuildContext context,
-    Map<String, dynamic> address,
-  ) async {
-    final String newLabel = (address['label'] ?? '')
-        .toString()
-        .trim()
-        .toLowerCase();
+  Future<void> _handleNoAddressFlow() async {
+    debugPrint("No address exists - checking location permission");
+    await _requestLocationAndSetAddress();
+  }
+
+  Future<bool> _requestLocationAndSetAddress() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint("Location service disabled");
+        return false;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        debugPrint("Location permission denied or denied forever");
+        _handlePermissionDenied();
+        return false;
+      }
+
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        await _fetchAndSetCurrentLocation();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint("Location error: $e");
+      return false;
+    }
+  }
+
+  Future<void> _fetchAndSetCurrentLocation() async {
+    debugPrint("START GPS FETCH");
+    _isFetchingLocation = true;
+    notifyListeners();
+
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      Placemark place = placemarks.first;
+      
+      String fullAddress = "${place.street}, ${place.locality}, ${place.administrativeArea}";
+      
+      final locationData = {
+        'label': 'Current Location',
+        'address': fullAddress,
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'icon': Icons.location_on_outlined,
+      };
+
+      _selectedLocation = Map<String, dynamic>.from(locationData);
+      await _saveSelectedToPrefs(_selectedLocation);
+      
+      debugPrint("CURRENT LOCATION SET => $fullAddress");
+    } catch (e) {
+      debugPrint("Error fetching current location: $e");
+      _handlePermissionDenied();
+    } finally {
+      _isFetchingLocation = false;
+      notifyListeners();
+    }
+  }
+
+  void _handlePermissionDenied() {
+    debugPrint("Permission denied - clearing selected location");
+    _selectedLocation = null;
+    _isFetchingLocation = false;
+    notifyListeners();
+  }
+
+  Future<bool> addAddress(BuildContext context, Map<String, dynamic> address) async {
+    final String newLabel = (address['label'] ?? '').toString().trim().toLowerCase();
 
     final alreadyExists = _savedAddresses.any(
-      (item) =>
-          (item['label'] ?? '').toString().trim().toLowerCase() == newLabel,
+      (item) => (item['label'] ?? '').toString().trim().toLowerCase() == newLabel,
     );
 
     if (alreadyExists) {
@@ -136,7 +225,6 @@ Future<void> fetchAddressesFromBackend() async {
       return false;
     }
 
-    // Save to backend first
     try {
       final status = address['label'] == 'Home'
           ? 1
@@ -150,12 +238,15 @@ Future<void> fetchAddressesFromBackend() async {
       );
 
       if (response != null && response.status) {
-        // Add backend ID to address
         final addressWithId = Map<String, dynamic>.from(address);
         addressWithId['id'] = response.data?.id;
 
         _savedAddresses.insert(0, addressWithId);
         await _saveAllToPrefs();
+        
+        _selectedLocation = addressWithId;
+        await _saveSelectedToPrefs(_selectedLocation);
+        
         notifyListeners();
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -186,11 +277,7 @@ Future<void> fetchAddressesFromBackend() async {
     }
   }
 
-  /// DELETE ADDRESS - Deletes from both local and backend
-  Future<bool> deleteAddress(
-    BuildContext context,
-    Map<String, dynamic> address,
-  ) async {
+  Future<bool> deleteAddress(BuildContext context, Map<String, dynamic> address) async {
     final addressId = address['id'];
 
     if (addressId != null && addressId is int) {
@@ -198,32 +285,26 @@ Future<void> fetchAddressesFromBackend() async {
         final response = await AddressService.deleteAddress(addressId);
 
         if (response != null) {
-          // Remove deleted address first
           _savedAddresses.removeWhere((item) => item['id'] == addressId);
 
-          // If deleted address was selected
-          if (_selectedLocation != null &&
-              _selectedLocation!['id'] == addressId) {
-            // CASE 1 : Other saved addresses available
+          if (_selectedLocation != null && _selectedLocation!['id'] == addressId) {
             if (_savedAddresses.isNotEmpty) {
               _selectedLocation = _savedAddresses.first;
-
               await _saveSelectedToPrefs(_selectedLocation);
-            } else {
-              // CASE 2 : No saved addresses available
-              // Clear old deleted location immediately
-              _selectedLocation = null;
-
               notifyListeners();
-
-              // Fetch current GPS location
-              await setCurrentLocationAutomatically();
+            } else {
+              // FIXED: Immediately clear the deleted address and show loading state
+              debugPrint("DELETE LAST ADDRESS - clearing and fetching current location");
+              _selectedLocation = null;
+              _isFetchingLocation = true;
+              notifyListeners(); // This will show "Fetching current location..." in UI
+              
+              await _handleNoAddressFlow();
+              // _handleNoAddressFlow will set _selectedLocation when GPS completes
             }
           }
 
-          // Save latest addresses
           await _saveAllToPrefs();
-
           notifyListeners();
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -232,7 +313,6 @@ Future<void> fetchAddressesFromBackend() async {
               backgroundColor: Colors.green,
             ),
           );
-
           return true;
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -241,58 +321,59 @@ Future<void> fetchAddressesFromBackend() async {
               backgroundColor: Colors.red,
             ),
           );
-
           return false;
         }
       } catch (e) {
         debugPrint("Delete address error: $e");
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Network error. Please try again.'),
             backgroundColor: Colors.red,
           ),
         );
-
         return false;
       }
     } else {
-      // LOCAL DELETE
-
       _savedAddresses.remove(address);
 
-      if (_selectedLocation != null &&
-          _selectedLocation!['address'] == address['address']) {
+      if (_selectedLocation != null && _selectedLocation!['address'] == address['address']) {
         if (_savedAddresses.isNotEmpty) {
-          if (_selectedLocation == null ||
-              _selectedLocation!['label'] == 'Current Location') {
-            _selectedLocation = _savedAddresses.first;
-
-            await _saveSelectedToPrefs(_selectedLocation);
-          }
-
+          _selectedLocation = _savedAddresses.first;
           await _saveSelectedToPrefs(_selectedLocation);
-        } else {
-          _selectedLocation = null;
-
           notifyListeners();
-
-          await setCurrentLocationAutomatically();
+        } else {
+          // FIXED: Immediately clear the deleted address and show loading state
+          debugPrint("DELETE LAST ADDRESS (local) - clearing and fetching current location");
+          _selectedLocation = null;
+          _isFetchingLocation = true;
+          notifyListeners(); // This will show "Fetching current location..." in UI
+          
+          await _handleNoAddressFlow();
         }
       }
 
       await _saveAllToPrefs();
-
       notifyListeners();
-
       return true;
     }
   }
 
   void setSelectedLocation(Map<String, dynamic> location) {
+    if (_selectedLocation != null && 
+        _selectedLocation!['address'] == location['address'] &&
+        _selectedLocation!['id'] == location['id']) {
+      return;
+    }
+    
     _selectedLocation = location;
     _saveSelectedToPrefs(location);
     notifyListeners();
+  }
+
+  bool get hasSelectedLocation => _selectedLocation != null;
+
+  Future<void> requestPermissionAndGetLocation() async {
+    await _requestLocationAndSetAddress();
   }
 
   void clearAddressData() async {
@@ -308,7 +389,6 @@ Future<void> fetchAddressesFromBackend() async {
   Future<void> _saveSelectedToPrefs(Map<String, dynamic>? location) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
       if (location != null) {
         final mapToSave = Map<String, dynamic>.from(location);
         mapToSave.remove('icon');
@@ -336,9 +416,6 @@ Future<void> fetchAddressesFromBackend() async {
   }
 
   Future<void> _loadFromPrefs() async {
-    debugPrint("_savedAddresses count => ${_savedAddresses.length}");
-
-    debugPrint("_selectedLocation => ${_selectedLocation?['address']}");
     try {
       final prefs = await SharedPreferences.getInstance();
 
@@ -375,79 +452,6 @@ Future<void> fetchAddressesFromBackend() async {
         return Icons.location_on_outlined;
       default:
         return Icons.location_on_outlined;
-    }
-  }
-
-  Future<void> setCurrentLocationAutomatically() async {
-    debugPrint("GPS CALLED => saved count ${_savedAddresses.length}");
-    debugPrint("setCurrentLocationAutomatically CALLED");
-    if (_savedAddresses.isNotEmpty) {
-      debugPrint("Saved address exists. Skipping GPS selection");
-      return;
-    }
-    if (_selectedLocation != null &&
-        _selectedLocation!['label'] != 'Current Location') {
-      debugPrint("User already selected a saved address");
-      return;
-    }
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint("Location service disabled");
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.deniedForever ||
-          permission == LocationPermission.denied) {
-        debugPrint("Location permission denied");
-        return;
-      }
-
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      Placemark place = placemarks.first;
-      if (_savedAddresses.isNotEmpty) {
-        debugPrint("Addresses loaded while GPS running. Ignore GPS.");
-        return;
-      }
-      String fullAddress =
-          "${place.street}, ${place.locality}, ${place.administrativeArea}";
-      final locationData = {
-        'label': 'Current Location',
-        'address': fullAddress,
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'icon': Icons.location_on_outlined,
-      };
-
-      _selectedLocation = Map<String, dynamic>.from(locationData);
-
-      await _saveSelectedToPrefs(_selectedLocation);
-
-      // FORCE UI UPDATE
-      notifyListeners();
-
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      notifyListeners();
-
-      debugPrint("Current location updated successfully");
-      notifyListeners();
-      debugPrint("Current location updated successfully");
-    } catch (e) {
-      debugPrint("Current location error: $e");
     }
   }
 }

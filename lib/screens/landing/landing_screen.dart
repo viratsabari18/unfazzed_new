@@ -3,14 +3,12 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart';
 import 'package:provider/provider.dart';
 import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/booking_history.dart';
 import 'package:zeerah/screens/home/home_page.dart';
 import 'package:zeerah/screens/profile/help_desk_screen.dart';
-import 'package:zeerah/screens/profile/support_ticket_detail_screen.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -20,9 +18,12 @@ class LandingScreen extends StatefulWidget {
 }
 
 class _LandingScreenState extends State<LandingScreen>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   int currentIndex = 0;
   late PageController _pageController;
+  bool _isLocationSheetShowing = false;
+  bool _hasCheckedLocation = false;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -48,22 +49,73 @@ class _LandingScreenState extends State<LandingScreen>
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: currentIndex);
+    WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkLocationPermission();
+      _checkLocationAndShowSheetIfNeeded();
     });
   }
 
-  Future<void> _checkLocationPermission() async {
-    final permission = await Geolocator.checkPermission();
+  @override
+  void dispose() {
+    _pageController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      _showLocationPermissionSheet();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _hasCheckedLocation = false;
+      _checkLocationAndShowSheetIfNeeded();
     }
   }
 
-  void _showLocationPermissionSheet() {
+  Future<void> _checkLocationAndShowSheetIfNeeded() async {
+    // FIXED: Set flag at the very beginning to prevent concurrent checks
+    if (_hasCheckedLocation) return;
+    _hasCheckedLocation = true;
+
+    final addressProvider = Provider.of<AddressProvider>(
+      context,
+      listen: false,
+    );
+
+    // Check if provider is still initializing
+    if (!addressProvider.isInitialized || addressProvider.isLoading) {
+      debugPrint("AddressProvider still initializing (isInitialized: ${addressProvider.isInitialized}, isLoading: ${addressProvider.isLoading}) - waiting...");
+      _hasCheckedLocation = false; // Reset flag to allow retry
+      
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      if (mounted) {
+        _checkLocationAndShowSheetIfNeeded();
+      }
+      return;
+    }
+
+    debugPrint("AddressProvider loaded - hasSelectedLocation: ${addressProvider.hasSelectedLocation}");
+    debugPrint("AddressProvider savedAddresses count: ${addressProvider.savedAddresses.length}");
+
+    // Don't show sheet if there are any saved addresses
+    if (addressProvider.savedAddresses.isNotEmpty) {
+      debugPrint("Saved addresses exist, skipping location sheet");
+      return;
+    }
+
+    // Only show sheet if no location AND no saved addresses AND not already showing
+    if (!addressProvider.hasSelectedLocation &&
+        addressProvider.savedAddresses.isEmpty &&
+        !_isLocationSheetShowing) {
+      debugPrint("No location and no saved addresses, showing mandatory sheet");
+      _showMandatoryLocationSheet();
+    }
+  }
+
+  void _showMandatoryLocationSheet() {
+    if (_isLocationSheetShowing) return;
+    _isLocationSheetShowing = true;
+
     showModalBottomSheet(
       context: context,
       isDismissible: false,
@@ -73,69 +125,87 @@ class _LandingScreenState extends State<LandingScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.location_on, color: Colors.red, size: 80),
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.location_on, color: Colors.red, size: 80),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Location Access Required",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      "Please enable location access to find nearby services, track providers and get accurate addresses.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final addressProvider = Provider.of<AddressProvider>(
+                            context,
+                            listen: false,
+                          );
 
-              const SizedBox(height: 16),
+                          await addressProvider.requestPermissionAndGetLocation();
 
-              const Text(
-                "Location Access Required",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-
-              const SizedBox(height: 10),
-
-              const Text(
-                "Enable location access to find nearby services, track providers and get accurate addresses.",
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final permission = await Geolocator.requestPermission();
-
-                    if (permission == LocationPermission.whileInUse ||
-                        permission == LocationPermission.always) {
-                      Navigator.pop(context);
-
-                      Provider.of<AddressProvider>(
-                        context,
-                        listen: false,
-                      ).setCurrentLocationAutomatically();
-                    }
-                  },
-                  child: const Text("Enable Location"),
+                          if (mounted && addressProvider.hasSelectedLocation) {
+                            _isLocationSheetShowing = false;
+                            if (mounted) Navigator.pop(context);
+                          } else {
+                            setState(() {});
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE53935),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "Enable Location",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () async {
+                        await Geolocator.openAppSettings();
+                      },
+                      child: const Text(
+                        "Open Settings",
+                        style: TextStyle(color: Color(0xFFE53935)),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-
-              const SizedBox(height: 10),
-
-              TextButton(
-                onPressed: () async {
-                  await Geolocator.openAppSettings();
-                },
-                child: const Text("Open Settings"),
-              ),
-            ],
+              );
+            },
           ),
         );
       },
-    );
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+    ).then((_) {
+      _isLocationSheetShowing = false;
+      _hasCheckedLocation = false;
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) _checkLocationAndShowSheetIfNeeded();
+      });
+    });
   }
 
   void onTabTapped(int index) {
@@ -148,15 +218,14 @@ class _LandingScreenState extends State<LandingScreen>
     super.build(context);
     return SafeArea(
       child: Scaffold(
-        extendBody: true, // allows body to go behind the navbar
-        backgroundColor: Colors.transparent, // no background color to interfere
+        extendBody: true,
+        backgroundColor: Colors.transparent,
         body: PageView(
           controller: _pageController,
           physics: const NeverScrollableScrollPhysics(),
           children: pages,
         ),
         bottomNavigationBar: Container(
-          // Full‑width, transparent container – no margin, no background
           color: Colors.transparent,
           padding: EdgeInsets.only(
             left: AppSizes.w(context, 20),
@@ -165,26 +234,20 @@ class _LandingScreenState extends State<LandingScreen>
           ),
           child: ClipRRect(
             clipBehavior: Clip.antiAlias,
-
             borderRadius: BorderRadius.circular(AppSizes.w(context, 32)),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
               child: Container(
                 height: AppSizes.h(context, 64),
                 decoration: BoxDecoration(
-                  // Glassmorphic style
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
                       Colors.white.withOpacity(0.32),
-
                       const Color(0xFFEFFFFF).withOpacity(0.18),
-
                       const Color(0xFFD6F5FF).withOpacity(0.12),
-
                       Colors.white.withOpacity(0.06),
-
                       const Color(0xFFC8FFF4).withOpacity(0.10),
                     ],
                   ),
@@ -206,24 +269,17 @@ class _LandingScreenState extends State<LandingScreen>
 
                     return Stack(
                       children: [
-                        // Animated glass pill indicator
                         AnimatedPositioned(
                           duration: const Duration(milliseconds: 260),
                           curve: Curves.easeOutCubic,
-                          left:
-                              currentIndex * itemWidth + AppSizes.w(context, 9),
+                          left: currentIndex * itemWidth + AppSizes.w(context, 9),
                           top: AppSizes.h(context, 9),
-                          child: _GlassPill(
-                            width: pillWidth,
-                            height: pillHeight,
-                          ),
+                          child: _GlassPill(width: pillWidth, height: pillHeight),
                         ),
-                        // Nav items row
                         Row(
                           children: List.generate(icons.length, (index) {
                             final isSelected = currentIndex == index;
 
-                            // Special third tab (Support)
                             if (index == 2) {
                               return Expanded(
                                 child: GestureDetector(
@@ -251,9 +307,7 @@ class _LandingScreenState extends State<LandingScreen>
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.green.withOpacity(
-                                              0.18,
-                                            ),
+                                            color: Colors.green.withOpacity(0.18),
                                             blurRadius: 10,
                                             offset: const Offset(0, 4),
                                           ),
@@ -263,7 +317,6 @@ class _LandingScreenState extends State<LandingScreen>
                                         borderRadius: BorderRadius.circular(22),
                                         child: Stack(
                                           children: [
-                                            // Shine effect
                                             Positioned(
                                               top: 2,
                                               left: 16,
@@ -271,13 +324,10 @@ class _LandingScreenState extends State<LandingScreen>
                                                 width: 50,
                                                 height: 10,
                                                 decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.circular(50),
+                                                  borderRadius: BorderRadius.circular(50),
                                                   gradient: LinearGradient(
                                                     colors: [
-                                                      Colors.white.withOpacity(
-                                                        0.35,
-                                                      ),
+                                                      Colors.white.withOpacity(0.35),
                                                       Colors.transparent,
                                                     ],
                                                   ),
@@ -286,21 +336,15 @@ class _LandingScreenState extends State<LandingScreen>
                                             ),
                                             Center(
                                               child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.end,
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                crossAxisAlignment: CrossAxisAlignment.end,
                                                 children: [
                                                   Text(
                                                     "Support",
                                                     style: TextStyle(
                                                       color: Colors.white,
-                                                      fontSize: AppSizes.w(
-                                                        context,
-                                                        16,
-                                                      ),
-                                                      fontWeight:
-                                                          FontWeight.w900,
+                                                      fontSize: AppSizes.w(context, 16),
+                                                      fontWeight: FontWeight.w900,
                                                       letterSpacing: 0.5,
                                                     ),
                                                   ),
@@ -325,7 +369,6 @@ class _LandingScreenState extends State<LandingScreen>
                               );
                             }
 
-                            // Normal tabs (Home, Bookings)
                             return Expanded(
                               child: GestureDetector(
                                 onTap: () => onTabTapped(index),
@@ -336,9 +379,7 @@ class _LandingScreenState extends State<LandingScreen>
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       AnimatedScale(
-                                        duration: const Duration(
-                                          milliseconds: 220,
-                                        ),
+                                        duration: const Duration(milliseconds: 220),
                                         scale: isSelected ? 1 : 0.86,
                                         child: Icon(
                                           icons[index],
@@ -350,9 +391,7 @@ class _LandingScreenState extends State<LandingScreen>
                                       ),
                                       SizedBox(height: AppSizes.h(context, 2)),
                                       AnimatedDefaultTextStyle(
-                                        duration: const Duration(
-                                          milliseconds: 220,
-                                        ),
+                                        duration: const Duration(milliseconds: 220),
                                         style: TextStyle(
                                           fontSize: AppSizes.w(context, 10),
                                           fontWeight: isSelected
@@ -384,7 +423,6 @@ class _LandingScreenState extends State<LandingScreen>
   }
 }
 
-// ───────────────── GLASS PILL (moving indicator) ─────────────────
 class _GlassPill extends StatefulWidget {
   final double width;
   final double height;
@@ -394,8 +432,7 @@ class _GlassPill extends StatefulWidget {
   State<_GlassPill> createState() => _GlassPillState();
 }
 
-class _GlassPillState extends State<_GlassPill>
-    with SingleTickerProviderStateMixin {
+class _GlassPillState extends State<_GlassPill> with SingleTickerProviderStateMixin {
   late final AnimationController _shimmer;
 
   @override

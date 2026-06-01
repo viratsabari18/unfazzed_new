@@ -21,6 +21,8 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
   final PaymentService _paymentService = PaymentService();
   final NotificationService _notificationService = NotificationService();
 
+  bool _isInitialized = false;
+
   @override
   void initState() {
     super.initState();
@@ -29,9 +31,15 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
         context,
         listen: false,
       );
+      final dashboardProvider = Provider.of<DashboardProvider>(
+        context,
+        listen: false,
+      );
 
-      // ONLY LOAD WHEN LOCATION EXISTS
-      if (addressProvider.selectedLocation != null) {
+      dashboardProvider.listenToAddressProvider(addressProvider);
+
+      if (addressProvider.selectedLocation != null && !_isInitialized) {
+        _isInitialized = true;
         _refreshDashboardData();
       }
 
@@ -42,21 +50,10 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
       } else {
         userProvider.addListener(_onUserProviderChange);
       }
-
-      // Refresh dashboard if address changes
-      Provider.of<AddressProvider>(
-        context,
-        listen: false,
-      ).addListener(_onAddressChange);
     });
   }
 
-  void _onAddressChange() {
-    if (!mounted) return;
-    _refreshDashboardData(force: true);
-  }
-
-  void _refreshDashboardData({bool force = false}) {
+  void _refreshDashboardData() {
     final addressProvider = Provider.of<AddressProvider>(
       context,
       listen: false,
@@ -70,26 +67,16 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
       return;
     }
 
-    double? lat = location?['latitude'] != null
-        ? double.tryParse(location!['latitude'].toString())
-        : null;
-    double? lng = location?['longitude'] != null
-        ? double.tryParse(location!['longitude'].toString())
-        : null;
+    double? lat = double.tryParse(location['latitude'].toString());
+    double? lng = double.tryParse(location['longitude'].toString());
 
     final dashboardProvider = Provider.of<DashboardProvider>(
       context,
       listen: false,
     );
 
-    if (force) {
-      dashboardProvider.setLocation(lat, lng);
-      dashboardProvider.fetchDashboardData();
-      dashboardProvider.fetchCategories();
-      dashboardProvider.fetchOffers();
-    } else {
-      dashboardProvider.fetchInitialData(latitude: lat, longitude: lng);
-    }
+    dashboardProvider.setLocation(lat, lng);
+    dashboardProvider.fetchInitialData(latitude: lat, longitude: lng);
   }
 
   void _onUserProviderChange() {
@@ -104,16 +91,15 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
 
   @override
   void dispose() {
-    // Safely remove listeners
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       userProvider.removeListener(_onUserProviderChange);
 
-      final addressProvider = Provider.of<AddressProvider>(
+      final dashboardProvider = Provider.of<DashboardProvider>(
         context,
         listen: false,
       );
-      addressProvider.removeListener(_onAddressChange);
+      dashboardProvider.disposeListener();
     } catch (e) {
       debugPrint("Error removing listeners in HomeTopBanner: $e");
     }
@@ -138,8 +124,6 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
 
   Future<void> _fetchWalletBalance() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-
-    // Only fetch if we have an API token
     if (userProvider.apiToken == null || userProvider.apiToken!.isEmpty) {
       return;
     }
@@ -260,13 +244,21 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left: Location Section
           Expanded(
             child: Consumer<AddressProvider>(
               builder: (context, provider, _) {
                 final selectedLoc = provider.selectedLocation;
-                final String address =
-                    selectedLoc?['address'] ?? "Select your location";
+
+                // Determine what to show in the banner
+                String address;
+                bool showLoading = false;
+
+                if (provider.isLoading && selectedLoc == null) {
+                  address = "Fetching current location...";
+                  showLoading = true;
+                } else {
+                  address = selectedLoc?['address'] ?? "Select your location";
+                }
 
                 return GestureDetector(
                   onTap: () =>
@@ -300,6 +292,16 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                       const SizedBox(height: 2),
                       Row(
                         children: [
+                          if (showLoading)
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          if (showLoading) const SizedBox(width: 8),
                           Flexible(
                             child: Text(
                               address,
@@ -319,11 +321,8 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
               },
             ),
           ),
-
-          // Right: Wallet + Profile and Notification
           Row(
             children: [
-              // Wallet + Profile Pill
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 decoration: BoxDecoration(
@@ -340,22 +339,6 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // const SizedBox(width: 8),
-                    // Image.asset(UserMessages.homepageAppbarCoin, height: 24),
-                    // const SizedBox(width: 6),
-                    // Consumer<UserProvider>(
-                    //   builder: (context, userProvider, _) {
-                    //     return Text(
-                    //       "₹${userProvider.walletBalance.toStringAsFixed(0)}",
-                    //       style: GoogleFonts.poppins(
-                    //         fontWeight: FontWeight.w600,
-                    //         fontSize: 15,
-                    //         color: Colors.black,
-                    //       ),
-                    //     );
-                    //   },
-                    // ),
-                    // const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () =>
                           Navigator.pushNamed(context, AppRoutes.profile),
@@ -380,7 +363,6 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Notification Icon
               GestureDetector(
                 onTap: () =>
                     Navigator.pushNamed(context, AppRoutes.notificationHistory),

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:zeerah/core/config/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
+import 'package:zeerah/core/providers/address_provider.dart';
 
 class DashboardProvider with ChangeNotifier {
   bool _isLoading = false;
@@ -14,6 +16,9 @@ class DashboardProvider with ChangeNotifier {
   String? _errorMessage;
   double? _latitude;
   double? _longitude;
+  
+  bool _isRefreshing = false; // Prevent duplicate refreshes
+  AddressProvider? _addressProvider; // Reference to listen to changes
 
   bool get isLoading => _isLoading;
   List<String> get sliderImages => _sliderImages;
@@ -25,6 +30,7 @@ class DashboardProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   void setLocation(double? lat, double? lng) {
+    if (_latitude == lat && _longitude == lng) return; // No change
     _latitude = lat;
     _longitude = lng;
     notifyListeners();
@@ -36,17 +42,72 @@ class DashboardProvider with ChangeNotifier {
   final String subCategoryUrl = "${ApiConfig.apiBaseUrl}/subcategory-list";
   final String offerUrl = "${ApiConfig.apiBaseUrl}/offer-list";
 
+  // Listen to address provider changes directly
+  void listenToAddressProvider(AddressProvider addressProvider) {
+    _addressProvider = addressProvider;
+    addressProvider.addListener(_onAddressChanged);
+  }
+
+  void disposeListener() {
+    _addressProvider?.removeListener(_onAddressChanged);
+  }
+
+  // Handle location change - single refresh only
+  Future<void> _onAddressChanged() async {
+    if (_addressProvider == null) return;
+    
+    final location = _addressProvider!.selectedLocation;
+    if (location == null) return;
+    
+    if (_isRefreshing) {
+      debugPrint("Already refreshing, skipping duplicate call");
+      return;
+    }
+    
+    _isRefreshing = true;
+    
+    double? lat = double.tryParse(location['latitude'].toString());
+    double? lng = double.tryParse(location['longitude'].toString());
+    
+    setLocation(lat, lng);
+    
+    debugPrint("DashboardProvider: Refreshing data for new location");
+    
+    // Single refresh of all data
+    await Future.wait([
+      fetchDashboardData(),
+      fetchCategories(),
+      fetchOffers(),
+    ]);
+    
+    _isRefreshing = false;
+  }
+
+  Future<void> refreshAllData() async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    
+    await Future.wait([
+      fetchDashboardData(),
+      fetchCategories(),
+      fetchOffers(),
+    ]);
+    
+    _isRefreshing = false;
+  }
+
   Future<void> fetchInitialData({double? latitude, double? longitude}) async {
     if (latitude != null) _latitude = latitude;
     if (longitude != null) _longitude = longitude;
 
-    if (_categories.isEmpty) {
-      // Fetch dashboard, categories, and offers in parallel for speed
+    if (_categories.isEmpty && !_isRefreshing) {
+      _isRefreshing = true;
       await Future.wait([
         fetchDashboardData(),
         fetchCategories(),
         fetchOffers(),
       ]);
+      _isRefreshing = false;
     }
   }
 
@@ -105,82 +166,72 @@ class DashboardProvider with ChangeNotifier {
     }
   }
 
-Future<void> fetchCategories() async {
-  _isLoading = true;
-  notifyListeners();
+  Future<void> fetchCategories() async {
+    _isLoading = true;
+    notifyListeners();
 
-  try {
-    String url = categoryUrl;
+    try {
+      String url = categoryUrl;
 
-    // if (_latitude != null && _longitude != null) {
-    //   url += "?latitude=$_latitude&longitude=$_longitude";
-    // }
+      // if (_latitude != null && _longitude != null) {
+      //   url += "?latitude=$_latitude&longitude=$_longitude";
+      // }
 
-    debugPrint("Fetch Categories URL: $url");
+      debugPrint("Fetch Categories URL: $url");
 
-    final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url));
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        debugPrint("Categories Response: ${response.body}");
 
-      debugPrint("Categories Response: ${response.body}");
+        final List<dynamic> catData = data['data'];
 
-      final List<dynamic> catData = data['data'];
+        _categories = catData.map((item) {
+          String imageUrl = item['category_image'] ?? "";
+          if (imageUrl.contains("127.0.0.1:8000")) {
+            imageUrl = imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
+          }
+          return {
+            'id': item['id'],
+            'name': item['name'],
+            'image': imageUrl,
+          };
+        }).toList();
 
-      _categories = catData.map((item) {
-        String imageUrl = item['category_image'] ?? "";
+        debugPrint("Categories Count: ${_categories.length}");
 
-        if (imageUrl.contains("127.0.0.1:8000")) {
-          imageUrl =
-              imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
+        if (_categories.isNotEmpty && _selectedCategoryId == null) {
+          _selectedCategoryId = _categories[0]['id'];
+          await fetchSubCategories(_selectedCategoryId!);
         }
-
-        return {
-          'id': item['id'],
-          'name': item['name'],
-          'image': imageUrl,
-        };
-      }).toList();
-
-      debugPrint("Categories Count: ${_categories.length}");
-
-      if (_categories.isNotEmpty) {
-        _selectedCategoryId = _categories[0]['id'];
-
-        await fetchSubCategories(_selectedCategoryId!);
+      } else {
+        debugPrint("Fetch Categories Failed: ${response.statusCode}");
       }
-    } else {
-      debugPrint(
-        "Fetch Categories Failed: ${response.statusCode}",
-      );
+    } catch (e) {
+      debugPrint("Error fetching categories: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-  } catch (e) {
-    debugPrint("Error fetching categories: $e");
-  } finally {
-    _isLoading = false;
+  }
+
+  bool _isSubCategoryLoading = false;
+  bool get isSubCategoryLoading => _isSubCategoryLoading;
+
+  Future<void> selectCategory(int categoryId) async {
+    if (_selectedCategoryId == categoryId) return;
+
+    _selectedCategoryId = categoryId;
+    _subCategoriesMap[categoryId] = [];
+    _isSubCategoryLoading = true;
+    notifyListeners();
+
+    await fetchSubCategories(categoryId);
+
+    _isSubCategoryLoading = false;
     notifyListeners();
   }
-}
-bool _isSubCategoryLoading = false;
-
-bool get isSubCategoryLoading => _isSubCategoryLoading;
-
-Future<void> selectCategory(int categoryId) async {
-  if (_selectedCategoryId == categoryId) return;
-
-  _selectedCategoryId = categoryId;
-
-  // clear old data instantly
-  _subCategoriesMap[categoryId] = [];
-
-  _isSubCategoryLoading = true;
-  notifyListeners();
-
-  await fetchSubCategories(categoryId);
-
-  _isSubCategoryLoading = false;
-  notifyListeners();
-}
 
   void searchCategory(String query) {
     if (query.isEmpty) return;
@@ -194,71 +245,45 @@ Future<void> selectCategory(int categoryId) async {
     }
   }
 
- Future<void> fetchSubCategories(int categoryId) async {
-  try {
-    String url = "$subCategoryUrl?category_id=$categoryId";
+  Future<void> fetchSubCategories(int categoryId) async {
+    try {
+      String url = "$subCategoryUrl?category_id=$categoryId";
 
-    if (_latitude != null && _longitude != null) {
-      url += "&latitude=$_latitude&longitude=$_longitude";
-    }
-
-    debugPrint("SUB CATEGORY URL : $url");
-
-    final response = await http.get(Uri.parse(url));
-
-    debugPrint("SUB CATEGORY RESPONSE : ${response.body}");
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-
-      final List<dynamic> subCatData = data['data'] ?? [];
-
-      final subCats = subCatData.map((item) {
-        final Map<String, dynamic> itemMap =
-            Map<String, dynamic>.from(item);
-
-        String imageUrl = itemMap['category_image'] ?? "";
-
-        if (imageUrl.contains("127.0.0.1:8000")) {
-          imageUrl = imageUrl.replaceAll(
-            "http://127.0.0.1:8000",
-            baseUrl,
-          );
-        }
-
-        return {
-          ...itemMap,
-          'id': itemMap['id'],
-          'name': itemMap['name'],
-          'image': imageUrl,
-          'description':
-              itemMap['description'] ??
-              "Professional service at your doorstep",
-        };
-      }).toList();
-
-      _subCategoriesMap[categoryId] = subCats;
-
-      notifyListeners();
-    }
-  } catch (e) {
-    debugPrint("ERROR FETCHING SUB CATEGORY : $e");
-  }
-}
-  void _precacheImages(List<Map<String, dynamic>> items) {
-    for (var item in items) {
-      final String? imageUrl = item['image'];
-      if (imageUrl != null && imageUrl.startsWith('http')) {
-        // Pre-fetching image into disk and memory cache
-        CachedNetworkImageProvider(
-          imageUrl, 
-          headers: const {}
-        ).resolve(const ImageConfiguration()).addListener(
-          ImageStreamListener((info, synchronousCall) {
-            // Image is now cached and ready for instant display
-          }),
-        );
+      if (_latitude != null && _longitude != null) {
+        url += "&latitude=$_latitude&longitude=$_longitude";
       }
+
+      debugPrint("SUB CATEGORY URL : $url");
+
+      final response = await http.get(Uri.parse(url));
+      debugPrint("SUB CATEGORY RESPONSE : ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> subCatData = data['data'] ?? [];
+
+        final subCats = subCatData.map((item) {
+          final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item);
+          String imageUrl = itemMap['category_image'] ?? "";
+
+          if (imageUrl.contains("127.0.0.1:8000")) {
+            imageUrl = imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
+          }
+
+          return {
+            ...itemMap,
+            'id': itemMap['id'],
+            'name': itemMap['name'],
+            'image': imageUrl,
+            'description': itemMap['description'] ?? "Professional service at your doorstep",
+          };
+        }).toList();
+
+        _subCategoriesMap[categoryId] = subCats;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("ERROR FETCHING SUB CATEGORY : $e");
     }
   }
 }

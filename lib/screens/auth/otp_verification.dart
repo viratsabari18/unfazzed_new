@@ -44,9 +44,7 @@ class _OtpVerificationState extends State<OtpVerification> {
   @override
   void initState() {
     super.initState();
-
     currentVerificationId = widget.verificationId;
-
     controllers = List.generate(otpLength, (index) => TextEditingController());
     focusNodes = List.generate(otpLength, (index) => FocusNode());
   }
@@ -56,11 +54,9 @@ class _OtpVerificationState extends State<OtpVerification> {
     for (var c in controllers) {
       c.dispose();
     }
-
     for (var f in focusNodes) {
       f.dispose();
     }
-
     _resendCooldownTimer?.cancel();
     super.dispose();
   }
@@ -107,13 +103,10 @@ class _OtpVerificationState extends State<OtpVerification> {
   }
 
   Future<void> _resendOtp() async {
-    // Check if resend is enabled
     if (!isResendEnabled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            "Please wait ${remainingCooldownSeconds} seconds before resending OTP",
-          ),
+          content: Text("Please wait ${remainingCooldownSeconds} seconds before resending OTP"),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -126,22 +119,16 @@ class _OtpVerificationState extends State<OtpVerification> {
 
     await _authService.verifyPhoneNumber(
       phoneNumber: widget.phoneNumber,
-
       onCodeSent: (String newVerificationId) {
         setState(() {
           currentVerificationId = newVerificationId;
           isLoading = false;
         });
 
-        // Clear all OTP fields when resending
         for (var controller in controllers) {
           controller.clear();
         }
-
-        // Set focus to first OTP field
         focusNodes[0].requestFocus();
-
-        // Start the cooldown timer
         startResendCooldown();
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,18 +138,14 @@ class _OtpVerificationState extends State<OtpVerification> {
           ),
         );
       },
-
       onVerificationFailed: (FirebaseAuthException e) {
         if (mounted) {
           setState(() {
             isLoading = false;
           });
-
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                e.message ?? "OTP resend failed. Please try again.",
-              ),
+              content: Text(e.message ?? "OTP resend failed. Please try again."),
               backgroundColor: Colors.red,
             ),
           );
@@ -196,14 +179,12 @@ class _OtpVerificationState extends State<OtpVerification> {
     if (userCredential != null && userCredential.user != null) {
       if (mounted) {
         final userProvider = Provider.of<UserProvider>(context, listen: false);
-
         userProvider.setUser(userCredential.user);
 
         bool forceProfileCompletion = false;
 
         try {
           final url = Uri.parse("${ApiConfig.apiBaseUrl}/otp-login");
-
           final response = await http.post(
             url,
             headers: {
@@ -221,37 +202,28 @@ class _OtpVerificationState extends State<OtpVerification> {
 
               if (apiToken != null && apiToken.isNotEmpty) {
                 await userProvider.setApiToken(apiToken);
-
-            
-
-             await userProvider.setApiToken(apiToken);
-          
-
-                if (apiToken != null) {
-  await userProvider.setApiToken(apiToken);
-
-  await Provider.of<AddressProvider>(
-    context,
-    listen: false,
-  ).fetchAddressesFromBackend();
-}
-
+                
+                // Step 1: OTP Verified - Save API token and call address-list API
+                final addressProvider = Provider.of<AddressProvider>(
+                  context,
+                  listen: false,
+                );
+                
+                await addressProvider.fetchAddressesFromBackend();
+                
                 debugPrint("TOKEN SAVED SUCCESSFULLY : $apiToken");
-             
               }
 
-              final backendId =
-                  data['data']['employee_id']?.toString() ??
+              final backendId = data['data']['employee_id']?.toString() ??
                   data['data']['id']?.toString();
 
               if (backendId != null) {
-                userProvider.setBackendUserId(backendId);
+                await userProvider.setBackendUserId(backendId);
               }
 
               if (data['data']['first_name'] != null) {
                 final firstName = data['data']['first_name'];
                 final lastName = data['data']['last_name'] ?? '';
-
                 userProvider.updateProfile(
                   firstName: firstName,
                   lastName: lastName,
@@ -271,7 +243,6 @@ class _OtpVerificationState extends State<OtpVerification> {
             isLoading = false;
           });
           
-
           showOtpSuccessDialog(
             context,
             forceProfileCompletion: forceProfileCompletion,
@@ -283,7 +254,6 @@ class _OtpVerificationState extends State<OtpVerification> {
         setState(() {
           isLoading = false;
         });
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Invalid OTP. Please try again."),
@@ -294,17 +264,11 @@ class _OtpVerificationState extends State<OtpVerification> {
     }
   }
 
-  void showOtpSuccessDialog(
-    BuildContext context, {
-    bool forceProfileCompletion = false,
-  }) {
+  void showOtpSuccessDialog(BuildContext context, {bool forceProfileCompletion = false}) {
     final w = AppSizes.width(context);
     final h = AppSizes.height(context);
-
     final user = Provider.of<UserProvider>(context, listen: false).user;
-
-    final bool hasProfile =
-        !forceProfileCompletion &&
+    final bool hasProfile = !forceProfileCompletion &&
         user?.displayName != null &&
         user!.displayName!.isNotEmpty;
 
@@ -313,14 +277,9 @@ class _OtpVerificationState extends State<OtpVerification> {
       barrierDismissible: false,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: Insets.md,
-              vertical: Insets.md,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: Insets.md, vertical: Insets.md),
             decoration: BoxDecoration(
               color: AppColors.naturalWhite,
               borderRadius: BorderRadius.circular(12),
@@ -339,9 +298,7 @@ class _OtpVerificationState extends State<OtpVerification> {
                     child: Icon(Icons.check, color: Colors.red, size: 50),
                   ),
                 ),
-
                 SizedBox(height: h * 0.025),
-
                 Text(
                   "OTP Verified",
                   style: TextStyles.h2.copyWith(
@@ -349,9 +306,7 @@ class _OtpVerificationState extends State<OtpVerification> {
                     fontSize: w * 0.055,
                   ),
                 ),
-
                 SizedBox(height: h * 0.012),
-
                 Text(
                   "Phone number verified successfully",
                   textAlign: TextAlign.center,
@@ -360,9 +315,7 @@ class _OtpVerificationState extends State<OtpVerification> {
                     fontSize: w * 0.035,
                   ),
                 ),
-
                 SizedBox(height: h * 0.025),
-
                 SizedBox(
                   width: double.infinity,
                   height: h * 0.065,
@@ -374,19 +327,11 @@ class _OtpVerificationState extends State<OtpVerification> {
                       ),
                     ),
                     onPressed: () {
-                      if (hasProfile) {
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          AppRoutes.landingPage,
-                          (route) => false,
-                        );
-                      } else {
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          AppRoutes.completeProfile,
-                          (route) => false,
-                        );
-                      }
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.landingPage,
+                        (route) => false,
+                      );
                     },
                     child: Text(
                       "Continue",
@@ -458,17 +403,11 @@ class _OtpVerificationState extends State<OtpVerification> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: h * 0.02),
-
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      color: Colors.white,
-                    ),
+                    child: const Icon(Icons.arrow_back_ios, color: Colors.white),
                   ),
-
                   SizedBox(height: h * 0.03),
-
                   Text(
                     "Login",
                     style: TextStyles.h2.copyWith(
@@ -476,9 +415,7 @@ class _OtpVerificationState extends State<OtpVerification> {
                       fontSize: w * 0.06,
                     ),
                   ),
-
                   SizedBox(height: h * 0.01),
-
                   Text(
                     "Enter OTP sent to ${widget.phoneNumber}",
                     style: TextStyles.bodySmall.copyWith(
@@ -487,23 +424,17 @@ class _OtpVerificationState extends State<OtpVerification> {
                       fontSize: w * 0.035,
                     ),
                   ),
-
                   SizedBox(height: h * 0.04),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(otpLength, (index) {
                       return Padding(
-                        padding: EdgeInsets.only(
-                          right: index == otpLength - 1 ? 0 : Insets.xs,
-                        ),
+                        padding: EdgeInsets.only(right: index == otpLength - 1 ? 0 : Insets.xs),
                         child: otpBox(index, boxWidth),
                       );
                     }),
                   ),
-
                   SizedBox(height: h * 0.04),
-
                   SizedBox(
                     width: double.infinity,
                     height: h * 0.065,
@@ -525,9 +456,7 @@ class _OtpVerificationState extends State<OtpVerification> {
                       ),
                     ),
                   ),
-
                   SizedBox(height: h * 0.02),
-
                   Center(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
@@ -546,9 +475,7 @@ class _OtpVerificationState extends State<OtpVerification> {
                                 ? "Resend OTP"
                                 : "Resend OTP (${remainingCooldownSeconds}s)",
                             style: TextStyles.bodySmall.copyWith(
-                              color: isResendEnabled
-                                  ? AppColors.primaryYellow
-                                  : Colors.grey,
+                              color: isResendEnabled ? AppColors.primaryYellow : Colors.grey,
                               fontWeight: FontWeight.bold,
                               fontSize: w * 0.035,
                             ),
@@ -557,27 +484,14 @@ class _OtpVerificationState extends State<OtpVerification> {
                       ],
                     ),
                   ),
-
-                  SizedBox(height: h * 0.08),
-
-                  // Center(
-                  //   child: Image.asset(
-                  //     UserMessages.veriflyOtpImage,
-                  //     height: h * 0.28,
-                  //     width: w * 0.6,
-                  //   ),
-                  // ),
                 ],
               ),
             ),
-
             if (isLoading)
               Container(
                 color: Colors.black.withOpacity(0.3),
                 child: const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.primaryYellow,
-                  ),
+                  child: CircularProgressIndicator(color: AppColors.primaryYellow),
                 ),
               ),
           ],
