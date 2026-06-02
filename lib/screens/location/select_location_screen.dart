@@ -73,7 +73,7 @@ class SelectLocationScreen extends StatelessWidget {
                 ),
 
                 // Search Bar
-                _buildSearchBar(),
+                // _buildSearchBar(),
 
                 // Current Location & Add Address Card
                 _buildLocationOptionsCard(context, addressProvider),
@@ -236,7 +236,7 @@ class SelectLocationScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Color(0xFF9E9E9E), size: 20),
+   
           ],
         ),
       ),

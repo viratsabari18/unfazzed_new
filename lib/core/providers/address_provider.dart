@@ -60,7 +60,9 @@ class AddressProvider with ChangeNotifier {
       if (response.data.isEmpty) {
         debugPrint("NO ADDRESS FROM BACKEND");
         
-        if (_savedAddresses.isEmpty) {
+        // FIXED: Only clear if we have no saved addresses AND no selected location
+        // This prevents clearing existing addresses when backend temporarily fails
+        if (_savedAddresses.isEmpty && _selectedLocation == null) {
           _selectedLocation = null;
           await _saveSelectedToPrefs(null);
         }
@@ -76,6 +78,11 @@ class AddressProvider with ChangeNotifier {
 
       // BACKEND HAS SAVED ADDRESSES
       if (response.data.isNotEmpty) {
+        // Store current selected ID before clearing
+        final currentSelectedId = _selectedLocation?['id'];
+        debugPrint("CURRENT SELECTED ID => $currentSelectedId");
+        debugPrint("CURRENT SELECTED ADDRESS => ${_selectedLocation?['address']}");
+
         _savedAddresses.clear();
 
         for (var e in response.data) {
@@ -94,12 +101,30 @@ class AddressProvider with ChangeNotifier {
 
         await _saveAllToPrefs();
 
+        // Smart selection - ONLY use ID matching
         if (_savedAddresses.isNotEmpty) {
-          _selectedLocation = _savedAddresses.first;
+          Map<String, dynamic>? matchedAddress;
+
+          // Try to find the currently selected address by ID only
+          if (currentSelectedId != null) {
+            try {
+              matchedAddress = _savedAddresses.firstWhere(
+                (e) => e['id'] == currentSelectedId,
+              );
+              debugPrint("Found matching address by ID: ${matchedAddress['label']} (ID: ${matchedAddress['id']})");
+            } catch (_) {
+              debugPrint("No matching address found by ID: $currentSelectedId");
+            }
+          }
+
+          // If no match by ID, select first address (e.g., when previous was deleted)
+          _selectedLocation = matchedAddress ?? _savedAddresses.first;
+          
           await _saveSelectedToPrefs(_selectedLocation);
 
-          debugPrint("BACKEND ADDRESS SELECTED => ${_selectedLocation?['address']}");
-          debugPrint("BACKEND ADDRESS ID => ${_selectedLocation?['id']}");
+          debugPrint("SELECTED ADDRESS AFTER REFRESH => ${_selectedLocation?['address']}");
+          debugPrint("SELECTED ADDRESS LABEL => ${_selectedLocation?['label']}");
+          debugPrint("SELECTED ADDRESS ID => ${_selectedLocation?['id']}");
           debugPrint("ADDRESS COUNT : ${_savedAddresses.length}");
           
           notifyListeners();
@@ -132,19 +157,16 @@ class AddressProvider with ChangeNotifier {
 
   Future<bool> _requestLocationAndSetAddress() async {
     try {
-      // Step 2: Handle GPS disabled
+      // Handle GPS disabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint("Location service disabled - Opening settings");
         
-        // Show a message to the user
         _errorMessage = "Please enable location services";
         notifyListeners();
         
-        // Open location settings
         await Geolocator.openLocationSettings();
         
-        // Wait a bit and check again
         await Future.delayed(const Duration(milliseconds: 500));
         
         serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -156,7 +178,7 @@ class AddressProvider with ChangeNotifier {
         }
       }
 
-      // Step 3: Add permission logs
+      // Check permission
       LocationPermission permission = await Geolocator.checkPermission();
       debugPrint("CURRENT PERMISSION => $permission");
 
@@ -177,7 +199,6 @@ class AddressProvider with ChangeNotifier {
         _errorMessage = "Location permission is permanently denied. Please enable it in settings.";
         notifyListeners();
         
-        // Open app settings for permanent denial
         await Geolocator.openAppSettings();
         return false;
       }
@@ -221,7 +242,30 @@ class AddressProvider with ChangeNotifier {
 
       Placemark place = placemarks.first;
       
-      String fullAddress = "${place.street}, ${place.locality}, ${place.administrativeArea}";
+      // Build address without null values
+      List<String> addressParts = [];
+      
+      if (place.street != null && place.street!.isNotEmpty) {
+        addressParts.add(place.street!);
+      }
+      if (place.locality != null && place.locality!.isNotEmpty) {
+        addressParts.add(place.locality!);
+      }
+      if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
+        addressParts.add(place.administrativeArea!);
+      }
+      if (place.postalCode != null && place.postalCode!.isNotEmpty) {
+        addressParts.add(place.postalCode!);
+      }
+      if (place.country != null && place.country!.isNotEmpty) {
+        addressParts.add(place.country!);
+      }
+      
+      String fullAddress = addressParts.isNotEmpty 
+          ? addressParts.join(", ") 
+          : "Current Location";
+      
+      debugPrint("FULL ADDRESS => $fullAddress");
       
       final locationData = {
         'label': 'Current Location',
@@ -330,6 +374,7 @@ class AddressProvider with ChangeNotifier {
 
           if (_selectedLocation != null && _selectedLocation!['id'] == addressId) {
             if (_savedAddresses.isNotEmpty) {
+              // Select first remaining address when deleted address was selected
               _selectedLocation = _savedAddresses.first;
               await _saveSelectedToPrefs(_selectedLocation);
               notifyListeners();
@@ -377,6 +422,7 @@ class AddressProvider with ChangeNotifier {
 
       if (_selectedLocation != null && _selectedLocation!['address'] == address['address']) {
         if (_savedAddresses.isNotEmpty) {
+          // Select first remaining address when deleted address was selected
           _selectedLocation = _savedAddresses.first;
           await _saveSelectedToPrefs(_selectedLocation);
           notifyListeners();
@@ -410,8 +456,9 @@ class AddressProvider with ChangeNotifier {
 
   bool get hasSelectedLocation => _selectedLocation != null;
 
-  Future<void> requestPermissionAndGetLocation() async {
-    await _requestLocationAndSetAddress();
+  // FIXED: Returns bool so callers know if location fetching succeeded
+  Future<bool> requestPermissionAndGetLocation() async {
+    return await _requestLocationAndSetAddress();
   }
 
   void clearAddressData() async {
@@ -474,7 +521,7 @@ class AddressProvider with ChangeNotifier {
           _savedAddresses.add(addr);
         }
       }
-      notifyListeners();
+      // REMOVED: notifyListeners() - unnecessary rebuild during initialization
     } catch (e) {
       debugPrint("Error loading from prefs: $e");
     }

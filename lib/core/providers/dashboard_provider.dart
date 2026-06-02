@@ -17,8 +17,8 @@ class DashboardProvider with ChangeNotifier {
   double? _latitude;
   double? _longitude;
   
-  bool _isRefreshing = false; // Prevent duplicate refreshes
-  AddressProvider? _addressProvider; // Reference to listen to changes
+  bool _isRefreshing = false;
+  AddressProvider? _addressProvider;
 
   bool get isLoading => _isLoading;
   List<String> get sliderImages => _sliderImages;
@@ -30,7 +30,7 @@ class DashboardProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   void setLocation(double? lat, double? lng) {
-    if (_latitude == lat && _longitude == lng) return; // No change
+    if (_latitude == lat && _longitude == lng) return;
     _latitude = lat;
     _longitude = lng;
     notifyListeners();
@@ -42,7 +42,6 @@ class DashboardProvider with ChangeNotifier {
   final String subCategoryUrl = "${ApiConfig.apiBaseUrl}/subcategory-list";
   final String offerUrl = "${ApiConfig.apiBaseUrl}/offer-list";
 
-  // Listen to address provider changes directly
   void listenToAddressProvider(AddressProvider addressProvider) {
     _addressProvider = addressProvider;
     addressProvider.addListener(_onAddressChanged);
@@ -52,7 +51,6 @@ class DashboardProvider with ChangeNotifier {
     _addressProvider?.removeListener(_onAddressChanged);
   }
 
-  // Handle location change - single refresh only
   Future<void> _onAddressChanged() async {
     if (_addressProvider == null) return;
     
@@ -71,14 +69,24 @@ class DashboardProvider with ChangeNotifier {
     
     setLocation(lat, lng);
     
-    debugPrint("DashboardProvider: Refreshing data for new location");
+    debugPrint("DashboardProvider: Location changed - Refreshing all data");
+    debugPrint("NEW LAT: $_latitude, LNG: $_longitude");
     
-    // Single refresh of all data
+    // Clear subcategory cache when location changes
+    _subCategoriesMap.clear();
+    
+    // Refresh all main data
     await Future.wait([
       fetchDashboardData(),
       fetchCategories(),
       fetchOffers(),
     ]);
+    
+    // After refreshing categories, refresh subcategories for current selection
+    if (_selectedCategoryId != null) {
+      debugPrint("Refreshing subcategories for selected category: $_selectedCategoryId");
+      await fetchSubCategories(_selectedCategoryId!);
+    }
     
     _isRefreshing = false;
   }
@@ -87,11 +95,20 @@ class DashboardProvider with ChangeNotifier {
     if (_isRefreshing) return;
     _isRefreshing = true;
     
+    debugPrint("Manual refresh - Clearing all cache");
+    
+    // Clear cache on manual refresh
+    _subCategoriesMap.clear();
+    
     await Future.wait([
       fetchDashboardData(),
       fetchCategories(),
       fetchOffers(),
     ]);
+    
+    if (_selectedCategoryId != null) {
+      await fetchSubCategories(_selectedCategoryId!);
+    }
     
     _isRefreshing = false;
   }
@@ -107,6 +124,12 @@ class DashboardProvider with ChangeNotifier {
         fetchCategories(),
         fetchOffers(),
       ]);
+      
+      // Fetch subcategories for selected category if exists
+      if (_selectedCategoryId != null) {
+        await fetchSubCategories(_selectedCategoryId!);
+      }
+      
       _isRefreshing = false;
     }
   }
@@ -173,10 +196,6 @@ class DashboardProvider with ChangeNotifier {
     try {
       String url = categoryUrl;
 
-      // if (_latitude != null && _longitude != null) {
-      //   url += "?latitude=$_latitude&longitude=$_longitude";
-      // }
-
       debugPrint("Fetch Categories URL: $url");
 
       final response = await http.get(Uri.parse(url));
@@ -201,9 +220,21 @@ class DashboardProvider with ChangeNotifier {
 
         debugPrint("Categories Count: ${_categories.length}");
 
-        if (_categories.isNotEmpty && _selectedCategoryId == null) {
+        // FIX: If categories are empty, clear selected category
+        if (_categories.isEmpty) {
+          _selectedCategoryId = null;
+          debugPrint("No categories found, clearing selected category");
+        } else if (_selectedCategoryId == null) {
+          // Only set initial category if none is selected
           _selectedCategoryId = _categories[0]['id'];
-          await fetchSubCategories(_selectedCategoryId!);
+          debugPrint("Initial category selected: $_selectedCategoryId");
+        } else {
+          // FIX: Check if selected category still exists in new categories
+          final stillExists = _categories.any((c) => c['id'] == _selectedCategoryId);
+          if (!stillExists) {
+            _selectedCategoryId = _categories[0]['id'];
+            debugPrint("Selected category no longer exists, switching to: $_selectedCategoryId");
+          }
         }
       } else {
         debugPrint("Fetch Categories Failed: ${response.statusCode}");
@@ -222,8 +253,11 @@ class DashboardProvider with ChangeNotifier {
   Future<void> selectCategory(int categoryId) async {
     if (_selectedCategoryId == categoryId) return;
 
+    debugPrint("Selecting category: $categoryId");
+    
+    // FIX: Clear old subcategory data immediately to prevent showing stale data
     _selectedCategoryId = categoryId;
-    _subCategoriesMap[categoryId] = [];
+    _subCategoriesMap[categoryId] = []; // Clear immediately
     _isSubCategoryLoading = true;
     notifyListeners();
 
@@ -253,6 +287,10 @@ class DashboardProvider with ChangeNotifier {
         url += "&latitude=$_latitude&longitude=$_longitude";
       }
 
+      debugPrint("========== FETCHING SUB CATEGORIES ==========");
+      debugPrint("CATEGORY ID => $categoryId");
+      debugPrint("LATITUDE => $_latitude");
+      debugPrint("LONGITUDE => $_longitude");
       debugPrint("SUB CATEGORY URL : $url");
 
       final response = await http.get(Uri.parse(url));
@@ -280,10 +318,36 @@ class DashboardProvider with ChangeNotifier {
         }).toList();
 
         _subCategoriesMap[categoryId] = subCats;
+        
+        debugPrint("SUBCATEGORY COUNT => ${subCats.length}");
+        debugPrint("============================================");
+        notifyListeners();
+      } else {
+        debugPrint("Failed to fetch subcategories: ${response.statusCode}");
+        _subCategoriesMap[categoryId] = [];
         notifyListeners();
       }
     } catch (e) {
       debugPrint("ERROR FETCHING SUB CATEGORY : $e");
+      debugPrint("============================================");
+      _subCategoriesMap[categoryId] = [];
+      notifyListeners();
     }
+  }
+  
+  // Helper method to check if a category has subcategories
+  bool hasSubcategories(int categoryId) {
+    final subs = _subCategoriesMap[categoryId];
+    return subs != null && subs.isNotEmpty;
+  }
+  
+  // Helper method to clear all cached data
+  void clearAllCache() {
+    _subCategoriesMap.clear();
+    _categories.clear();
+    _sliderImages.clear();
+    _offers.clear();
+    _selectedCategoryId = null;
+    notifyListeners();
   }
 }
