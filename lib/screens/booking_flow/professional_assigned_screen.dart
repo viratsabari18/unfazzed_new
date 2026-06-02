@@ -484,7 +484,7 @@ class _ProfessionalAssignedScreenState
   Future<void> _loadCustomIcons() async {
     try {
       final Uint8List markerIcon = await _getBytesFromAsset(
-        'lib/assets/images/rider_car.png',
+        'lib/assets/images/driver_trial1.png',
         130,
       );
 
