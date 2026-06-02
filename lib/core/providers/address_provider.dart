@@ -132,22 +132,53 @@ class AddressProvider with ChangeNotifier {
 
   Future<bool> _requestLocationAndSetAddress() async {
     try {
+      // Step 2: Handle GPS disabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint("Location service disabled");
-        return false;
+        debugPrint("Location service disabled - Opening settings");
+        
+        // Show a message to the user
+        _errorMessage = "Please enable location services";
+        notifyListeners();
+        
+        // Open location settings
+        await Geolocator.openLocationSettings();
+        
+        // Wait a bit and check again
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          debugPrint("Location service still disabled");
+          _errorMessage = "Location services are required. Please enable them in settings.";
+          notifyListeners();
+          return false;
+        }
       }
 
+      // Step 3: Add permission logs
       LocationPermission permission = await Geolocator.checkPermission();
-      
+      debugPrint("CURRENT PERMISSION => $permission");
+
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+        debugPrint("AFTER REQUEST PERMISSION => $permission");
       }
 
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        debugPrint("Location permission denied or denied forever");
-        _handlePermissionDenied();
+      if (permission == LocationPermission.denied) {
+        debugPrint("User denied permission - showing error");
+        _errorMessage = "Location permission denied. Please enable it in settings.";
+        notifyListeners();
+        return false;
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint("Permission permanently denied - opening settings");
+        _errorMessage = "Location permission is permanently denied. Please enable it in settings.";
+        notifyListeners();
+        
+        // Open app settings for permanent denial
+        await Geolocator.openAppSettings();
         return false;
       }
 
@@ -160,6 +191,8 @@ class AddressProvider with ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint("Location error: $e");
+      _errorMessage = "Error accessing location: $e";
+      notifyListeners();
       return false;
     }
   }
@@ -167,13 +200,20 @@ class AddressProvider with ChangeNotifier {
   Future<void> _fetchAndSetCurrentLocation() async {
     debugPrint("START GPS FETCH");
     _isFetchingLocation = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
+      debugPrint("GETTING GPS POSITION");
+      
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
       );
+      
+      debugPrint("GPS => ${position.latitude}, ${position.longitude}");
 
+      debugPrint("REVERSE GEOCODING");
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
@@ -197,6 +237,7 @@ class AddressProvider with ChangeNotifier {
       debugPrint("CURRENT LOCATION SET => $fullAddress");
     } catch (e) {
       debugPrint("Error fetching current location: $e");
+      _errorMessage = "Failed to get current location: $e";
       _handlePermissionDenied();
     } finally {
       _isFetchingLocation = false;
@@ -293,14 +334,12 @@ class AddressProvider with ChangeNotifier {
               await _saveSelectedToPrefs(_selectedLocation);
               notifyListeners();
             } else {
-              // FIXED: Immediately clear the deleted address and show loading state
               debugPrint("DELETE LAST ADDRESS - clearing and fetching current location");
               _selectedLocation = null;
               _isFetchingLocation = true;
-              notifyListeners(); // This will show "Fetching current location..." in UI
+              notifyListeners();
               
               await _handleNoAddressFlow();
-              // _handleNoAddressFlow will set _selectedLocation when GPS completes
             }
           }
 
@@ -342,11 +381,10 @@ class AddressProvider with ChangeNotifier {
           await _saveSelectedToPrefs(_selectedLocation);
           notifyListeners();
         } else {
-          // FIXED: Immediately clear the deleted address and show loading state
           debugPrint("DELETE LAST ADDRESS (local) - clearing and fetching current location");
           _selectedLocation = null;
           _isFetchingLocation = true;
-          notifyListeners(); // This will show "Fetching current location..." in UI
+          notifyListeners();
           
           await _handleNoAddressFlow();
         }

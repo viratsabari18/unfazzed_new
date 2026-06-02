@@ -112,101 +112,113 @@ class _LandingScreenState extends State<LandingScreen>
     }
   }
 
-  void _showMandatoryLocationSheet() {
-    if (_isLocationSheetShowing) return;
-    _isLocationSheetShowing = true;
+void _showMandatoryLocationSheet() {
+  if (_isLocationSheetShowing) return;
+  _isLocationSheetShowing = true;
 
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return WillPopScope(
-          onWillPop: () async => false,
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              return Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.location_on, color: Colors.red, size: 80),
-                    const SizedBox(height: 16),
-                    const Text(
-                      "Location Access Required",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+  showModalBottomSheet(
+    context: context,
+    isDismissible: false,
+    enableDrag: false,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) {
+      return WillPopScope(
+        onWillPop: () async => false,
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.location_on, color: Colors.red, size: 80),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Location Access Required",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
                     ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      "Please enable location access to find nearby services, track providers and get accurate addresses.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final addressProvider = Provider.of<AddressProvider>(
-                            context,
-                            listen: false,
-                          );
-
-                          await addressProvider.requestPermissionAndGetLocation();
-
-                          if (mounted && addressProvider.hasSelectedLocation) {
-                            _isLocationSheetShowing = false;
-                            if (mounted) Navigator.pop(context);
-                          } else {
-                            setState(() {});
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE53935),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          "Enable Location",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextButton(
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "Please enable location access to find nearby services, track providers and get accurate addresses.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
                       onPressed: () async {
-                        await Geolocator.openAppSettings();
+                        debugPrint("ENABLE LOCATION CLICKED");
+
+                        final addressProvider = Provider.of<AddressProvider>(
+                          context,
+                          listen: false,
+                        );
+
+                        await addressProvider.requestPermissionAndGetLocation();
+
+                        debugPrint(
+                          "HAS LOCATION => ${addressProvider.hasSelectedLocation}",
+                        );
+
+                        if (mounted && addressProvider.hasSelectedLocation) {
+                          debugPrint("CLOSING SHEET");
+                          _isLocationSheetShowing = false;
+                          if (mounted) Navigator.pop(context);
+                        } else {
+                          debugPrint("SHEET REMAINS OPEN - No location yet");
+                          setState(() {}); // Refresh to show any error messages
+                        }
                       },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE53935),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                       child: const Text(
-                        "Open Settings",
-                        style: TextStyle(color: Color(0xFFE53935)),
+                        "Enable Location",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
-    ).then((_) {
-      _isLocationSheetShowing = false;
-      _hasCheckedLocation = false;
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) _checkLocationAndShowSheetIfNeeded();
-      });
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () async {
+                      debugPrint("OPEN SETTINGS CLICKED");
+                      await Geolocator.openAppSettings();
+                    },
+                    child: const Text(
+                      "Open Settings",
+                      style: TextStyle(color: Color(0xFFE53935)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    },
+  ).then((_) {
+    _isLocationSheetShowing = false;
+    _hasCheckedLocation = false;
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _checkLocationAndShowSheetIfNeeded();
     });
-  }
+  });
+}
 
   void onTabTapped(int index) {
     setState(() => currentIndex = index);
