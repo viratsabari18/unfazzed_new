@@ -44,12 +44,86 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:888601961403:android:6eeccc51de64d3e29d5a9e",
+        "mobilesdk_app_id": "1:888601961403:android:5a9aeafab3b113c29d5a9e",
         "android_client_info": {
-          "package_name": "com.fixom.provider.app"
+          "package_name": "com.fixomes.lmt"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8qDhsCwyCFTwwf9grfTm2i7pPtV-KFkw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888601961403:android:bdc9af6bb18ae7ea9d5a9e",
+        "android_client_info": {
+          "package_name": "com.fixomesprovider.lmt"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "888601961403-nnafp4353hvn9rgqk4l264vomf9o9n2o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fixomesprovider.lmt",
+            "certificate_hash": "0c2c1d22c4a94dc3be90bcb732e724064d64cd6e"
+          }
+        },
+        {
+          "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8qDhsCwyCFTwwf9grfTm2i7pPtV-KFkw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888601961403:android:5dab37b81572425e9d5a9e",
+        "android_client_info": {
+          "package_name": "com.unfazzed"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "888601961403-g7qd610368la4f1e32d9dh38vtncedtb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.unfazzed",
+            "certificate_hash": "0c2c1d22c4a94dc3be90bcb732e724064d64cd6e"
+          }
+        },
         {
           "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
           "client_type": 3

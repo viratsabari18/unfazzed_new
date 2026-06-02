@@ -185,6 +185,11 @@ class _OtpVerificationState extends State<OtpVerification> {
 
         try {
           final url = Uri.parse("${ApiConfig.apiBaseUrl}/otp-login");
+          
+          debugPrint("========== OTP LOGIN API CALL ==========");
+          debugPrint("URL: $url");
+          debugPrint("PHONE NUMBER: ${widget.phoneNumber}");
+          
           final response = await http.post(
             url,
             headers: {
@@ -193,6 +198,10 @@ class _OtpVerificationState extends State<OtpVerification> {
             },
             body: json.encode({'contact_number': widget.phoneNumber}),
           );
+
+          debugPrint("OTP LOGIN STATUS CODE => ${response.statusCode}");
+          debugPrint("OTP RESPONSE => ${response.body}");
+          debugPrint("========================================");
 
           if (response.statusCode == 200) {
             final data = json.decode(response.body);
@@ -203,7 +212,6 @@ class _OtpVerificationState extends State<OtpVerification> {
               if (apiToken != null && apiToken.isNotEmpty) {
                 await userProvider.setApiToken(apiToken);
                 
-                // Step 1: OTP Verified - Save API token and call address-list API
                 final addressProvider = Provider.of<AddressProvider>(
                   context,
                   listen: false,
@@ -232,7 +240,10 @@ class _OtpVerificationState extends State<OtpVerification> {
               }
             }
           } else if (response.statusCode == 406) {
+            debugPrint("NEW USER DETECTED - Status Code 406");
             forceProfileCompletion = true;
+          } else {
+            debugPrint("UNEXPECTED STATUS CODE: ${response.statusCode}");
           }
         } catch (e) {
           debugPrint("Backend API Error: $e");
@@ -264,22 +275,35 @@ class _OtpVerificationState extends State<OtpVerification> {
     }
   }
 
-  void showOtpSuccessDialog(BuildContext context, {bool forceProfileCompletion = false}) {
+  void showOtpSuccessDialog(
+    BuildContext context, {
+    bool forceProfileCompletion = false,
+  }) {
     final w = AppSizes.width(context);
     final h = AppSizes.height(context);
+    
     final user = Provider.of<UserProvider>(context, listen: false).user;
+    
     final bool hasProfile = !forceProfileCompletion &&
         user?.displayName != null &&
         user!.displayName!.isNotEmpty;
+
+    debugPrint("showOtpSuccessDialog - forceProfileCompletion: $forceProfileCompletion");
+    debugPrint("showOtpSuccessDialog - hasProfile: $hasProfile");
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: Insets.md, vertical: Insets.md),
+            padding: EdgeInsets.symmetric(
+              horizontal: Insets.md,
+              vertical: Insets.md,
+            ),
             decoration: BoxDecoration(
               color: AppColors.naturalWhite,
               borderRadius: BorderRadius.circular(12),
@@ -327,11 +351,23 @@ class _OtpVerificationState extends State<OtpVerification> {
                       ),
                     ),
                     onPressed: () {
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        AppRoutes.landingPage,
-                        (route) => false,
-                      );
+                      debugPrint("Continue button clicked - hasProfile: $hasProfile");
+                      
+                      if (hasProfile) {
+                        debugPrint("User has profile - Navigating to LandingPage");
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          AppRoutes.landingPage,
+                          (route) => false,
+                        );
+                      } else {
+                        debugPrint("User needs to complete profile - Navigating to CompleteProfile");
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          AppRoutes.completeProfile,
+                          (route) => false,
+                        );
+                      }
                     },
                     child: Text(
                       "Continue",

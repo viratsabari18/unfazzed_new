@@ -44,13 +44,13 @@ class DefaultFirebaseOptions {
     storageBucket: 'aphomeservices-5ws1oh.firebasestorage.app',
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC8qDhsCwyCFTwwf9grfTm2i7pPtV-KFkw',
-    appId: '1:888601961403:android:0422c526c0698a919d5a9e',
-    messagingSenderId: '888601961403',
-    projectId: 'aphomeservices-5ws1oh',
-    storageBucket: 'aphomeservices-5ws1oh.firebasestorage.app',
-  );
+static const FirebaseOptions android = FirebaseOptions(
+  apiKey: 'AIzaSyC8qDhsCwyCFTwwf9grfTm2i7pPtV-KFkw',
+  appId: '1:888601961403:android:5dab37b81572425e9d5a9e',
+  messagingSenderId: '888601961403',
+  projectId: 'aphomeservices-5ws1oh',
+  storageBucket: 'aphomeservices-5ws1oh.firebasestorage.app',
+);
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyD7ITslgTJT_X2yMTB8L8C9iljlB7HctGk',

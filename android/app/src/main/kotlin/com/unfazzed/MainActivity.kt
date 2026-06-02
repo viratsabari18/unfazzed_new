@@ -1,4 +1,4 @@
-package com.aphomeservices.zeerah
+package com.unfazzed
 
 import io.flutter.embedding.android.FlutterActivity
 
