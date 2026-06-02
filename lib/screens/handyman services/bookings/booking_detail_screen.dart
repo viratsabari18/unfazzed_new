@@ -402,7 +402,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         children: [
           _buildPaymentRow(
             "Total Amount", 
-            "₹${displayTotal.toStringAsFixed(0)}", 
+            "₹${detail['total_amount'] ?? displayTotal}", 
             isBold: true
           ),
           if (detail['payment_status'] != null)

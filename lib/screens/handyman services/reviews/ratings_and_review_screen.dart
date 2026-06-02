@@ -207,7 +207,7 @@ class _RatingsAndReviewScreenState extends State<RatingsAndReviewScreen> {
             const SnackBar(content: Text("Thank you for your review!"))
           );
           // Navigate back to booking history or landing page
-          Navigator.popAndPushNamed(context, AppRoutes.bookingHistory);
+          Navigator.popAndPushNamed(context, AppRoutes.landingPage);
         }
       } else {
         final errorData = json.decode(response.body);

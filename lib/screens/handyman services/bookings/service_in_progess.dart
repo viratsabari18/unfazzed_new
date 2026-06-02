@@ -429,187 +429,201 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
     _statusPollingTimer?.cancel();
     super.dispose();
   }
+    void _handleBack() {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.landingPage,
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[200],
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            children: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Image.asset(
-                    !isCompleted
-                        ? "lib/assets/images/test_service_in.PNG"
-                        : "lib/assets/images/service_is_complted.PNG",
-                    height: AppSizes.h(context, 240),
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                  if (!isCompleted) ...[
-                    Padding(
-                      padding: EdgeInsets.only(left: AppSizes.w(context, 130)),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            UserMessages.liveTimer,
-                            style: TextStyle(
-                              color: AppColors.primaryRed,
-                              fontSize: AppSizes.w(context, 10),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: AppSizes.h(context, 4)),
-                          Text(
-                            formatTime(totalSeconds),
-                            style: TextStyle(
-                              fontSize: AppSizes.w(context, 24),
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.naturalBlack,
-                            ),
-                          ),
-                          SizedBox(height: AppSizes.h(context, 8)),
-                          Text(
-                            UserMessages.serviceRunning,
-                            style: TextStyle(
-                              color: AppColors.primaryRed,
-                              fontSize: AppSizes.w(context, 14),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: AppSizes.h(context, 4)),
-                          Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: UserMessages.estimated,
-                                  style: TextStyle(
-                                    color: AppColors.primaryRed,
-                                    fontSize: AppSizes.w(context, 11),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: () {
-                                    final bData = _currentBookingData is List
-                                        ? (_currentBookingData as List).first
-                                        : _currentBookingData;
-
-                                    final rawService = bData?['service'];
-
-                                    final service = rawService is List
-                                        ? (rawService.isNotEmpty
-                                              ? rawService.first
-                                              : {})
-                                        : rawService;
-
-                                    print("========== SERVICE DATA ==========");
-                                    print(service);
-                                    print("========== DURATION ==========");
-                                    print(service?['duration']);
-
-                                    return service?['duration'] != null
-                                        ? " ${service['duration']} Hrs"
-                                        : UserMessages.estimatedTime;
-                                  }(),
-                                  style: TextStyle(
-                                    color: AppColors.naturalBlack54,
-                                    fontSize: AppSizes.w(context, 11),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+    return PopScope(
+             canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _handleBack();
+        },
+      child: Scaffold(
+        backgroundColor: Colors.grey[200],
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Image.asset(
+                      !isCompleted
+                          ? "lib/assets/images/test_service_in.PNG"
+                          : "lib/assets/images/service_is_complted.PNG",
+                      height: AppSizes.h(context, 240),
+                      width: double.infinity,
+                      fit: BoxFit.cover,
                     ),
-                  ],
-                ],
-              ),
-              Transform.translate(
-                offset: Offset(0, -AppSizes.h(context, 8)),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.naturalWhite,
-                    borderRadius: isCompleted
-                        ? null
-                        : BorderRadius.only(
-                            topLeft: Radius.circular(AppSizes.w(context, 16)),
-                            topRight: Radius.circular(AppSizes.w(context, 16)),
-                          ),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildProfessionalInfoAndActionsCard(),
-                      if (!isCompleted)
-                        SizedBox(height: AppSizes.h(context, 10)),
-                      Column(
-                        children: [
-                      
-                          SizedBox(height: AppSizes.h(context, 10)),
-                          if (isCompleted ||
-                              _currentBookingData?['booking_detail']?['status'] ==
-                                  'pending_approval') ...[
-                            EndOtpView(
-                              totalTime: formatTime(totalSeconds),
-                              bookingData: _currentBookingData,
-                              otp:
-                                  (_currentBookingData?['booking_detail']?['otp'] ??
-                                          _currentBookingData?['booking_detail']?['service_otp'] ??
-                                          _currentBookingData?['otp'])
-                                      ?.toString(),
-                            ),
-                                ServiceDetailsCard(bookingData: _currentBookingData),
-                                if(isCompleted) SizedBox(height: AppSizes.h(context, 10)),
-                          ] else ...[
-                            ServiceProgressWidget(
-                              currentStep: () {
-                                final bData = _currentBookingData is List
-                                    ? (_currentBookingData as List).first
-                                    : _currentBookingData;
-                                final rawDetail = bData?['booking_detail'];
-                                final detail = rawDetail is List
-                                    ? (rawDetail.isNotEmpty
-                                          ? rawDetail.first
-                                          : {})
-                                    : rawDetail;
-                                final status = detail?['status']
-                                    ?.toString()
-                                    .toLowerCase();
-
-                                if (status == 'completed') return 5;
-                                if (status == 'pending_approval') return 4;
-                                if (status == 'in_progress' ||
-                                    status == 'started')
-                                  return 3;
-                                if (status == 'arrived' || status == 'ongoing')
-                                  return 2;
-                                return 2;
-                              }(),
-                            ),
-                            SizedBox(height: AppSizes.h(context, 7)),
-                          ],
-                        ],
-                      ),
-                      SizedBox(height: AppSizes.h(context, 4)),
+                    if (!isCompleted) ...[
                       Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSizes.w(context, 10),
+                        padding: EdgeInsets.only(left: AppSizes.w(context, 130)),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              UserMessages.liveTimer,
+                              style: TextStyle(
+                                color: AppColors.primaryRed,
+                                fontSize: AppSizes.w(context, 10),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: AppSizes.h(context, 4)),
+                            Text(
+                              formatTime(totalSeconds),
+                              style: TextStyle(
+                                fontSize: AppSizes.w(context, 24),
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.naturalBlack,
+                              ),
+                            ),
+                            SizedBox(height: AppSizes.h(context, 8)),
+                            Text(
+                              UserMessages.serviceRunning,
+                              style: TextStyle(
+                                color: AppColors.primaryRed,
+                                fontSize: AppSizes.w(context, 14),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: AppSizes.h(context, 4)),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: UserMessages.estimated,
+                                    style: TextStyle(
+                                      color: AppColors.primaryRed,
+                                      fontSize: AppSizes.w(context, 11),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: () {
+                                      final bData = _currentBookingData is List
+                                          ? (_currentBookingData as List).first
+                                          : _currentBookingData;
+      
+                                      final rawService = bData?['service'];
+      
+                                      final service = rawService is List
+                                          ? (rawService.isNotEmpty
+                                                ? rawService.first
+                                                : {})
+                                          : rawService;
+      
+                                      print("========== SERVICE DATA ==========");
+                                      print(service);
+                                      print("========== DURATION ==========");
+                                      print(service?['duration']);
+      
+                                      return service?['duration'] != null
+                                          ? " ${service['duration']} Hrs"
+                                          : UserMessages.estimatedTime;
+                                    }(),
+                                    style: TextStyle(
+                                      color: AppColors.naturalBlack54,
+                                      fontSize: AppSizes.w(context, 11),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        child: _buildActionButtonRow(),
                       ),
-                      SizedBox(height: AppSizes.h(context, 20)),
                     ],
+                  ],
+                ),
+                Transform.translate(
+                  offset: Offset(0, -AppSizes.h(context, 8)),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.naturalWhite,
+                      borderRadius: isCompleted
+                          ? null
+                          : BorderRadius.only(
+                              topLeft: Radius.circular(AppSizes.w(context, 16)),
+                              topRight: Radius.circular(AppSizes.w(context, 16)),
+                            ),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildProfessionalInfoAndActionsCard(),
+                        if (!isCompleted)
+                          SizedBox(height: AppSizes.h(context, 10)),
+                        Column(
+                          children: [
+                        
+                            SizedBox(height: AppSizes.h(context, 10)),
+                            if (isCompleted ||
+                                _currentBookingData?['booking_detail']?['status'] ==
+                                    'pending_approval') ...[
+                              EndOtpView(
+                                totalTime: formatTime(totalSeconds),
+                                bookingData: _currentBookingData,
+                                otp:
+                                    (_currentBookingData?['booking_detail']?['otp'] ??
+                                            _currentBookingData?['booking_detail']?['service_otp'] ??
+                                            _currentBookingData?['otp'])
+                                        ?.toString(),
+                              ),
+                                  ServiceDetailsCard(bookingData: _currentBookingData),
+                                  if(isCompleted) SizedBox(height: AppSizes.h(context, 10)),
+                            ] else ...[
+                              ServiceProgressWidget(
+                                currentStep: () {
+                                  final bData = _currentBookingData is List
+                                      ? (_currentBookingData as List).first
+                                      : _currentBookingData;
+                                  final rawDetail = bData?['booking_detail'];
+                                  final detail = rawDetail is List
+                                      ? (rawDetail.isNotEmpty
+                                            ? rawDetail.first
+                                            : {})
+                                      : rawDetail;
+                                  final status = detail?['status']
+                                      ?.toString()
+                                      .toLowerCase();
+      
+                                  if (status == 'completed') return 5;
+                                  if (status == 'pending_approval') return 4;
+                                  if (status == 'in_progress' ||
+                                      status == 'started')
+                                    return 3;
+                                  if (status == 'arrived' || status == 'ongoing')
+                                    return 2;
+                                  return 2;
+                                }(),
+                              ),
+                              SizedBox(height: AppSizes.h(context, 7)),
+                            ],
+                          ],
+                        ),
+                        SizedBox(height: AppSizes.h(context, 4)),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSizes.w(context, 10),
+                          ),
+                          child: _buildActionButtonRow(),
+                        ),
+                        SizedBox(height: AppSizes.h(context, 20)),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -25,7 +25,8 @@ class ServiceVerificationScreen extends StatefulWidget {
   });
 
   @override
-  State<ServiceVerificationScreen> createState() => _ServiceVerificationScreenState();
+  State<ServiceVerificationScreen> createState() =>
+      _ServiceVerificationScreenState();
 }
 
 class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
@@ -56,52 +57,65 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
   Future<void> _checkBookingStatus() async {
     String? bookingId;
     if (widget.bookingData != null) {
-      final bData = widget.bookingData is List ? (widget.bookingData as List).first : widget.bookingData;
-      bookingId = bData['booking_detail']?['id']?.toString() ?? 
-                  bData['id']?.toString();
+      final bData = widget.bookingData is List
+          ? (widget.bookingData as List).first
+          : widget.bookingData;
+      bookingId =
+          bData['booking_detail']?['id']?.toString() ?? bData['id']?.toString();
     }
-    
+
     if (bookingId == null) return;
 
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final apiToken = userProvider.apiToken;
-      final url = Uri.parse('${ApiConfig.apiBaseUrl}/booking-detail?booking_id=$bookingId');
-      
-      final response = await http.get(url, headers: {
-        'Authorization': 'Bearer $apiToken',
-        'Accept': 'application/json',
-        
-      });
+      final url = Uri.parse(
+        '${ApiConfig.apiBaseUrl}/booking-detail?booking_id=$bookingId',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $apiToken',
+          'Accept': 'application/json',
+        },
+      );
 
       if (response.statusCode == 200) {
         final rawData = json.decode(response.body);
-        final data = rawData is List ? (rawData.isNotEmpty ? rawData.first : {}) : rawData;
-        final rawStatus = (data['booking_detail']?['status'] ?? data['status'])?.toString() ?? "";
+        final data = rawData is List
+            ? (rawData.isNotEmpty ? rawData.first : {})
+            : rawData;
+        final rawStatus =
+            (data['booking_detail']?['status'] ?? data['status'])?.toString() ??
+            "";
         final currentStatus = rawStatus.trim().toLowerCase();
-        
+
         debugPrint("ServiceVerification Polling Status: $currentStatus");
-        
+
         // Redirection logic: triggered by 'started' or 'in_progress' status
         if (currentStatus == 'started' || currentStatus == 'in_progress') {
-           _statusPollingTimer?.cancel();
-           if (mounted) {
-             final userProvider = Provider.of<UserProvider>(context, listen: false);
-             final now = DateTime.now();
-             userProvider.setServiceStartTime(now);
-             
-             Navigator.pushReplacementNamed(
-               context,
-               AppRoutes.serviceInProgress,
-               arguments: {
-                 'service': widget.service,
-                 'booking_data': data,
-                 'price': widget.price,
-                 'duration': 0, // Starts fresh
-                 'start_time': now,
-               },
-             );
-           }
+          _statusPollingTimer?.cancel();
+          if (mounted) {
+            final userProvider = Provider.of<UserProvider>(
+              context,
+              listen: false,
+            );
+            final now = DateTime.now();
+            userProvider.setServiceStartTime(now);
+
+            Navigator.pushReplacementNamed(
+              context,
+              AppRoutes.serviceInProgress,
+              arguments: {
+                'service': widget.service,
+                'booking_data': data,
+                'price': widget.price,
+                'duration': 0, // Starts fresh
+                'start_time': now,
+              },
+            );
+          }
         }
       }
     } catch (e) {
@@ -138,66 +152,89 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
 
     // Build ProfessionalMatch from live API data only — no dummy fallback
     final ProfessionalMatch pro = ProfessionalMatch(
-      name: handyman['display_name']?.toString() ??
-            provider['display_name']?.toString() ??
-            detail['provider_name']?.toString() ??
-            "Professional",
-      rating: (handyman['handyman_rating'] ??
-               provider['providers_service_rating'] ??
-               provider['handyman_rating'] ?? 0).toDouble(),
-      jobsDone: (handyman['total_services_booked'] ??
-                 provider['total_services_booked'] ?? 0) as int,
-      avatarUrl: handyman['profile_image']?.toString() ??
-                 service['provider_image']?.toString() ??
-                 provider['profile_image']?.toString() ??
-                 "lib/assets/images/rider_image.png",
+      name:
+          handyman['display_name']?.toString() ??
+          provider['display_name']?.toString() ??
+          detail['provider_name']?.toString() ??
+          "Professional",
+      rating:
+          (handyman['handyman_rating'] ??
+                  provider['providers_service_rating'] ??
+                  provider['handyman_rating'] ??
+                  0)
+              .toDouble(),
+      jobsDone:
+          (handyman['total_services_booked'] ??
+                  provider['total_services_booked'] ??
+                  0)
+              as int,
+      avatarUrl:
+          handyman['profile_image']?.toString() ??
+          service['provider_image']?.toString() ??
+          provider['profile_image']?.toString() ??
+          "lib/assets/images/rider_image.png",
     );
-    
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+
+    void _handleBack() {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.landingPage,
+        (route) => false,
+      );
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pushNamed(context, AppRoutes.homePage),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.landingPage),
+          ),
+          title: const Text(
+            "Arrived",
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
         ),
-        title: const Text(
-          "Arrived",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildOTPSection(),
-            ),
-            const SizedBox(height: 32),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildProProfile(pro),
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildContactActions(),
-            ),
-            const Divider(thickness: 4, color: Color(0xFFEEEEEE), height: 80),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildServiceDetails(),
-            ),
-            const SizedBox(height: 32),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildActionButtonRow(),
-            ),
-            const SizedBox(height: 60),
-          ],
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildOTPSection(),
+              ),
+              const SizedBox(height: 32),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildProProfile(pro),
+              ),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildContactActions(),
+              ),
+              const Divider(thickness: 4, color: Color(0xFFEEEEEE), height: 80),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildServiceDetails(),
+              ),
+              const SizedBox(height: 32),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildActionButtonRow(),
+              ),
+              const SizedBox(height: 60),
+            ],
+          ),
         ),
       ),
     );
@@ -209,7 +246,11 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
         Expanded(
           child: GestureDetector(
             onTap: () => Navigator.pushNamed(context, AppRoutes.helpDesk),
-            child: _buildFooterButton(Icons.support_agent, "Contact Support", Colors.black),
+            child: _buildFooterButton(
+              Icons.support_agent,
+              "Contact Support",
+              Colors.black,
+            ),
           ),
         ),
       ],
@@ -231,7 +272,11 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
           const SizedBox(width: 8),
           Text(
             label,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
           ),
         ],
       ),
@@ -239,41 +284,73 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
   }
 
   Widget _buildServiceProgress() {
-    final steps = widget.bookingStatus.steps ?? [
-      const ProgressStepModel(title: "Booking confirmed", subtitle: "", state: BookingState.assigned),
-      const ProgressStepModel(title: "Professional Assigned", subtitle: "", state: BookingState.assigned),
-      const ProgressStepModel(title: "On the Way", subtitle: "", state: BookingState.onTheWay),
-      const ProgressStepModel(title: "Professional Arrived", subtitle: "Rider reached its destination", state: BookingState.completed),
-      const ProgressStepModel(title: "Service Started", subtitle: "", state: BookingState.started),
-    ];
+    final steps =
+        widget.bookingStatus.steps ??
+        [
+          const ProgressStepModel(
+            title: "Booking confirmed",
+            subtitle: "",
+            state: BookingState.assigned,
+          ),
+          const ProgressStepModel(
+            title: "Professional Assigned",
+            subtitle: "",
+            state: BookingState.assigned,
+          ),
+          const ProgressStepModel(
+            title: "On the Way",
+            subtitle: "",
+            state: BookingState.onTheWay,
+          ),
+          const ProgressStepModel(
+            title: "Professional Arrived",
+            subtitle: "Rider reached its destination",
+            state: BookingState.completed,
+          ),
+          const ProgressStepModel(
+            title: "Service Started",
+            subtitle: "",
+            state: BookingState.started,
+          ),
+        ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           "Service Progress",
-          style: TextStyle(color: Color(0xFFD90000), fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: Color(0xFFD90000),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         const SizedBox(height: 20),
         ...List.generate(steps.length, (index) {
           final step = steps[index];
           // In this screen, we assume reached, so everything up to "Arrived" is done
-          final bool isCompleted = index <= 3; 
+          final bool isCompleted = index <= 3;
           final bool isActive = index == 3;
-          
+
           return _buildProgressStep(
-            step.title, 
+            step.title,
             subtitle: step.subtitle,
-            isCompleted: isCompleted, 
+            isCompleted: isCompleted,
             isActive: isActive,
-            isLast: index == steps.length - 1
+            isLast: index == steps.length - 1,
           );
         }),
       ],
     );
   }
 
-  Widget _buildProgressStep(String title, {required String subtitle, required bool isCompleted, bool isActive = false, required bool isLast}) {
+  Widget _buildProgressStep(
+    String title, {
+    required String subtitle,
+    required bool isCompleted,
+    bool isActive = false,
+    required bool isLast,
+  }) {
     return Row(
       children: [
         Column(
@@ -284,12 +361,16 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isCompleted ? const Color(0xFFFFD9CC) : Colors.white,
-                border: Border.all(color: isCompleted ? Colors.transparent : Colors.black26),
+                border: Border.all(
+                  color: isCompleted ? Colors.transparent : Colors.black26,
+                ),
               ),
               child: Icon(
                 isActive ? Icons.sensors : (isCompleted ? Icons.check : null),
                 size: 14,
-                color: isActive ? Colors.orange : (isCompleted ? Colors.orange : Colors.transparent),
+                color: isActive
+                    ? Colors.orange
+                    : (isCompleted ? Colors.orange : Colors.transparent),
               ),
             ),
             if (!isLast)
@@ -308,7 +389,9 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               width: 280,
               decoration: BoxDecoration(
-                color: isCompleted ? const Color(0xFFFFE082).withOpacity(0.8) : Colors.white,
+                color: isCompleted
+                    ? const Color(0xFFFFE082).withOpacity(0.8)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -328,12 +411,20 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
                         if (isActive && subtitle.isNotEmpty)
                           Text(
                             subtitle,
-                            style: const TextStyle(fontSize: 10, color: Colors.black54),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.black54,
+                            ),
                           ),
                       ],
                     ),
                   ),
-                  if (isActive) const Icon(Icons.sensors, color: Color(0xFFD90000), size: 16),
+                  if (isActive)
+                    const Icon(
+                      Icons.sensors,
+                      color: Color(0xFFD90000),
+                      size: 16,
+                    ),
                 ],
               ),
             ),
@@ -356,11 +447,19 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
           children: [
             Text(
               "Handyman has",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black54),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.black54,
+              ),
             ),
             Text(
               "ARRIVED",
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50)),
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF4CAF50),
+              ),
             ),
           ],
         ),
@@ -383,59 +482,78 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
             children: [
               const Text(
                 "Service OTP",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-              const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(4, (index) {
-            String otpStr = "0000";
-            if (widget.bookingData != null) {
-              final bData = widget.bookingData is List ? (widget.bookingData as List).first : widget.bookingData;
-              final detail = bData['booking_detail'];
-              if (detail != null) {
-                otpStr = (detail['otp'] ?? detail['service_otp'] ?? detail['booking_otp'])?.toString() ?? "0000";
-              } else {
-                otpStr = (bData['otp'] ?? bData['service_otp'])?.toString() ?? "0000";
-              }
-            }
-            // If OTP is less than 4 digits, pad it
-            otpStr = otpStr.padRight(4, '0');
-            final List<String> otpChars = otpStr.split('');
-            
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              width: 54,
-              height: 64,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFFD54F).withOpacity(0.5)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                otpChars[index],
-                style: const TextStyle(
-                  fontSize: 28, 
-                  fontWeight: FontWeight.bold, 
-                  color: Color(0xFFD90000),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
               ),
-            );
-          }),
-        ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(4, (index) {
+                  String otpStr = "0000";
+                  if (widget.bookingData != null) {
+                    final bData = widget.bookingData is List
+                        ? (widget.bookingData as List).first
+                        : widget.bookingData;
+                    final detail = bData['booking_detail'];
+                    if (detail != null) {
+                      otpStr =
+                          (detail['otp'] ??
+                                  detail['service_otp'] ??
+                                  detail['booking_otp'])
+                              ?.toString() ??
+                          "0000";
+                    } else {
+                      otpStr =
+                          (bData['otp'] ?? bData['service_otp'])?.toString() ??
+                          "0000";
+                    }
+                  }
+                  // If OTP is less than 4 digits, pad it
+                  otpStr = otpStr.padRight(4, '0');
+                  final List<String> otpChars = otpStr.split('');
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    width: 54,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFFFD54F).withOpacity(0.5),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      otpChars[index],
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFD90000),
+                      ),
+                    ),
+                  );
+                }),
+              ),
               const SizedBox(height: 20),
               const Text(
                 "Share this OTP with the professional to start the service",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.black54,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -449,7 +567,7 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
     final bData = widget.bookingData is List
         ? (widget.bookingData as List).first
         : widget.bookingData;
-    
+
     final rawHandyman = bData?['handyman_data'];
     final handyman = rawHandyman is List
         ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
@@ -465,20 +583,26 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
         ? (rawService.isNotEmpty ? rawService.first : {})
         : (rawService ?? {});
 
-    final String name = handyman['display_name']?.toString() ??
+    final String name =
+        handyman['display_name']?.toString() ??
         provider['display_name']?.toString() ??
         bData?['booking_detail']?['provider_name']?.toString() ??
         pro.name;
-    final double rating = (handyman['handyman_rating'] ??
-            provider['providers_service_rating'] ??
-            provider['handyman_rating'] ??
-            pro.rating)
-        .toDouble();
-    final int jobsDone = (handyman['total_services_booked'] ??
-            provider['total_services_booked'] ??
-            pro.jobsDone) as int;
+    final double rating =
+        (handyman['handyman_rating'] ??
+                provider['providers_service_rating'] ??
+                provider['handyman_rating'] ??
+                pro.rating)
+            .toDouble();
+    final int jobsDone =
+        (handyman['total_services_booked'] ??
+                provider['total_services_booked'] ??
+                pro.jobsDone)
+            as int;
     final String? imgUrl =
-        handyman['profile_image'] ?? service['provider_image'] ?? provider['profile_image'];
+        handyman['profile_image'] ??
+        service['provider_image'] ??
+        provider['profile_image'];
 
     return Row(
       children: [
@@ -494,8 +618,9 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
                   placeholder: (context, url) =>
                       Container(color: Colors.grey[200]),
                   errorWidget: (context, url, error) => Image.asset(
-                      'lib/assets/images/rider_image.png',
-                      fit: BoxFit.cover),
+                    'lib/assets/images/rider_image.png',
+                    fit: BoxFit.cover,
+                  ),
                 )
               : Image.asset(
                   'lib/assets/images/rider_image.png',
@@ -516,13 +641,17 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
                     child: Text(
                       name,
                       style: const TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.bold),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF4CAF50),
                       borderRadius: BorderRadius.circular(8),
@@ -530,9 +659,10 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
                     child: const Text(
                       "Arrived",
                       style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -542,15 +672,14 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
                 children: [
                   const Icon(Icons.star, color: Color(0xFFFFB300), size: 16),
                   const SizedBox(width: 4),
-                Text(
-  rating.toStringAsFixed(1),
-  style: const TextStyle(fontWeight: FontWeight.bold),
-),
+                  Text(
+                    rating.toStringAsFixed(1),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     "($jobsDone jobs done)",
-                    style: const TextStyle(
-                        color: Colors.black54, fontSize: 12),
+                    style: const TextStyle(color: Colors.black54, fontSize: 12),
                   ),
                 ],
               ),
@@ -558,9 +687,10 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
               const Text(
                 "Professional is at your door",
                 style: TextStyle(
-                    color: Color(0xFF4CAF50),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13),
+                  color: Color(0xFF4CAF50),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -575,16 +705,25 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
         Expanded(
           child: GestureDetector(
             onTap: () async {
-              final bData = widget.bookingData is List ? (widget.bookingData as List).first : widget.bookingData;
-              
+              final bData = widget.bookingData is List
+                  ? (widget.bookingData as List).first
+                  : widget.bookingData;
+
               final rawHandyman = bData?['handyman_data'];
-              final handyman = rawHandyman is List ? (rawHandyman.isNotEmpty ? rawHandyman.first : {}) : rawHandyman;
-              
+              final handyman = rawHandyman is List
+                  ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
+                  : rawHandyman;
+
               final rawProvider = bData?['provider_data'];
-              final provider = rawProvider is List ? (rawProvider.isNotEmpty ? rawProvider.first : null) : rawProvider;
-              
-              final phone = (handyman?['contact_number'] ?? provider?['contact_number'])?.toString()?.replaceAll(' ', '');
-              
+              final provider = rawProvider is List
+                  ? (rawProvider.isNotEmpty ? rawProvider.first : null)
+                  : rawProvider;
+
+              final phone =
+                  (handyman?['contact_number'] ?? provider?['contact_number'])
+                      ?.toString()
+                      ?.replaceAll(' ', '');
+
               if (phone != null && phone.isNotEmpty) {
                 try {
                   final url = Uri.parse('tel:$phone');
@@ -606,103 +745,111 @@ class _ServiceVerificationScreenState extends State<ServiceVerificationScreen> {
         const SizedBox(width: 16),
         Expanded(
           child: GestureDetector(
-            onTap: () async{
-              final bData = widget.bookingData is List ? (widget.bookingData as List).first : widget.bookingData;
-              
+            onTap: () async {
+              final bData = widget.bookingData is List
+                  ? (widget.bookingData as List).first
+                  : widget.bookingData;
+
               final rawHandyman = bData?['handyman_data'];
-              final handyman = rawHandyman is List ? (rawHandyman.isNotEmpty ? rawHandyman.first : {}) : rawHandyman;
-              
+              final handyman = rawHandyman is List
+                  ? (rawHandyman.isNotEmpty ? rawHandyman.first : {})
+                  : rawHandyman;
+
               final rawProvider = bData?['provider_data'];
-              final provider = rawProvider is List ? (rawProvider.isNotEmpty ? rawProvider.first : null) : rawProvider;
-              
+              final provider = rawProvider is List
+                  ? (rawProvider.isNotEmpty ? rawProvider.first : null)
+                  : rawProvider;
+
               final rawDetail = bData?['booking_detail'];
-              final detail = rawDetail is List ? (rawDetail.isNotEmpty ? rawDetail.first : {}) : rawDetail;
-              
+              final detail = rawDetail is List
+                  ? (rawDetail.isNotEmpty ? rawDetail.first : {})
+                  : rawDetail;
+
               final rawService = bData?['service'];
-              final service = rawService is List ? (rawService.isNotEmpty ? rawService.first : {}) : rawService;
+              final service = rawService is List
+                  ? (rawService.isNotEmpty ? rawService.first : {})
+                  : rawService;
 
-             final prefs = await SharedPreferences.getInstance();
+              final prefs = await SharedPreferences.getInstance();
 
-final backendUserId =
-    prefs.getString('backend_user_id') ?? '';
+              final backendUserId = prefs.getString('backend_user_id') ?? '';
 
-final handymanUserType =
-    handyman?['user_type']
-        ?.toString()
-        .toLowerCase()
-        .trim();
+              final handymanUserType = handyman?['user_type']
+                  ?.toString()
+                  .toLowerCase()
+                  .trim();
 
-final isRealHandyman =
-    handyman != null &&
-    handyman['id'] != null &&
-    handymanUserType != null &&
-    handymanUserType.isNotEmpty &&
-    handymanUserType == 'handyman';
+              final isRealHandyman =
+                  handyman != null &&
+                  handyman['id'] != null &&
+                  handymanUserType != null &&
+                  handymanUserType.isNotEmpty &&
+                  handymanUserType == 'handyman';
 
-final targetId = isRealHandyman
-    ? 'handyman_${handyman['id']}'
-    : 'provider_${provider['id']}';
+              final targetId = isRealHandyman
+                  ? 'handyman_${handyman['id']}'
+                  : 'provider_${provider['id']}';
 
-debugPrint("=========== CHAT TARGET DEBUG ===========");
+              debugPrint("=========== CHAT TARGET DEBUG ===========");
 
-debugPrint("HANDYMAN => $handyman");
+              debugPrint("HANDYMAN => $handyman");
 
-debugPrint("HANDYMAN USER TYPE => $handymanUserType");
+              debugPrint("HANDYMAN USER TYPE => $handymanUserType");
 
-debugPrint("IS REAL HANDYMAN => $isRealHandyman");
+              debugPrint("IS REAL HANDYMAN => $isRealHandyman");
 
-debugPrint("TARGET ID => $targetId");
+              debugPrint("TARGET ID => $targetId");
 
-debugPrint("=========================================");
-debugPrint("=========== CHAT OPEN DEBUG ===========");
+              debugPrint("=========================================");
+              debugPrint("=========== CHAT OPEN DEBUG ===========");
 
-debugPrint("BOOKING ID => ${detail?['id']}");
+              debugPrint("BOOKING ID => ${detail?['id']}");
 
-debugPrint("CUSTOMER ID => $backendUserId");
+              debugPrint("CUSTOMER ID => $backendUserId");
 
-debugPrint("PROVIDER ID => ${provider?['id']}");
+              debugPrint("PROVIDER ID => ${provider?['id']}");
 
-debugPrint("HANDYMAN DATA => $handyman");
+              debugPrint("HANDYMAN DATA => $handyman");
 
-debugPrint("HANDYMAN USER TYPE => $handymanUserType");
+              debugPrint("HANDYMAN USER TYPE => $handymanUserType");
 
-debugPrint("IS REAL HANDYMAN => $isRealHandyman");
+              debugPrint("IS REAL HANDYMAN => $isRealHandyman");
 
-debugPrint("TARGET ID => $targetId");
+              debugPrint("TARGET ID => $targetId");
 
-debugPrint("=======================================");
+              debugPrint("=======================================");
 
-Navigator.pushNamed(
-  context,
-  AppRoutes.chatHomeScreen,
-  arguments: {
-    'name':
-        handyman?['display_name'] ??
-        provider?['display_name'] ??
-        detail?['provider_name'] ??
-        "Professional",
+              Navigator.pushNamed(
+                context,
+                AppRoutes.chatHomeScreen,
+                arguments: {
+                  'name':
+                      handyman?['display_name'] ??
+                      provider?['display_name'] ??
+                      detail?['provider_name'] ??
+                      "Professional",
 
-    'image':
-        handyman?['profile_image'] ??
-        service?['provider_image'] ??
-        provider?['profile_image'] ??
-        "lib/assets/images/rider_image.png",
+                  'image':
+                      handyman?['profile_image'] ??
+                      service?['provider_image'] ??
+                      provider?['profile_image'] ??
+                      "lib/assets/images/rider_image.png",
 
-    'phone':
-        (handyman?['contact_number'] ??
-                provider?['contact_number'])
-            ?.toString(),
+                  'phone':
+                      (handyman?['contact_number'] ??
+                              provider?['contact_number'])
+                          ?.toString(),
 
-    'booking_id': detail?['id']?.toString(),
+                  'booking_id': detail?['id']?.toString(),
 
-    // sender
-    'my_chat_id': 'user_$backendUserId',
+                  // sender
+                  'my_chat_id': 'user_$backendUserId',
 
-    // receiver
-    'provider_uid': targetId,
-'is_handyman_chat': isRealHandyman,
-  },
-);
+                  // receiver
+                  'provider_uid': targetId,
+                  'is_handyman_chat': isRealHandyman,
+                },
+              );
             },
             child: _buildActionButton(
               icon: Icons.chat_bubble_outline,
@@ -738,7 +885,11 @@ Navigator.pushNamed(
           const SizedBox(width: 8),
           Text(
             label,
-            style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16),
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
         ],
       ),
@@ -750,13 +901,19 @@ Navigator.pushNamed(
     String? imageUrl;
     bool isNetwork = false;
 
-    final bData = widget.bookingData is List ? (widget.bookingData as List).first : widget.bookingData;
+    final bData = widget.bookingData is List
+        ? (widget.bookingData as List).first
+        : widget.bookingData;
     if (bData != null && bData['booking_detail'] != null) {
       title = bData['booking_detail']['service_name'] ?? "Service";
       final rawService = bData['service'];
-      final service = rawService is List ? (rawService.isNotEmpty ? rawService.first : null) : rawService;
+      final service = rawService is List
+          ? (rawService.isNotEmpty ? rawService.first : null)
+          : rawService;
       final attachments = service?['attchments_array'];
-      if (attachments != null && attachments is List && attachments.isNotEmpty) {
+      if (attachments != null &&
+          attachments is List &&
+          attachments.isNotEmpty) {
         imageUrl = attachments[0]['url'];
         isNetwork = true;
       }
@@ -780,7 +937,11 @@ Navigator.pushNamed(
       children: [
         const Text(
           "Service Details",
-          style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            color: Color(0xFF2E7D32),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
         const SizedBox(height: 12),
         Row(
@@ -793,7 +954,11 @@ Navigator.pushNamed(
                     title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -806,23 +971,37 @@ Navigator.pushNamed(
             const SizedBox(width: 16),
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: isNetwork 
-                ? CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    width: 100,
-                    height: 70,
-                    fit: BoxFit.cover,
-                    httpHeaders: const {},
-                    placeholder: (context, url) => Container(color: Colors.grey[200], width: 100, height: 70),
-                    errorWidget: (context, url, error) => Image.asset(UserMessages.serviceBookingDummy1, width: 100, height: 70, fit: BoxFit.cover),
-                  )
-                : Image.asset(
-                    imageUrl, 
-                    width: 100, 
-                    height: 70, 
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Image.asset(UserMessages.serviceBookingDummy1, width: 100, height: 70, fit: BoxFit.cover),
-                  ),
+              child: isNetwork
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: 100,
+                      height: 70,
+                      fit: BoxFit.cover,
+                      httpHeaders: const {},
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                        width: 100,
+                        height: 70,
+                      ),
+                      errorWidget: (context, url, error) => Image.asset(
+                        UserMessages.serviceBookingDummy1,
+                        width: 100,
+                        height: 70,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : Image.asset(
+                      imageUrl,
+                      width: 100,
+                      height: 70,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        UserMessages.serviceBookingDummy1,
+                        width: 100,
+                        height: 70,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
             ),
           ],
         ),

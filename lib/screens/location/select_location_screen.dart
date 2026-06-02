@@ -398,10 +398,10 @@ class SelectLocationScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        _buildActionButton(Icons.more_horiz),
-                        const SizedBox(width: 10),
-                        _buildActionButton(Icons.share, isShare: true),
-                        const SizedBox(width: 10),
+                        // _buildActionButton(Icons.more_horiz),
+                        // const SizedBox(width: 10),
+                        // _buildActionButton(Icons.share, isShare: true),
+                        // const SizedBox(width: 10),
                         _buildDeleteButton(context, data),
                       ],
                     ),

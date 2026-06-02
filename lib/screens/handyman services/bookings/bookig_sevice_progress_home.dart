@@ -34,7 +34,7 @@ class _BookingServiceProgressHomeState extends State<BookingServiceProgressHome>
       color: AppColors.naturalWhite,
     ),
     onPressed: (){
-      Navigator.pushNamed(context, AppRoutes.homePage);
+      Navigator.pushNamed(context, AppRoutes.landingPage);
     },
   ),
   elevation: 0,

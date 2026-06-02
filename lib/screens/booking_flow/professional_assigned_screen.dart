@@ -950,6 +950,15 @@ class _ProfessionalAssignedScreenState
 ]
 ''';
 
+  void _handleBack() {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.landingPage,
+      (route) => false,
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     debugPrint("========== BUILD ==========");
@@ -962,22 +971,29 @@ class _ProfessionalAssignedScreenState
     // FIX 2: Remove infinite loading condition - only show loading for user location
     // Provider location should not block the entire screen
     if (!_hasUserLocationFromWidget && _isLoadingLocation) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: Color(0xFF6366F1)),
-              SizedBox(height: AppSizes.h(context, 16)),
-              Text(
-                "Loading location data...",
-                style: TextStyle(
-                  fontSize: AppSizes.w(context, 14),
-                  color: Colors.grey[600],
+      return PopScope(
+        canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _handleBack();
+        },
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: Color(0xFF6366F1)),
+                SizedBox(height: AppSizes.h(context, 16)),
+                Text(
+                  "Loading location data...",
+                  style: TextStyle(
+                    fontSize: AppSizes.w(context, 14),
+                    color: Colors.grey[600],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -1027,107 +1043,114 @@ class _ProfessionalAssignedScreenState
           "lib/assets/images/rider_image.png",
     );
 
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              children: [
-                _buildMapHeader(context, _formatRemainingTime(_remainingMins)),
-                _buildProfessionalInfoCard(pro),
-                SizedBox(height: AppSizes.h(context, 3)),
-                _buildServiceProgress(),
-                SizedBox(height: AppSizes.h(context, 3)),
-                _buildServiceAndSupportCard(),
-                SizedBox(height: AppSizes.h(context, 3)),
-                _buildFooterButton(
-                  Icons.support_agent,
-                  "Support",
-                  Colors.black,
-                ),
-                SizedBox(height: AppSizes.h(context, 40)),
-              ],
-            ),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + AppSizes.h(context, 8),
-            left: AppSizes.w(context, 20),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: AppSizes.w(context, 8),
-                    offset: const Offset(0, 2),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[100],
+        body: Stack(
+          children: [
+            SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                children: [
+                  _buildMapHeader(context, _formatRemainingTime(_remainingMins)),
+                  _buildProfessionalInfoCard(pro),
+                  SizedBox(height: AppSizes.h(context, 3)),
+                  _buildServiceProgress(),
+                  SizedBox(height: AppSizes.h(context, 3)),
+                  _buildServiceAndSupportCard(),
+                  SizedBox(height: AppSizes.h(context, 3)),
+                  _buildFooterButton(
+                    Icons.support_agent,
+                    "Support",
+                    Colors.black,
                   ),
+                  SizedBox(height: AppSizes.h(context, 40)),
                 ],
               ),
-              child: IconButton(
-                icon: Icon(
-                  Icons.arrow_back,
-                  color: Colors.black,
-                  size: AppSizes.w(context, 20),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + AppSizes.h(context, 8),
+              left: AppSizes.w(context, 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: AppSizes.w(context, 8),
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                onPressed: () => Navigator.pushReplacementNamed(
-                  context,
-                  AppRoutes.landingPage,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: Colors.black,
+                    size: AppSizes.w(context, 20),
+                  ),
+                  onPressed: () => Navigator.pushReplacementNamed(
+                    context,
+                    AppRoutes.landingPage,
+                  ),
                 ),
               ),
             ),
-          ),
-          if (_isWaitingForBackendArrival)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black45,
-                child: Center(
-                  child: Card(
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppSizes.w(context, 16),
+            if (_isWaitingForBackendArrival)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black45,
+                  child: Center(
+                    child: Card(
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          AppSizes.w(context, 16),
+                        ),
                       ),
-                    ),
-                    margin: EdgeInsets.symmetric(
-                      horizontal: AppSizes.w(context, 40),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(AppSizes.w(context, 24)),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const CircularProgressIndicator(
-                            color: Colors.green,
-                            strokeWidth: 3,
-                          ),
-                          SizedBox(height: AppSizes.h(context, 20)),
-                          Text(
-                            "Handyman Arriving...",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: AppSizes.w(context, 18),
+                      margin: EdgeInsets.symmetric(
+                        horizontal: AppSizes.w(context, 40),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(AppSizes.w(context, 24)),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(
+                              color: Colors.green,
+                              strokeWidth: 3,
                             ),
-                          ),
-                          SizedBox(height: AppSizes.h(context, 8)),
-                          Text(
-                            "Waiting for the professional to confirm their arrival on the system.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: AppSizes.w(context, 13),
-                              color: Colors.black54,
+                            SizedBox(height: AppSizes.h(context, 20)),
+                            Text(
+                              "Handyman Arriving...",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: AppSizes.w(context, 18),
+                              ),
                             ),
-                          ),
-                        ],
+                            SizedBox(height: AppSizes.h(context, 8)),
+                            Text(
+                              "Waiting for the professional to confirm their arrival on the system.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: AppSizes.w(context, 13),
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

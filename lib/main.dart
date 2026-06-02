@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -6,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import 'package:zeerah/controllers/service%20_list_controller.dart';
 import 'package:zeerah/core/common/app_exports.dart';
+import 'package:zeerah/core/common/network_wrapper.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/core/providers/dashboard_provider.dart';
 import 'package:zeerah/core/providers/favorites_provider.dart';
@@ -26,10 +30,8 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Initialize FCM
     await FCMService().initialize();
 
-    // Background notification handler
     FirebaseMessaging.onBackgroundMessage(
       FCMService.onBackgroundMessage,
     );
@@ -75,21 +77,16 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-
     _initializeApp();
   }
 
   Future<void> _initializeApp() async {
     try {
- 
-
-    
       final user = FirebaseAuth.instance.currentUser;
 
       if (user != null) {
         _isLoggedIn = true;
 
-        // Fetch dashboard data only if logged in
         await Provider.of<DashboardProvider>(
           context,
           listen: false,
@@ -108,28 +105,19 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    // Custom loading splash
     if (_isLoading) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(
           backgroundColor: Colors.white,
           body: Center(
-            child: Column(
-              mainAxisAlignment:
-                  MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 30),
-
-                SizedBox(
-                  height: 35,
-                  width: 35,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    color: Colors.red,
-                  ),
-                ),
-              ],
+            child: SizedBox(
+              height: 35,
+              width: 35,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: Colors.red,
+              ),
             ),
           ),
         ),
@@ -139,12 +127,12 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
-
-  home: _isLoggedIn
-      ? const LandingScreen()
-      : const SignInScreen(),
-  routes: AppPages.routes,
-
+      routes: AppPages.routes,
+      home: NetworkWrapper(
+        child: _isLoggedIn
+            ? const LandingScreen()
+            : const SignInScreen(),
+      ),
     );
   }
 }
