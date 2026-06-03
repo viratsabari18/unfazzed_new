@@ -161,496 +161,511 @@ class _BookingHomePageState extends State<BookingHomePage> {
     }
   }
 
+    void _handleBack() {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.landingPage,
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.naturalWhite,
-      appBar: AppBar(
-        titleSpacing: 0,
-        toolbarHeight: AppSizes.h(context, 80),
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: Padding(
-          padding: EdgeInsets.only(top: AppSizes.h(context, 10)),
-          child: IconButton(
-            onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.homePage);
-            },
-            icon: const Icon(
-              Icons.arrow_back_ios,
-              color: AppColors.naturalBlack,
-            ),
-          ),
-        ),
+    return PopScope(
+         canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
         backgroundColor: AppColors.naturalWhite,
-        title: Padding(
-          padding: EdgeInsets.only(top: AppSizes.h(context, 10)),
-          child: Text(
-            "${_getServiceName()}",
-            style: TextStyle(
-              color: AppColors.naturalBlack,
-              fontWeight: FontWeight.w600,
-              fontSize: AppSizes.w(context, 19),
+        appBar: AppBar(
+          titleSpacing: 0,
+          toolbarHeight: AppSizes.h(context, 80),
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          leading: Padding(
+            padding: EdgeInsets.only(top: AppSizes.h(context, 10)),
+            child: IconButton(
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.landingPage);
+              },
+              icon: const Icon(
+                Icons.arrow_back_ios,
+                color: AppColors.naturalBlack,
+              ),
+            ),
+          ),
+          backgroundColor: AppColors.naturalWhite,
+          title: Padding(
+            padding: EdgeInsets.only(top: AppSizes.h(context, 10)),
+            child: Text(
+              "${_getServiceName()}",
+              style: TextStyle(
+                color: AppColors.naturalBlack,
+                fontWeight: FontWeight.w600,
+                fontSize: AppSizes.w(context, 19),
+              ),
             ),
           ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    ServiceType(
-                      service: widget.service,
-                      selectedOption: widget.selectedOption,
-                      selectedAddOns: widget.selectedAddOns,
-                    ),
-                    SelectDate(
-                      onDateSelected: (date) {
-                        setState(() => _selectedDate = date);
-                      },
-                      onTimeSelected: (slot, time) {
-                        setState(() => _selectedTime = time);
-                      },
-                    ),
-                    PriceDetails(
-                      totalAmount: widget.totalAmount,
-                      discountAmount: widget.discountAmount,
-                      discountPercent: widget.discountPercent,
-                      fullAmount: widget.fullAmount,
-                    ),
-                  ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      ServiceType(
+                        service: widget.service,
+                        selectedOption: widget.selectedOption,
+                        selectedAddOns: widget.selectedAddOns,
+                      ),
+                      SelectDate(
+                        onDateSelected: (date) {
+                          setState(() => _selectedDate = date);
+                        },
+                        onTimeSelected: (slot, time) {
+                          setState(() => _selectedTime = time);
+                        },
+                      ),
+                      PriceDetails(
+                        totalAmount: widget.totalAmount,
+                        discountAmount: widget.discountAmount,
+                        discountPercent: widget.discountPercent,
+                        fullAmount: widget.fullAmount,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Container(
-              color: AppColors.naturalWhite,
-              padding: EdgeInsets.fromLTRB(
-                Insets.sm,
-                Insets.xsm,
-                Insets.sm,
-                Insets.sm,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: AppSizes.h(context, 52),
-                child: ElevatedButton(
-                  onPressed: _isSubmitting
-                      ? null
-                      : () async {
-                          setState(() => _isSubmitting = true);
-
-                          try {
-                            final addressProvider = context
-                                .read<AddressProvider>();
-
-                            // FETCH ADDRESS LIST
-                            await addressProvider.fetchAddressesFromBackend();
-
-                            // CHECK IF ADDRESS EMPTY
-                            if (addressProvider.savedAddresses.isEmpty) {
-                              setState(() => _isSubmitting = false);
-
-                              showDialog(
-                                context: context,
-                                barrierDismissible:
-                                    false, // Prevents dismissing by tapping outside
-                                builder: (context) {
-                                  return Dialog(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                    ),
-                                    elevation: 0,
-                                    backgroundColor: Colors.transparent,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(
-                                          context,
-                                        ).scaffoldBackgroundColor,
+              Container(
+                color: AppColors.naturalWhite,
+                padding: EdgeInsets.fromLTRB(
+                  Insets.sm,
+                  Insets.xsm,
+                  Insets.sm,
+                  Insets.sm,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: AppSizes.h(context, 52),
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () async {
+                            setState(() => _isSubmitting = true);
+      
+                            try {
+                              final addressProvider = context
+                                  .read<AddressProvider>();
+      
+                              // FETCH ADDRESS LIST
+                              await addressProvider.fetchAddressesFromBackend();
+      
+                              // CHECK IF ADDRESS EMPTY
+                              if (addressProvider.savedAddresses.isEmpty) {
+                                setState(() => _isSubmitting = false);
+      
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible:
+                                      false, // Prevents dismissing by tapping outside
+                                  builder: (context) {
+                                    return Dialog(
+                                      shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(24),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.1,
-                                            ),
-                                            blurRadius: 20,
-                                            offset: const Offset(0, 10),
-                                          ),
-                                        ],
                                       ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          // Top decorative element
-                                          Container(
-                                            height: 4,
-                                            width: 60,
-                                            margin: const EdgeInsets.only(
-                                              top: 16,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey[300],
-                                              borderRadius:
-                                                  BorderRadius.circular(2),
-                                            ),
-                                          ),
-
-                                          // Icon
-                                          Container(
-                                            margin: const EdgeInsets.only(
-                                              top: 24,
-                                            ),
-                                            padding: const EdgeInsets.all(16),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primaryRed
-                                                  .withOpacity(0.1),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(
-                                              Icons.location_on_outlined,
-                                              color: AppColors.primaryRed,
-                                              size: 40,
-                                            ),
-                                          ),
-
-                                          // Title
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              24,
-                                              20,
-                                              24,
-                                              8,
-                                            ),
-                                            child: Text(
-                                              "Address Required",
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 22,
-                                                color: Theme.of(
-                                                  context,
-                                                ).textTheme.titleLarge?.color,
+                                      elevation: 0,
+                                      backgroundColor: Colors.transparent,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(
+                                            context,
+                                          ).scaffoldBackgroundColor,
+                                          borderRadius: BorderRadius.circular(24),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(
+                                                0.1,
                                               ),
-                                              textAlign: TextAlign.center,
+                                              blurRadius: 20,
+                                              offset: const Offset(0, 10),
                                             ),
-                                          ),
-
-                                          // Message
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              24,
-                                              0,
-                                              24,
-                                              24,
-                                            ),
-                                            child: Text(
-                                              "Please add your address before proceeding with the booking.",
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                color: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyMedium
-                                                    ?.color
-                                                    ?.withOpacity(0.7),
-                                                height: 1.4,
+                                          ],
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            // Top decorative element
+                                            Container(
+                                              height: 4,
+                                              width: 60,
+                                              margin: const EdgeInsets.only(
+                                                top: 16,
                                               ),
-                                              textAlign: TextAlign.center,
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey[300],
+                                                borderRadius:
+                                                    BorderRadius.circular(2),
+                                              ),
                                             ),
-                                          ),
-
-                                          // Buttons
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              20,
-                                              0,
-                                              20,
-                                              20,
+      
+                                            // Icon
+                                            Container(
+                                              margin: const EdgeInsets.only(
+                                                top: 24,
+                                              ),
+                                              padding: const EdgeInsets.all(16),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primaryRed
+                                                    .withOpacity(0.1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Icons.location_on_outlined,
+                                                color: AppColors.primaryRed,
+                                                size: 40,
+                                              ),
                                             ),
-                                            child: Row(
-                                              children: [
-                                                // Cancel Button
-                                                Expanded(
-                                                  child: OutlinedButton(
-                                                    onPressed: () {
-                                                      Navigator.pop(context);
-                                                    },
-                                                    style: OutlinedButton.styleFrom(
-                                                      foregroundColor:
-                                                          Colors.grey[600],
-                                                      side: BorderSide(
-                                                        color:
-                                                            Colors.grey[300]!,
-                                                      ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
+      
+                                            // Title
+                                            Padding(
+                                              padding: const EdgeInsets.fromLTRB(
+                                                24,
+                                                20,
+                                                24,
+                                                8,
+                                              ),
+                                              child: Text(
+                                                "Address Required",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 22,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).textTheme.titleLarge?.color,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+      
+                                            // Message
+                                            Padding(
+                                              padding: const EdgeInsets.fromLTRB(
+                                                24,
+                                                0,
+                                                24,
+                                                24,
+                                              ),
+                                              child: Text(
+                                                "Please add your address before proceeding with the booking.",
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  color: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.color
+                                                      ?.withOpacity(0.7),
+                                                  height: 1.4,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+      
+                                            // Buttons
+                                            Padding(
+                                              padding: const EdgeInsets.fromLTRB(
+                                                20,
+                                                0,
+                                                20,
+                                                20,
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  // Cancel Button
+                                                  Expanded(
+                                                    child: OutlinedButton(
+                                                      onPressed: () {
+                                                        Navigator.pop(context);
+                                                      },
+                                                      style: OutlinedButton.styleFrom(
+                                                        foregroundColor:
+                                                            Colors.grey[600],
+                                                        side: BorderSide(
+                                                          color:
+                                                              Colors.grey[300]!,
+                                                        ),
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                12,
+                                                              ),
+                                                        ),
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 12,
                                                             ),
                                                       ),
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 12,
-                                                          ),
-                                                    ),
-                                                    child: const Text(
-                                                      "Cancel",
-                                                      style: TextStyle(
-                                                        fontSize: 16,
+                                                      child: const Text(
+                                                        "Cancel",
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                                const SizedBox(width: 12),
-
-                                                // Add Address Button
-                                                Expanded(
-                                                  child: ElevatedButton(
-                                                    onPressed: () {
-                                                      Navigator.pop(context);
-                                                      Navigator.pushNamed(
-                                                        context,
-                                                        AppRoutes
-                                                            .selectLocation,
-                                                      );
-                                                    },
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor:
-                                                          AppColors.primaryRed,
-                                                      foregroundColor:
-                                                          Colors.white,
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
+                                                  const SizedBox(width: 12),
+      
+                                                  // Add Address Button
+                                                  Expanded(
+                                                    child: ElevatedButton(
+                                                      onPressed: () {
+                                                        Navigator.pop(context);
+                                                        Navigator.pushNamed(
+                                                          context,
+                                                          AppRoutes
+                                                              .selectLocation,
+                                                        );
+                                                      },
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            AppColors.primaryRed,
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                12,
+                                                              ),
+                                                        ),
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 12,
                                                             ),
+                                                        elevation: 0,
                                                       ),
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 12,
-                                                          ),
-                                                      elevation: 0,
-                                                    ),
-                                                    child: const Text(
-                                                      "Add Address",
-                                                      style: TextStyle(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.w600,
+                                                      child: const Text(
+                                                        "Add Address",
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              );
-
-                              return;
-                            }
-
-                            // CONTINUE BOOKING
-                            final location = addressProvider.selectedLocation;
-
-                            // Using user-provided example coordinates as defaults if location is null
-                            final double lat = location?['latitude'] != null
-                                ? double.parse(location!['latitude'].toString())
-                                : 28.6155;
-                            final double lng = location?['longitude'] != null
-                                ? double.parse(
-                                    location!['longitude'].toString(),
-                                  )
-                                : 77.2150;
-                            final String addressText =
-                                location?['address'] ?? "test address";
-
-                            debugPrint(
-                              "📍 Booking Flow: Using coordinates from selected address",
-                            );
-                            debugPrint("📍 Address: $addressText");
-                            debugPrint("📍 Latitude: $lat");
-                            debugPrint("📍 Longitude: $lng");
-
-                            final userProvider = context.read<UserProvider>();
-                            final apiToken = userProvider.apiToken;
-
-                            String dateStr = "2026-05-01";
-                            String formattedDisplayDate = "01 May, 2026";
-                            if (_selectedDate != null) {
-                              dateStr =
-                                  "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
-                              final monthNames = [
-                                "Jan",
-                                "Feb",
-                                "Mar",
-                                "Apr",
-                                "May",
-                                "Jun",
-                                "Jul",
-                                "Aug",
-                                "Sep",
-                                "Oct",
-                                "Nov",
-                                "Dec",
-                              ];
-                              formattedDisplayDate =
-                                  "${_selectedDate!.day} ${monthNames[_selectedDate!.month - 1]}, ${_selectedDate!.year}";
-                            }
-
-                            // Convert display time (e.g. "8:00 AM") to 24-hour API format "HH:mm:ss"
-                            String _convertTo24Hour(String displayTime) {
-                              try {
-                                final parts = displayTime.split(' ');
-                                final timeParts = parts[0].split(':');
-                                int hour = int.parse(timeParts[0]);
-                                final minute = timeParts.length > 1
-                                    ? timeParts[1]
-                                    : '00';
-                                final period = parts.length > 1
-                                    ? parts[1].toUpperCase()
-                                    : 'AM';
-                                if (period == 'PM' && hour != 12) hour += 12;
-                                if (period == 'AM' && hour == 12) hour = 0;
-                                return '${hour.toString().padLeft(2, '0')}:${minute.padLeft(2, '0')}:00';
-                              } catch (_) {
-                                return '10:30:00';
-                              }
-                            }
-
-                            final displayTime = _selectedTime ?? "10:30 AM";
-                            final timeStr = _convertTo24Hour(displayTime);
-                 final latestDisplayTime =
-    DateFormat('h:mm a').format(DateTime.now());
-
-final latestTime =
-    _convertTo24Hour(latestDisplayTime);
-
-                            final url = Uri.parse(
-                              '${ApiConfig.apiBaseUrl}/booking-save',
-                            );
-                            final requestBody = {
-                              "service_id": widget.service is Map
-                                  ? widget.service['id']
-                                  : widget.service.id,
-                              "date": dateStr,
-                              "booking_slot": latestTime,
-                              "address": addressText,
-                              "latitude": lat,
-                              "longitude": lng,
-                              "status": "pending",
-                              "price": widget.totalAmount,
-                              "total_amount": widget.totalAmount,
-                              "service_addon_id": widget.selectedAddOns
-                                  .map((e) => e['id'])
-                                  .toList(),
-                              "service_option_id": widget.selectedOption != null
-                                  ? [widget.selectedOption!['id']]
-                                  : [],
-                            };
-
-                            debugPrint("🚀 OUTGOING BOOKING PAYLOAD:");
-                            debugPrint(
-                              const JsonEncoder.withIndent(
-                                '  ',
-                              ).convert(requestBody),
-                            );
-
-                            final response = await http.post(
-                              url,
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-
-                                if (apiToken != null && apiToken.isNotEmpty)
-                                  'Authorization': 'Bearer $apiToken',
-                              },
-                              body: json.encode(requestBody),
-                            );
-
-                            if (response.statusCode == 200) {
-                              final data = json.decode(response.body);
-                              final bookingId =
-                                  data['booking_id']?.toString() ?? "#UC876-67";
-
-                              if (mounted) {
-                                Navigator.pushNamed(
-                                  context,
-                                  AppRoutes.bookingConfirmed,
-                                  arguments: {
-                                    'service': widget.service,
-                                    'booking_id': bookingId,
-                                    'date': formattedDisplayDate,
-                                    'time': timeStr,
-                                    'price': widget.totalAmount.toStringAsFixed(
-                                      2,
-                                    ),
+                                    );
                                   },
                                 );
+      
+                                return;
                               }
-                            } else {
-                              debugPrint("Booking failed: ${response.body}");
+      
+                              // CONTINUE BOOKING
+                              final location = addressProvider.selectedLocation;
+      
+                              // Using user-provided example coordinates as defaults if location is null
+                              final double lat = location?['latitude'] != null
+                                  ? double.parse(location!['latitude'].toString())
+                                  : 28.6155;
+                              final double lng = location?['longitude'] != null
+                                  ? double.parse(
+                                      location!['longitude'].toString(),
+                                    )
+                                  : 77.2150;
+                              final String addressText =
+                                  location?['address'] ?? "test address";
+      
+                              debugPrint(
+                                "📍 Booking Flow: Using coordinates from selected address",
+                              );
+                              debugPrint("📍 Address: $addressText");
+                              debugPrint("📍 Latitude: $lat");
+                              debugPrint("📍 Longitude: $lng");
+      
+                              final userProvider = context.read<UserProvider>();
+                              final apiToken = userProvider.apiToken;
+      
+                              String dateStr = "2026-05-01";
+                              String formattedDisplayDate = "01 May, 2026";
+                              if (_selectedDate != null) {
+                                dateStr =
+                                    "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+                                final monthNames = [
+                                  "Jan",
+                                  "Feb",
+                                  "Mar",
+                                  "Apr",
+                                  "May",
+                                  "Jun",
+                                  "Jul",
+                                  "Aug",
+                                  "Sep",
+                                  "Oct",
+                                  "Nov",
+                                  "Dec",
+                                ];
+                                formattedDisplayDate =
+                                    "${_selectedDate!.day} ${monthNames[_selectedDate!.month - 1]}, ${_selectedDate!.year}";
+                              }
+      
+                              // Convert display time (e.g. "8:00 AM") to 24-hour API format "HH:mm:ss"
+                              String _convertTo24Hour(String displayTime) {
+                                try {
+                                  final parts = displayTime.split(' ');
+                                  final timeParts = parts[0].split(':');
+                                  int hour = int.parse(timeParts[0]);
+                                  final minute = timeParts.length > 1
+                                      ? timeParts[1]
+                                      : '00';
+                                  final period = parts.length > 1
+                                      ? parts[1].toUpperCase()
+                                      : 'AM';
+                                  if (period == 'PM' && hour != 12) hour += 12;
+                                  if (period == 'AM' && hour == 12) hour = 0;
+                                  return '${hour.toString().padLeft(2, '0')}:${minute.padLeft(2, '0')}:00';
+                                } catch (_) {
+                                  return '10:30:00';
+                                }
+                              }
+      
+                              final displayTime = _selectedTime ?? "10:30 AM";
+                              final timeStr = _convertTo24Hour(displayTime);
+                   final latestDisplayTime =
+      DateFormat('h:mm a').format(DateTime.now());
+      
+      final latestTime =
+      _convertTo24Hour(latestDisplayTime);
+      
+                              final url = Uri.parse(
+                                '${ApiConfig.apiBaseUrl}/booking-save',
+                              );
+                              final requestBody = {
+                                "service_id": widget.service is Map
+                                    ? widget.service['id']
+                                    : widget.service.id,
+                                "date": dateStr,
+                                "booking_slot": latestTime,
+                                "address": addressText,
+                                "latitude": lat,
+                                "longitude": lng,
+                                "status": "pending",
+                                "price": widget.totalAmount,
+                                "total_amount": widget.totalAmount,
+                                "service_addon_id": widget.selectedAddOns
+                                    .map((e) => e['id'])
+                                    .toList(),
+                                "service_option_id": widget.selectedOption != null
+                                    ? [widget.selectedOption!['id']]
+                                    : [],
+                              };
+      
+                              debugPrint("🚀 OUTGOING BOOKING PAYLOAD:");
+                              debugPrint(
+                                const JsonEncoder.withIndent(
+                                  '  ',
+                                ).convert(requestBody),
+                              );
+      
+                              final response = await http.post(
+                                url,
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Accept': 'application/json',
+      
+                                  if (apiToken != null && apiToken.isNotEmpty)
+                                    'Authorization': 'Bearer $apiToken',
+                                },
+                                body: json.encode(requestBody),
+                              );
+      
+                              if (response.statusCode == 200) {
+                                final data = json.decode(response.body);
+                                final bookingId =
+                                    data['booking_id']?.toString() ?? "#UC876-67";
+      
+                                if (mounted) {
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.bookingConfirmed,
+                                    arguments: {
+                                      'service': widget.service,
+                                      'booking_id': bookingId,
+                                      'date': formattedDisplayDate,
+                                      'time': timeStr,
+                                      'price': widget.totalAmount.toStringAsFixed(
+                                        2,
+                                      ),
+                                    },
+                                  );
+                                }
+                              } else {
+                                debugPrint("Booking failed: ${response.body}");
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        "API Error: ${response.statusCode} - ${response.body}",
+                                      ),
+                                      duration: const Duration(seconds: 5),
+                                    ),
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              debugPrint("Error confirming booking: $e");
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
+                                  const SnackBar(
                                     content: Text(
-                                      "API Error: ${response.statusCode} - ${response.body}",
+                                      "An error occurred. Please check your connection.",
                                     ),
-                                    duration: const Duration(seconds: 5),
                                   ),
                                 );
                               }
+                            } finally {
+                              if (mounted) setState(() => _isSubmitting = false);
                             }
-                          } catch (e) {
-                            debugPrint("Error confirming booking: $e");
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "An error occurred. Please check your connection.",
-                                  ),
-                                ),
-                              );
-                            }
-                          } finally {
-                            if (mounted) setState(() => _isSubmitting = false);
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isSubmitting
-                        ? Colors.grey
-                        : AppColors.primaryRed,
-                    foregroundColor: AppColors.naturalWhite,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Insets.sm),
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isSubmitting
+                          ? Colors.grey
+                          : AppColors.primaryRed,
+                      foregroundColor: AppColors.naturalWhite,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Insets.sm),
+                      ),
                     ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            'Confirm',
+                            style: TextStyle(
+                              fontSize: AppSizes.w(context, 16),
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.naturalWhite,
+                            ),
+                          ),
                   ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          'Confirm',
-                          style: TextStyle(
-                            fontSize: AppSizes.w(context, 16),
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.naturalWhite,
-                          ),
-                        ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

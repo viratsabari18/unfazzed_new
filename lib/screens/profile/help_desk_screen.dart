@@ -6,6 +6,7 @@ import 'package:zeerah/core/models/faq_model.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/services/faq_service.dart';
 import 'package:zeerah/core/services/helpdesk_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HelpDeskScreen extends StatefulWidget {
   const HelpDeskScreen({super.key});
@@ -69,6 +70,28 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
       });
     }
   }
+
+  Future<void> _launchEmail() async {
+  final Uri emailUri = Uri(
+    scheme: 'mailto',
+    path: 'corporate@unfazzed.in',
+  );
+
+  if (await canLaunchUrl(emailUri)) {
+    await launchUrl(emailUri);
+  }
+}
+
+Future<void> _launchPhone() async {
+  final Uri phoneUri = Uri(
+    scheme: 'tel',
+    path: '7986544683',
+  );
+
+  if (await canLaunchUrl(phoneUri)) {
+    await launchUrl(phoneUri);
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -362,41 +385,50 @@ class _HelpDeskScreenState extends State<HelpDeskScreen> {
     );
   }
 
-  Widget _buildContactSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Still need help?',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+Widget _buildContactSection() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Still need help?',
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 15),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: _launchEmail,
+                child: _buildContactCard(
+                  Icons.email_outlined,
+                  'Email Support',
+                  'Active now',
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 15),
-          Row(
-            children: [
-              _buildContactCard(
-                Icons.email_outlined,
-                'Email Support',
-                'Active now',
+            const SizedBox(width: 15),
+            Expanded(
+              child: GestureDetector(
+                onTap: _launchPhone,
+                child: _buildContactCard(
+                  Icons.phone_outlined,
+                  'Call Support',
+                  '24/7 Service',
+                ),
               ),
-              const SizedBox(width: 15),
-              _buildContactCard(
-                Icons.phone_outlined,
-                'Call Support',
-                '24/7 Service',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
   Widget _buildContactCard(IconData icon, String title, String subtitle) {
     return Expanded(
       child: Container(
