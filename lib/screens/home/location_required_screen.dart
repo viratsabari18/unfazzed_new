@@ -123,25 +123,39 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final screenWidth = AppSizes.width(context);
+    final screenHeight = AppSizes.height(context);
+    final isTablet = screenWidth > 600;
+    final isSmallPhone = screenWidth < 360;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F8),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSizes.w(context, 20),
+              vertical: AppSizes.h(context, 10),
+            ),
             child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              width: isTablet 
+                  ? screenWidth * 0.7 
+                  : double.infinity,
+              constraints: BoxConstraints(
+                maxWidth: isTablet ? 500 : double.infinity,
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSizes.w(context, 24),
+                vertical: AppSizes.h(context, 12),
+              ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
+                borderRadius: BorderRadius.circular(AppSizes.w(context, 32)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.06),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    blurRadius: AppSizes.w(context, 20),
+                    offset: Offset(0, AppSizes.h(context, 8)),
                   ),
                 ],
               ),
@@ -150,140 +164,69 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
                   /// IMAGE
                   Image.asset(
                     'lib/assets/images/loc_conig.jpeg',
-                    height: size.height * .28,
+                    height: isSmallPhone 
+                        ? AppSizes.h(context, 180) 
+                        : AppSizes.h(context, 235),
                     fit: BoxFit.contain,
                   ),
 
-                  const SizedBox(height: 10),
+    
+
+                  /// TITLE SECTION
                   Column(
                     children: [
-                      const Text(
+                      Text(
                         "We’d love to know",
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Color(0xFF1D1D1D),
-                          fontSize: 25,
+                          color: const Color(0xFF1D1D1D),
+                          fontSize: isTablet 
+                              ? AppSizes.w(context, 28) 
+                              : AppSizes.w(context, 25),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
 
-                      const SizedBox(height: 2),
-
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
+                        children: [
                           Text(
                             "your location",
                             style: TextStyle(
-                              color: Color(0xFF1D1D1D),
-                              fontSize: 25,
+                              color: const Color(0xFF1D1D1D),
+                              fontSize: isTablet 
+                                  ? AppSizes.w(context, 28) 
+                                  : AppSizes.w(context, 25),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
 
-                          SizedBox(width: 6),
+                          SizedBox(width: AppSizes.w(context, 6)),
 
                           Icon(
                             Icons.location_pin,
-                            color: Color(0xFFE53935),
-                            size: 26,
+                            color: const Color(0xFFE53935),
+                            size: isTablet 
+                                ? AppSizes.w(context, 30) 
+                                : AppSizes.w(context, 26),
                           ),
                         ],
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: AppSizes.h(context, 16)),
 
-                  Text(
-                    "Allow location access to get personalized experiences,relevant Services",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 15,
-                      height: 1.6,
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  /// FEATURES
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _featureItem(
-                          Icons.my_location,
-                          const Color(0xFFE53935),
-                          "Find Nearby",
-                          "Discover Highly Rated Services around you.",
-                        ),
-                      ),
-
-                      Container(
-                        width: 1,
-                        height: 90,
-                        color: Colors.grey.shade200,
-                      ),
-
-                      Expanded(
-                        child: _featureItem(
-                          Icons.map_outlined,
-                          const Color(0xFFFF6B6B),
-                          "Better Experience",
-                          "Get directions and updates.",
-                        ),
-                      ),
-
-                      Container(
-                        width: 1,
-                        height: 90,
-                        color: Colors.grey.shade200,
-                      ),
-
-                      Expanded(
-                        child: _featureItem(
-                          Icons.workspace_premium_outlined,
-                          const Color(0xFFD32F2F),
-                          "Relevant Services",
-                          "Receive deals that matter.",
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 35),
-
-                  /// ERROR MESSAGE
-                  if (_errorMessage != null)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.red),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: const TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  /// ALLOW LOCATION
+                  /// ALLOW LOCATION BUTTON
                   SizedBox(
                     width: double.infinity,
-                    height: 58,
+                    height: isSmallPhone 
+                        ? AppSizes.h(context, 50) 
+                        : AppSizes.h(context, 58),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(AppSizes.w(context, 14)),
                         gradient: const LinearGradient(
                           colors: [Color(0xFFE53935), Color(0xFFFF5252)],
                         ),
@@ -291,25 +234,28 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
                       child: ElevatedButton.icon(
                         onPressed: _isLoading ? null : _enableLocation,
                         icon: _isLoading
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
+                            ? SizedBox(
+                                width: AppSizes.w(context, 18),
+                                height: AppSizes.w(context, 18),
+                                child: const CircularProgressIndicator(
                                   color: Colors.white,
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(
+                            : Icon(
                                 Icons.navigation_outlined,
                                 color: Colors.white,
+                                size: AppSizes.w(context, 20),
                               ),
                         label: Text(
                           _isLoading
                               ? "Getting Location..."
                               : "Allow Location Access",
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 17,
+                            fontSize: isSmallPhone 
+                                ? AppSizes.w(context, 15) 
+                                : AppSizes.w(context, 17),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -317,32 +263,37 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(AppSizes.w(context, 14)),
                           ),
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 14),
+                  SizedBox(height: AppSizes.h(context, 14)),
 
-                  /// OPEN SETTINGS
+                  /// OPEN SETTINGS BUTTON
                   SizedBox(
                     width: double.infinity,
-                    height: 58,
+                    height: isSmallPhone 
+                        ? AppSizes.h(context, 50) 
+                        : AppSizes.h(context, 58),
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         await Geolocator.openAppSettings();
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.settings_outlined,
-                        color: Color(0xFFE53935),
+                        color: const Color(0xFFE53935),
+                        size: AppSizes.w(context, 20),
                       ),
-                      label: const Text(
+                      label: Text(
                         "Open Settings",
                         style: TextStyle(
-                          color: Color(0xFFE53935),
-                          fontSize: 17,
+                          color: const Color(0xFFE53935),
+                          fontSize: isSmallPhone 
+                              ? AppSizes.w(context, 15) 
+                              : AppSizes.w(context, 17),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -352,13 +303,160 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
                           width: 1.5,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(AppSizes.w(context, 14)),
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 22),
+                  SizedBox(height: AppSizes.h(context, 16)),
+
+                  /// DESCRIPTION TEXT
+                  Text(
+                    "Allow location access to get personalized experiences, relevant Services",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: isSmallPhone 
+                          ? AppSizes.w(context, 13) 
+                          : isTablet 
+                              ? AppSizes.w(context, 16) 
+                              : AppSizes.w(context, 15),
+                      height: 1.6,
+                    ),
+                  ),
+
+                  SizedBox(height: AppSizes.h(context, isTablet ? 40 : 30)),
+
+                  /// FEATURES SECTION
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (isTablet && constraints.maxWidth > 500) {
+                        // For tablets, use a more spaced out layout
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Expanded(
+                              child: _featureItem(
+                                Icons.my_location,
+                                const Color(0xFFE53935),
+                                "Find Nearby",
+                                "Discover Highly Rated Services around you.",
+                                context,
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: AppSizes.h(context, 90),
+                              color: Colors.grey.shade200,
+                            ),
+                            Expanded(
+                              child: _featureItem(
+                                Icons.map_outlined,
+                                const Color(0xFFFF6B6B),
+                                "Better Experience",
+                                "Get directions and updates.",
+                                context,
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: AppSizes.h(context, 90),
+                              color: Colors.grey.shade200,
+                            ),
+                            Expanded(
+                              child: _featureItem(
+                                Icons.workspace_premium_outlined,
+                                const Color(0xFFD32F2F),
+                                "Relevant Services",
+                                "Receive deals that matter.",
+                                context,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      
+                      // For mobile phones
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _featureItem(
+                              Icons.my_location,
+                              const Color(0xFFE53935),
+                              "Find Nearby",
+                              isSmallPhone 
+                                  ? "Discover Highly Rated Services around you."
+                                  : "Discover Highly Rated Services around you.",
+                              context,
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: AppSizes.h(context, 90),
+                            color: Colors.grey.shade200,
+                          ),
+                          Expanded(
+                            child: _featureItem(
+                              Icons.map_outlined,
+                              const Color(0xFFFF6B6B),
+                              "Better Experience",
+                              "Get directions and updates.",
+                              context,
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: AppSizes.h(context, 90),
+                            color: Colors.grey.shade200,
+                          ),
+                          Expanded(
+                            child: _featureItem(
+                              Icons.workspace_premium_outlined,
+                              const Color(0xFFD32F2F),
+                              "Relevant Services",
+                              "Receive deals that matter.",
+                              context,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
+                  SizedBox(height: AppSizes.h(context, 35)),
+
+                  /// ERROR MESSAGE
+                  if (_errorMessage != null)
+                    Container(
+                      margin: EdgeInsets.only(bottom: AppSizes.h(context, 16)),
+                      padding: EdgeInsets.all(AppSizes.w(context, 12)),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(AppSizes.w(context, 12)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline, 
+                            color: Colors.red,
+                            size: AppSizes.w(context, 20),
+                          ),
+                          SizedBox(width: AppSizes.w(context, 10)),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: AppSizes.w(context, 14),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  SizedBox(height: AppSizes.h(context, 4)),
 
                   /// FOOTER
                   Row(
@@ -367,16 +465,22 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
                       Icon(
                         Icons.lock_outline,
                         color: Colors.grey.shade500,
-                        size: 16,
+                        size: isSmallPhone 
+                            ? AppSizes.w(context, 14) 
+                            : AppSizes.w(context, 16),
                       ),
-                      const SizedBox(width: 6),
+                      SizedBox(width: AppSizes.w(context, 6)),
                       Expanded(
                         child: Text(
                           "Your location is used only while using the app and won't be shared with anyone. You can change this anytime in settings.",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.grey.shade500,
-                            fontSize: 12,
+                            fontSize: isSmallPhone 
+                                ? AppSizes.w(context, 11) 
+                                : isTablet 
+                                    ? AppSizes.w(context, 13) 
+                                    : AppSizes.w(context, 12),
                             height: 1.5,
                           ),
                         ),
@@ -397,31 +501,64 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
     Color color,
     String title,
     String subtitle,
+    BuildContext context,
   ) {
+    final isSmallPhone = AppSizes.width(context) < 360;
+    final isTablet = AppSizes.width(context) > 600;
+    
     return Column(
       children: [
         Container(
-          width: 52,
-          height: 52,
+          width: isSmallPhone 
+              ? AppSizes.w(context, 45) 
+              : isTablet 
+                  ? AppSizes.w(context, 60) 
+                  : AppSizes.w(context, 52),
+          height: isSmallPhone 
+              ? AppSizes.w(context, 45) 
+              : isTablet 
+                  ? AppSizes.w(context, 60) 
+                  : AppSizes.w(context, 52),
           decoration: BoxDecoration(
             color: color.withOpacity(.10),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: color, size: 26),
+          child: Icon(
+            icon, 
+            color: color, 
+            size: isSmallPhone 
+                ? AppSizes.w(context, 22) 
+                : isTablet 
+                    ? AppSizes.w(context, 30) 
+                    : AppSizes.w(context, 26),
+          ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: AppSizes.h(context, isSmallPhone ? 6 : 10)),
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontSize: isSmallPhone 
+                ? AppSizes.w(context, 11) 
+                : isTablet 
+                    ? AppSizes.w(context, 14) 
+                    : AppSizes.w(context, 13),
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: AppSizes.h(context, isSmallPhone ? 4 : 6)),
         Text(
           subtitle,
           textAlign: TextAlign.center,
+          maxLines: isSmallPhone ? 2 : 3,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.grey.shade600,
-            fontSize: 11,
+            fontSize: isSmallPhone 
+                ? AppSizes.w(context, 10) 
+                : isTablet 
+                    ? AppSizes.w(context, 12) 
+                    : AppSizes.w(context, 11),
             height: 1.4,
           ),
         ),
