@@ -22,6 +22,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final AuthService _authService = AuthService();
 
   bool isLoading = false;
+  bool isBannerLoading = true;
   String? errorText;
 
   int currentIndex = 0;
@@ -34,11 +35,15 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _fetchLoginImages() async {
     final response = await _loginImageService.fetchLoginImage();
 
-    if (response != null &&
-        response.status &&
-        response.loginImages.isNotEmpty) {
+    if (mounted) {
       setState(() {
-        bannerImages = response.loginImages;
+        if (response != null &&
+            response.status &&
+            response.loginImages.isNotEmpty) {
+          bannerImages = response.loginImages;
+        }
+
+        isBannerLoading = false;
       });
     }
   }
@@ -88,20 +93,18 @@ class _SignInScreenState extends State<SignInScreen> {
 
     await _authService.verifyPhoneNumber(
       phoneNumber: formattedPhone,
-   onCodeSent: (verificationId) {
-  setState(() => isLoading = false);
+      onCodeSent: (verificationId) {
+        setState(() => isLoading = false);
 
-  Navigator.pushNamed(
-    context,
-    AppRoutes.otpVerifly,
-    arguments: {
-      'verificationId': verificationId,
-      'phoneNumber': formattedPhone,
-    },
-  );
-
-
-},
+        Navigator.pushNamed(
+          context,
+          AppRoutes.otpVerifly,
+          arguments: {
+            'verificationId': verificationId,
+            'phoneNumber': formattedPhone,
+          },
+        );
+      },
       onVerificationFailed: (e) {
         setState(() {
           isLoading = false;
@@ -141,6 +144,11 @@ class _SignInScreenState extends State<SignInScreen> {
                           });
                         },
                         itemBuilder: (context, index) {
+                          if (isBannerLoading) {
+                            return  Center(
+                              child: CircularProgressIndicator(color:AppColors.primaryRed.withOpacity(0.8) ),
+                            );
+                          }
                           if (bannerImages.isEmpty) {
                             return Image.asset(
                               'lib/assets/images/sign_in.jpeg',
@@ -180,7 +188,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         child: Center(
                           child: SmoothPageIndicator(
                             controller: _pageController,
-                            count: bannerImages.length,
+                           count: bannerImages.isEmpty ? 1 : bannerImages.length,
                             effect: ExpandingDotsEffect(
                               dotHeight: 5,
                               dotWidth: 5,
@@ -380,8 +388,9 @@ class _SignInScreenState extends State<SignInScreen> {
                                       context,
                                       AppRoutes.helpAndSupport,
                                     ),
-                                    
-                                    child: _bottomText("Help & Support")),
+
+                                    child: _bottomText("Help & Support"),
+                                  ),
                                 ],
                               ),
                             ],
