@@ -22,7 +22,7 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Set status bar to dark icons on white background
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -42,44 +42,47 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       debugPrint("APP RESUMED - Checking location permission");
-      
+
       Future.microtask(() async {
         final addressProvider = Provider.of<AddressProvider>(
           context,
           listen: false,
         );
-        
+
         LocationPermission permission = await Geolocator.checkPermission();
-        
+
         if (permission == LocationPermission.whileInUse ||
             permission == LocationPermission.always) {
-          debugPrint("Permission granted after returning from settings - Auto fetching location");
+          debugPrint(
+            "Permission granted after returning from settings - Auto fetching location",
+          );
           await _fetchLocationAndNavigate(addressProvider);
         }
       });
     }
   }
 
-  Future<void> _fetchLocationAndNavigate(AddressProvider addressProvider) async {
+  Future<void> _fetchLocationAndNavigate(
+    AddressProvider addressProvider,
+  ) async {
     if (_isLoading) return;
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     await addressProvider.requestPermissionAndGetLocation();
-    
+
     if (mounted && addressProvider.hasSelectedLocation) {
       debugPrint("Location fetched successfully - Navigating to LandingPage");
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.landingPage,
-      );
+      Navigator.pushReplacementNamed(context, AppRoutes.landingPage);
     } else if (mounted) {
       setState(() {
         _isLoading = false;
-        _errorMessage = addressProvider.errorMessage ?? "Failed to get location. Please try again.";
+        _errorMessage =
+            addressProvider.errorMessage ??
+            "Failed to get location. Please try again.";
       });
     }
   }
@@ -89,33 +92,29 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
       context,
       listen: false,
     );
-    
+
     await _fetchLocationAndNavigate(addressProvider);
   }
 
   Future<void> _selectAddressManually() async {
     debugPrint("Navigating to AddAddress screen");
-    
-    await Navigator.pushNamed(
-      context,
-      AppRoutes.selectLocation,
-    );
-    
+
+    await Navigator.pushNamed(context, AppRoutes.selectLocation);
+
     if (!mounted) return;
-    
-    debugPrint("Returned from AddAddress screen - Checking if address was added");
-    
+
+    debugPrint(
+      "Returned from AddAddress screen - Checking if address was added",
+    );
+
     final addressProvider = Provider.of<AddressProvider>(
       context,
       listen: false,
     );
-    
+
     if (addressProvider.hasSelectedLocation) {
       debugPrint("Address added successfully - Navigating to LandingPage");
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.landingPage,
-      );
+      Navigator.pushReplacementNamed(context, AppRoutes.landingPage);
     } else {
       debugPrint("No address added - Staying on LocationRequiredScreen");
       setState(() {});
@@ -124,175 +123,309 @@ class _LocationRequiredScreenState extends State<LocationRequiredScreen>
 
   @override
   Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    final h = MediaQuery.of(context).size.height;
-    
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF8F8),
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: w * 0.06),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Location Icon
-              Container(
-                width: w * 0.25,
-                height: w * 0.25,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE53935).withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.location_on,
-                  color: Color(0xFFE53935),
-                  size: 60,
-                ),
-              ),
-              
-              SizedBox(height: h * 0.04),
-              
-              // Title
-              Text(
-                "Enable Your Location",
-                style: GoogleFonts.poppins(
-                  color: Colors.black87,
-                  fontSize: w * 0.07,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              SizedBox(height: h * 0.02),
-              
-              // Description
-              Text(
-                "Please enable location access to find nearby services, track providers and get accurate addresses.",
-                style: GoogleFonts.poppins(
-                  color: Colors.grey.shade600,
-                  fontSize: w * 0.04,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              SizedBox(height: h * 0.04),
-              
-              // Error Message
-              if (_errorMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
-                  child: Row(
+                ],
+              ),
+              child: Column(
+                children: [
+                  /// IMAGE
+                  Image.asset(
+                    'lib/assets/images/loc_conig.jpeg',
+                    height: size.height * .28,
+                    fit: BoxFit.contain,
+                  ),
+
+                  const SizedBox(height: 10),
+                  Column(
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                      const SizedBox(width: 12),
+                      const Text(
+                        "We’d love to know",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFF1D1D1D),
+                          fontSize: 25,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+
+                      const SizedBox(height: 2),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text(
+                            "your location",
+                            style: TextStyle(
+                              color: Color(0xFF1D1D1D),
+                              fontSize: 25,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+
+                          SizedBox(width: 6),
+
+                          Icon(
+                            Icons.location_pin,
+                            color: Color(0xFFE53935),
+                            size: 26,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Text(
+                    "Allow location access to get personalized experiences,relevant Services",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 15,
+                      height: 1.6,
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  /// FEATURES
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _featureItem(
+                          Icons.my_location,
+                          const Color(0xFFE53935),
+                          "Find Nearby",
+                          "Discover Highly Rated Services around you.",
+                        ),
+                      ),
+
+                      Container(
+                        width: 1,
+                        height: 90,
+                        color: Colors.grey.shade200,
+                      ),
+
+                      Expanded(
+                        child: _featureItem(
+                          Icons.map_outlined,
+                          const Color(0xFFFF6B6B),
+                          "Better Experience",
+                          "Get directions and updates.",
+                        ),
+                      ),
+
+                      Container(
+                        width: 1,
+                        height: 90,
+                        color: Colors.grey.shade200,
+                      ),
+
+                      Expanded(
+                        child: _featureItem(
+                          Icons.workspace_premium_outlined,
+                          const Color(0xFFD32F2F),
+                          "Relevant Services",
+                          "Receive deals that matter.",
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 35),
+
+                  /// ERROR MESSAGE
+                  if (_errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  /// ALLOW LOCATION
+                  SizedBox(
+                    width: double.infinity,
+                    height: 58,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFE53935), Color(0xFFFF5252)],
+                        ),
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _enableLocation,
+                        icon: _isLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.navigation_outlined,
+                                color: Colors.white,
+                              ),
+                        label: Text(
+                          _isLoading
+                              ? "Getting Location..."
+                              : "Allow Location Access",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  /// OPEN SETTINGS
+                  SizedBox(
+                    width: double.infinity,
+                    height: 58,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await Geolocator.openAppSettings();
+                      },
+                      icon: const Icon(
+                        Icons.settings_outlined,
+                        color: Color(0xFFE53935),
+                      ),
+                      label: const Text(
+                        "Open Settings",
+                        style: TextStyle(
+                          color: Color(0xFFE53935),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color(0xFFE53935),
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 22),
+
+                  /// FOOTER
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.lock_outline,
+                        color: Colors.grey.shade500,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          _errorMessage!,
-                          style: GoogleFonts.poppins(
-                            color: Colors.red,
-                            fontSize: w * 0.035,
+                          "Your location is used only while using the app and won't be shared with anyone. You can change this anytime in settings.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                            height: 1.5,
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                SizedBox(height: h * 0.02),
-              ],
-              
-              // Enable Location Button
-              SizedBox(
-                width: double.infinity,
-                height: h * 0.07,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _enableLocation,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE53935),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          "Enable Location",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: w * 0.045,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                ),
+                ],
               ),
-              
-              // SizedBox(height: h * 0.02),
-              
-              // // Select Address Manually Button
-              // SizedBox(
-              //   width: double.infinity,
-              //   height: h * 0.07,
-              //   child: OutlinedButton(
-              //     onPressed: _isLoading ? null : _selectAddressManually,
-              //     style: OutlinedButton.styleFrom(
-              //       side: const BorderSide(color: Color(0xFFE53935), width: 1.5),
-              //       shape: RoundedRectangleBorder(
-              //         borderRadius: BorderRadius.circular(12),
-              //       ),
-              //     ),
-              //     child: Text(
-              //       "Select Address Manually",
-              //       style: GoogleFonts.poppins(
-              //         color: const Color(0xFFE53935),
-              //         fontSize: w * 0.045,
-              //         fontWeight: FontWeight.w600,
-              //       ),
-              //     ),
-              //   ),
-              // ),
-              
-              SizedBox(height: h * 0.03),
-              
-              // Open Settings Button
-              SizedBox(
-                width: double.infinity,
-                height: h * 0.06,
-                child: OutlinedButton(
-                  onPressed: () async {
-                    debugPrint("Open Settings clicked");
-                    await Geolocator.openAppSettings();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFE0E0E0), width: 1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    "Open App Settings",
-                    style: GoogleFonts.poppins(
-                      color: Colors.grey.shade600,
-                      fontSize: w * 0.04,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _featureItem(
+    IconData icon,
+    Color color,
+    String title,
+    String subtitle,
+  ) {
+    return Column(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: color.withOpacity(.10),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 26),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 11,
+            height: 1.4,
+          ),
+        ),
+      ],
     );
   }
 }
