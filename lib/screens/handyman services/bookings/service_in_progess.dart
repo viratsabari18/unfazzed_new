@@ -49,6 +49,7 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
     super.initState();
     _currentBookingData = widget.bookingData;
     totalSeconds = widget.serviceDuration;
+    
 
     final bData = _currentBookingData is List
         ? (_currentBookingData as List).first
@@ -314,6 +315,12 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
 
         finalSeconds = endTime.difference(startTime).inSeconds;
       }
+      debugPrint("========== COMPLETION DEBUG ==========");
+debugPrint("Booking ID => $bookingId");
+debugPrint("Start Time => $startTimeString");
+debugPrint("End Time => $endTime");
+debugPrint("Final Seconds => $finalSeconds");
+debugPrint("=====================================");
 
       totalSeconds = finalSeconds;
 
@@ -363,55 +370,85 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
     }
   }
 
-  String? getExtraTimeTaken() {
-    final bData = _currentBookingData is List
-        ? (_currentBookingData as List).first
-        : _currentBookingData;
+String? getExtraTimeTaken() {
+  final bData = _currentBookingData is List
+      ? (_currentBookingData as List).first
+      : _currentBookingData;
 
-    final rawService = bData?['service'];
+  final rawService = bData?['service'];
 
-    final service = rawService is List
-        ? (rawService.isNotEmpty ? rawService.first : {})
-        : rawService;
+  final service = rawService is List
+      ? (rawService.isNotEmpty ? rawService.first : {})
+      : rawService;
 
-    final durationString = service?['duration']?.toString().trim() ?? "00:00";
+  final duration = service?['duration'];
 
-    int estimatedSeconds = 0;
+  // Duration missing from backend
+  if (duration == null) {
+    return null;
+  }
 
-    try {
-      if (durationString.contains(":")) {
-        final parts = durationString.split(':');
+  final durationString = duration.toString().trim();
 
-        final hours = int.tryParse(parts[0]) ?? 0;
-        final minutes = int.tryParse(parts[1]) ?? 0;
+  // Empty duration
+  if (durationString.isEmpty ||
+      durationString == "00:00" ||
+      durationString == "0" ||
+      durationString == "0.0") {
+    return null;
+  }
 
-        estimatedSeconds = (hours * 3600) + (minutes * 60);
-      } else {
-        final estimatedHours = double.tryParse(durationString) ?? 0;
+  int estimatedSeconds = 0;
 
-        estimatedSeconds = (estimatedHours * 3600).toInt();
-      }
-    } catch (e) {
-      print("DURATION PARSE ERROR => $e");
-      estimatedSeconds = 0;
+  try {
+    if (durationString.contains(":")) {
+      // Handles: 03:00, 01:30, 02:15
+      final parts = durationString.split(':');
+
+      final hours =
+          parts.isNotEmpty ? int.tryParse(parts[0]) ?? 0 : 0;
+
+      final minutes =
+          parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+
+      estimatedSeconds = (hours * 3600) + (minutes * 60);
+    } else {
+      // Handles: 1, 1.5, 2.25 etc.
+      final estimatedHours =
+          double.tryParse(durationString) ?? 0;
+
+      estimatedSeconds = (estimatedHours * 3600).toInt();
     }
+  } catch (e) {
+    debugPrint("Duration Parse Error => $e");
+    return null;
+  }
 
-    final extraSeconds = totalSeconds - estimatedSeconds;
+  // Invalid estimate
+  if (estimatedSeconds <= 0) {
+    return null;
+  }
 
-    if (extraSeconds <= 0) {
-      return null;
-    }
+  final extraSeconds = totalSeconds - estimatedSeconds;
 
-    final hours = extraSeconds ~/ 3600;
-    final minutes = (extraSeconds % 3600) ~/ 60;
+  // No extra time
+  if (extraSeconds <= 0) {
+    return null;
+  }
 
-    if (hours > 0) {
-      return "${hours}hr ${minutes}mins";
-    }
+  final hours = extraSeconds ~/ 3600;
+  final minutes = (extraSeconds % 3600) ~/ 60;
 
+  if (hours > 0) {
+    return "${hours}hr ${minutes}mins";
+  }
+
+  if (minutes > 0) {
     return "${minutes}mins";
   }
 
+  return "<1 min";
+}
   final Map<String, double> _dummyRatingsCache = {};
 
   String formatTime(int seconds) {
@@ -699,6 +736,13 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
     final service = rawService is List
         ? (rawService.isNotEmpty ? rawService.first : {})
         : rawService;
+
+    final duration = service?['duration'];
+
+final hasValidDuration =
+    duration != null &&
+    duration.toString().trim().isNotEmpty &&
+    duration.toString() != "00:00";
 
     final providerName =
         handyman?['display_name']?.toString() ??
@@ -1047,7 +1091,7 @@ class _ServiceInProgressState extends State<ServiceInProgress> {
                         }(),
                       ),
 
-                      if (getExtraTimeTaken() != null &&
+                      if (hasValidDuration &&getExtraTimeTaken() != null &&
                           getExtraTimeTaken() != "0 mins") ...[
                         Divider(height: 1, color: Colors.grey.shade200),
 

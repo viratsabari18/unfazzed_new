@@ -21,7 +21,6 @@ class _LandingScreenState extends State<LandingScreen>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   int currentIndex = 0;
   late PageController _pageController;
-  bool _isLocationSheetShowing = false;
   bool _hasCheckedLocation = false;
 
   @override
@@ -29,7 +28,7 @@ class _LandingScreenState extends State<LandingScreen>
 
   final List<Widget> pages = [
     const HomePage(),
-    BookingHistory(),
+     BookingHistory(),
     const HelpDeskScreen(),
   ];
 
@@ -52,7 +51,7 @@ class _LandingScreenState extends State<LandingScreen>
     WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkLocationAndShowSheetIfNeeded();
+      _checkLocationAndNavigateIfNeeded();
     });
   }
 
@@ -64,53 +63,14 @@ class _LandingScreenState extends State<LandingScreen>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) async {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint("APP RESUMED FROM BACKGROUND");
       _hasCheckedLocation = false;
-      
-      final addressProvider = Provider.of<AddressProvider>(
-        context,
-        listen: false,
-      );
-      
-      // Check if location sheet is showing
-      if (_isLocationSheetShowing) {
-        debugPrint("Location sheet is showing, checking permission after resume");
-        
-        // Check current permission
-        LocationPermission permission = await Geolocator.checkPermission();
-        debugPrint("Permission after resume: $permission");
-        
-        // If permission is granted, automatically fetch location
-        if (permission == LocationPermission.whileInUse ||
-            permission == LocationPermission.always) {
-          debugPrint("Permission granted after resume - auto fetching location");
-          
-          // Show loading state
-          setState(() {});
-          
-          // Auto fetch location
-          await addressProvider.requestPermissionAndGetLocation();
-          
-          // If location was successfully set, close the sheet
-          if (addressProvider.hasSelectedLocation) {
-            debugPrint("Location auto-fetched successfully, closing sheet");
-            _isLocationSheetShowing = false;
-            if (mounted && Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          }
-        }
-      }
-      
-      // Always recheck location after resume
-      _checkLocationAndShowSheetIfNeeded();
+      _checkLocationAndNavigateIfNeeded();
     }
   }
 
-  Future<void> _checkLocationAndShowSheetIfNeeded() async {
-    // Prevent multiple checks
+  Future<void> _checkLocationAndNavigateIfNeeded() async {
     if (_hasCheckedLocation) return;
     _hasCheckedLocation = true;
 
@@ -121,13 +81,13 @@ class _LandingScreenState extends State<LandingScreen>
 
     // Wait for initial load to complete
     if (!addressProvider.isInitialized || addressProvider.isLoading) {
-      debugPrint("AddressProvider still initializing (isInitialized: ${addressProvider.isInitialized}, isLoading: ${addressProvider.isLoading}) - waiting...");
+      debugPrint("AddressProvider still initializing - waiting...");
       _hasCheckedLocation = false;
       
       await Future.delayed(const Duration(milliseconds: 500));
       
       if (mounted) {
-        _checkLocationAndShowSheetIfNeeded();
+        _checkLocationAndNavigateIfNeeded();
       }
       return;
     }
@@ -135,187 +95,23 @@ class _LandingScreenState extends State<LandingScreen>
     debugPrint("AddressProvider loaded - hasSelectedLocation: ${addressProvider.hasSelectedLocation}");
     debugPrint("AddressProvider savedAddresses count: ${addressProvider.savedAddresses.length}");
 
-    // Don't show sheet if there are any saved addresses
+    // Don't navigate if there are any saved addresses
     if (addressProvider.savedAddresses.isNotEmpty) {
-      debugPrint("Saved addresses exist, skipping location sheet");
+      debugPrint("Saved addresses exist, staying on landing page");
       return;
     }
 
-    // Only show sheet if no location AND no saved addresses AND not already showing
+    // If no location and no saved addresses, navigate to location required screen
     if (!addressProvider.hasSelectedLocation &&
-        addressProvider.savedAddresses.isEmpty &&
-        !_isLocationSheetShowing) {
-      debugPrint("No location and no saved addresses, showing mandatory sheet");
-      _showMandatoryLocationSheet();
+        addressProvider.savedAddresses.isEmpty) {
+      debugPrint("No location and no saved addresses - Navigating to LocationRequiredScreen");
+      
+      // Use pushReplacement to prevent back navigation
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.locationRequired,
+      );
     }
-  }
-
-  void _showMandatoryLocationSheet() {
-    if (_isLocationSheetShowing) return;
-    _isLocationSheetShowing = true;
-
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return WillPopScope(
-          onWillPop: () async => false,
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              // Listen to address provider changes to auto-close sheet
-              return Consumer<AddressProvider>(
-                builder: (context, addressProvider, _) {
-                  // Auto-close sheet when location is selected
-                  if (addressProvider.hasSelectedLocation && _isLocationSheetShowing) {
-                    debugPrint("Location selected - auto closing sheet");
-                    Future.delayed(Duration.zero, () {
-                      _isLocationSheetShowing = false;
-                      if (mounted && Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      }
-                    });
-                  }
-                  
-                  return Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.location_on, color: Colors.red, size: 80),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "Location Access Required",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          "Please enable location access to find nearby services, track providers and get accurate addresses.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.black54),
-                        ),
-                        const SizedBox(height: 24),
-                        
-                        // Show error message if any
-                        if (addressProvider.errorMessage != null) ...[
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.error_outline, color: Colors.red, size: 16),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    addressProvider.errorMessage!,
-                                    style: const TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                        
-                        // Show loading indicator while fetching
-                        if (addressProvider.isLoading) ...[
-                          const CircularProgressIndicator(
-                            color: Color(0xFFE53935),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-                        
-                        SizedBox(
-                          width: double.infinity,
-                          height: 55,
-                          child: ElevatedButton(
-                            onPressed: addressProvider.isLoading
-                                ? null
-                                : () async {
-                                    debugPrint("ENABLE LOCATION CLICKED");
-                                    
-                                    await addressProvider.requestPermissionAndGetLocation();
-                                    
-                                    debugPrint(
-                                      "HAS LOCATION => ${addressProvider.hasSelectedLocation}",
-                                    );
-                                    
-                                    if (mounted && addressProvider.hasSelectedLocation) {
-                                      debugPrint("CLOSING SHEET");
-                                      _isLocationSheetShowing = false;
-                                      if (mounted && Navigator.canPop(context)) {
-                                        Navigator.pop(context);
-                                      }
-                                    } else {
-                                      debugPrint("SHEET REMAINS OPEN - No location yet");
-                                      setState(() {});
-                                    }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE53935),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: addressProvider.isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : const Text(
-                                    "Enable Location",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextButton(
-                          onPressed: () async {
-                            debugPrint("OPEN SETTINGS CLICKED");
-                            await Geolocator.openAppSettings();
-                          },
-                          child: const Text(
-                            "Open Settings",
-                            style: TextStyle(color: Color(0xFFE53935)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        );
-      },
-    ).then((_) {
-      _isLocationSheetShowing = false;
-      _hasCheckedLocation = false;
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) _checkLocationAndShowSheetIfNeeded();
-      });
-    });
   }
 
   void onTabTapped(int index) {

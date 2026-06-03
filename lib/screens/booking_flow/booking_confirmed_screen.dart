@@ -72,13 +72,13 @@ class _BookingConfirmedScreenState extends State<BookingConfirmedScreen> {
                     Container(
                       width: 100,
                       height: 100,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFB300), // Yellow circle
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryRed,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
+                      child:  Icon(
                         Icons.check,
-                        color: Color(0xFFD90000), // Red check
+                        color: Colors.white,
                         size: 60,
                       ),
                     ),

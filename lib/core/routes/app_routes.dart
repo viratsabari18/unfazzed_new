@@ -42,4 +42,5 @@ class AppRoutes {
   static const String termsAndCondtions = '/termsandcondition';
    static const String privacyPolicy = '/privacyPolicy';
   static const String helpAndSupport = '/helpAndSupport';
+  static const String locationRequired = '/locationRequired';
 }
