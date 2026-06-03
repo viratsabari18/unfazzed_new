@@ -44,7 +44,6 @@ class _ProfessionalAssignedScreenState
     extends State<ProfessionalAssignedScreen> {
   late GoogleMapController mapController;
   Timer? _movementTimer;
-  // FIX 1: Give default values instead of nullable
   LatLng _userLocation = const LatLng(28.6139, 77.2090);
   LatLng _currentRiderPos = const LatLng(28.6155, 77.2150);
   late int _remainingMins;
@@ -81,7 +80,8 @@ class _ProfessionalAssignedScreenState
     debugPrint("INITIAL RIDER => ${widget.initialRiderLocation}");
     debugPrint("=================================");
 
-    // FIX 1: Use widget values if provided, otherwise keep defaults
+    _remainingMins = -1;
+
     if (widget.initialUserLocation != null) {
       _userLocation = widget.initialUserLocation!;
       _hasUserLocationFromWidget = true;
@@ -96,14 +96,13 @@ class _ProfessionalAssignedScreenState
       debugPrint("No initial rider location found - will fetch from API");
     }
 
-    _remainingMins = 0;
     _simulatedState = widget.bookingStatus.currentState;
 
     _initializeTracking();
   }
 
   Future<void> _initializeSavedEta() async {
-    debugPrint("========== INITIALIZE TRACKING ==========");
+    debugPrint("========== INITIALIZE SAVED ETA ==========");
     debugPrint("BOOKING ID => $_bookingId");
     debugPrint("USER LOCATION => $_userLocation");
     debugPrint("RIDER LOCATION => $_currentRiderPos");
@@ -123,7 +122,6 @@ class _ProfessionalAssignedScreenState
         setState(() {
           _remainingMins = remaining < 0 ? 0 : remaining;
 
-          // Calculate progress and restore position
           if (_totalKm > 0 && _routePoints.isNotEmpty) {
             final totalMinutes = max(1, (_totalKm * 4).ceil());
             final progress = 1 - (_remainingMins / totalMinutes);
@@ -145,6 +143,12 @@ class _ProfessionalAssignedScreenState
         });
       }
     }
+
+    if (_remainingMins <= 1 && _routePoints.isNotEmpty) {
+      setState(() {
+        _remainingRoute = _routePoints.sublist(_currentStep);
+      });
+    }
   }
 
   Future<void> _initializeTracking() async {
@@ -161,34 +165,29 @@ class _ProfessionalAssignedScreenState
     _setBookingLocation();
 
     if (_bookingId != null) {
-      // Fetch rider location from API
       debugPrint("CURRENT BOOKING => $_bookingId");
       await _fetchRiderLocation(_bookingId!);
-
-      // FIX 4: Generate route even when provider location fails
-      if (_currentRiderPos == null) {
-        _currentRiderPos = _userLocation;
-      }
 
       debugPrint("AFTER API CALL");
       debugPrint("RIDER LOCATION => $_currentRiderPos");
 
-      // FIX 4: Add debug logs to track route generation
       debugPrint(
-        "ROUTE START => ${_currentRiderPos!.latitude}, ${_currentRiderPos!.longitude}",
+        "ROUTE START => ${_currentRiderPos.latitude}, ${_currentRiderPos.longitude}",
       );
       debugPrint(
-        "ROUTE END => ${_userLocation!.latitude}, ${_userLocation!.longitude}",
+        "ROUTE END => ${_userLocation.latitude}, ${_userLocation.longitude}",
       );
 
-      await _getRoadPolyline(_currentRiderPos!, _userLocation!);
+      await _getRoadPolyline(_currentRiderPos, _userLocation);
       debugPrint("ROUTE GENERATED");
       debugPrint("ROUTE POINTS => ${_routePoints.length}");
 
-      // Only initialize ETA and start simulation if route exists
       if (_routePoints.isNotEmpty) {
         await _initializeSavedEta();
-        _startMovementSimulation();
+
+        if (_remainingMins > 1) {
+          _startMovementSimulation();
+        }
       } else {
         debugPrint("WARNING: Route generation failed - skipping simulation");
       }
@@ -387,7 +386,6 @@ class _ProfessionalAssignedScreenState
     try {
       PolylinePoints polylinePoints = PolylinePoints();
 
-      // Add timeout to prevent hanging
       PolylineResult result = await polylinePoints
           .getRouteBetweenCoordinates(
             googleApiKey: "AIzaSyAW3nH7YUQnZVx09h1wB9fBbwE6CpT8iRE",
@@ -410,13 +408,11 @@ class _ProfessionalAssignedScreenState
 
       debugPrint("Polyline points => ${result.points.length}");
 
-      // Handle empty route response
       if (result.points.isEmpty) {
         debugPrint("GOOGLE ROUTE FAILED - No points returned");
 
         if (mounted) {
           setState(() {
-            // Use direct line as fallback route
             _routePoints = [start, end];
             _remainingRoute = [start, end];
           });
@@ -438,12 +434,10 @@ class _ProfessionalAssignedScreenState
             _routePoints.addAll(polylineCoordinates);
             _remainingRoute = List.from(polylineCoordinates);
 
-            // Only reset position if this is first load and no saved position exists
             if (_currentStep == 0 && _routePoints.isNotEmpty) {
               _currentRiderPos = _routePoints.first;
             } else if (_routePoints.isNotEmpty &&
                 _currentStep < _routePoints.length) {
-              // Restore saved position
               _currentRiderPos = _routePoints[_currentStep];
               _remainingRoute = _routePoints.sublist(_currentStep);
             }
@@ -453,7 +447,6 @@ class _ProfessionalAssignedScreenState
     } catch (e) {
       debugPrint("Road polyline error => $e");
 
-      // Fallback to direct line on error
       if (mounted) {
         setState(() {
           _routePoints = [start, end];
@@ -508,7 +501,6 @@ class _ProfessionalAssignedScreenState
     }
   }
 
-  // FIX 3: Add fallback when API fails
   Future<void> _fetchRiderLocation(String bookingId) async {
     debugPrint("========== FETCH RIDER LOCATION ==========");
     debugPrint("BOOKING ID => $bookingId");
@@ -553,12 +545,10 @@ class _ProfessionalAssignedScreenState
 
             double distanceInKm = distance / 1000;
 
-            // Always use latest distance from API
             _totalKm = distanceInKm;
 
             final totalMinutes = max(1, (distanceInKm * 4).ceil());
 
-            // Only create arrival time if it doesn't exist
             final prefs = await SharedPreferences.getInstance();
             final existingArrival = prefs.getString(
               'arrival_time_${_bookingId}',
@@ -579,19 +569,15 @@ class _ProfessionalAssignedScreenState
             if (mounted) {
               setState(() {
                 _currentRiderPos = newPos;
+
                 final remaining = _arrivalTime!
                     .difference(DateTime.now())
                     .inMinutes;
-                _remainingMins = remaining < 0 ? 0 : remaining;
-                _isEtaLoading = false;
 
-                if (distance < 100) {
-                  _simulatedState = BookingState.started;
-                  _movementTimer?.cancel();
-                  _fetchAndRedirect();
-                } else {
-                  _simulatedState = BookingState.onTheWay;
-                }
+                _remainingMins = remaining < 0 ? 0 : remaining;
+
+                _isEtaLoading = false;
+                _simulatedState = BookingState.onTheWay;
               });
 
               debugPrint("PROVIDER => ${newPos.latitude}, ${newPos.longitude}");
@@ -624,7 +610,6 @@ class _ProfessionalAssignedScreenState
           debugPrint("ERROR: No location data in API response");
         }
       } else {
-        // FIX 3: Fallback when API fails
         debugPrint("API ERROR => ${response.statusCode}");
         debugPrint("ERROR: API returned status code ${response.statusCode}");
 
@@ -640,7 +625,6 @@ class _ProfessionalAssignedScreenState
         }
       }
     } catch (e) {
-      // FIX 3: Fallback when API fails
       debugPrint("Error fetching rider location: $e");
 
       if (mounted && _hasUserLocationFromWidget) {
@@ -675,7 +659,6 @@ class _ProfessionalAssignedScreenState
       _tickCount++;
       _currentStep = currentProgress.floor();
 
-      // Restore progress based on remaining time
       if (_remainingMins > 0) {
         final progress = 1 - (_remainingMins / totalMinutes);
         final savedStep = (progress * totalRoutePoints).floor();
@@ -691,26 +674,23 @@ class _ProfessionalAssignedScreenState
 
       if (mounted) {
         setState(() {
-          if (_remainingMins > 1) {
-            _currentRiderPos = _routePoints[_currentStep];
-
-            if (_followVehicle && _isMapReady) {
-              mapController.animateCamera(
-                CameraUpdate.newLatLng(_currentRiderPos),
-              );
-            }
-
-            _remainingRoute = _routePoints.sublist(_currentStep);
-          }
-
-          if (_tickCount % 12 == 0) {
-            if (_remainingMins > 1) {
-              _remainingMins--;
-            }
-          }
           if (_remainingMins <= 1) {
             timer.cancel();
             return;
+          }
+
+          _currentRiderPos = _routePoints[_currentStep];
+
+          if (_followVehicle && _isMapReady) {
+            mapController.animateCamera(
+              CameraUpdate.newLatLng(_currentRiderPos),
+            );
+          }
+
+          _remainingRoute = _routePoints.sublist(_currentStep);
+
+          if (_tickCount % 12 == 0) {
+            _remainingMins--;
           }
         });
       }
@@ -849,6 +829,8 @@ class _ProfessionalAssignedScreenState
   }
 
   String _formatRemainingTime(int totalMins) {
+    if (totalMins <= 0) return "0 mins";
+
     if (totalMins < 60) {
       return "$totalMins mins";
     } else {
@@ -924,6 +906,11 @@ class _ProfessionalAssignedScreenState
   },
   {
     "featureType": "road.local",
+    "elementType": "geometry",
+    "stylers": [{"color": "#ffffff"}]
+  },
+  {
+    "featureType": "road.local",
     "elementType": "labels.text.fill",
     "stylers": [{"color": "#9e9e9e"}]
   },
@@ -958,7 +945,6 @@ class _ProfessionalAssignedScreenState
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     debugPrint("========== BUILD ==========");
@@ -968,14 +954,12 @@ class _ProfessionalAssignedScreenState
     debugPrint("_isLoadingLocation => $_isLoadingLocation");
     debugPrint("===========================");
 
-    // FIX 2: Remove infinite loading condition - only show loading for user location
-    // Provider location should not block the entire screen
     if (!_hasUserLocationFromWidget && _isLoadingLocation) {
       return PopScope(
         canPop: false,
-      onPopInvoked: (didPop) {
-        if (didPop) return;
-        _handleBack();
+        onPopInvoked: (didPop) {
+          if (didPop) return;
+          _handleBack();
         },
         child: Scaffold(
           backgroundColor: Colors.white,
@@ -1242,11 +1226,11 @@ class _ProfessionalAssignedScreenState
               ],
             ),
             child: Text(
-              _remainingMins <= 0
-                  ? "📍 Your professional is nearby"
+              _isEtaLoading
+                  ? "Calculating ETA..."
                   : _remainingMins <= 1
-                  ? "📍 Your professional is nearby"
-                  : "Arriving in $time",
+                      ? "📍 Your professional is nearby"
+                      : "Arriving in ${_formatRemainingTime(_remainingMins)}",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: AppSizes.w(context, 16),
@@ -1258,7 +1242,6 @@ class _ProfessionalAssignedScreenState
     );
   }
 
-  // Rest of the UI methods remain the same...
   Widget _buildProfessionalInfoCard(ProfessionalMatch pro) {
     final bData = _currentBookingData is List
         ? (_currentBookingData as List).first
