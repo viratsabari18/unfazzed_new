@@ -65,7 +65,7 @@ flutter_native_splash:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "lib/assets/icon/icon_app1.jpg"
+  image_path: "lib/assets/icon/app_icon_test1.jpeg"
 
 
 
