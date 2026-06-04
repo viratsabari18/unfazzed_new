@@ -1282,27 +1282,36 @@ class _ServiceCardState extends State<_ServiceCard> {
                     borderRadius: BorderRadius.circular(16),
                     color: Colors.grey.shade100,
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: CachedNetworkImage(
-                      imageUrl:
-                          (widget.service.attachmentsArray != null &&
-                              widget.service.attachmentsArray!.isNotEmpty)
-                          ? widget.service.attachmentsArray!.first.url ?? ""
-                          : (widget.service.attachments != null &&
-                                widget.service.attachments!.isNotEmpty)
-                          ? widget.service.attachments!.first
-                          : widget.service.providerImage ?? "",
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                      placeholder: (context, url) =>
-                          Container(color: Colors.grey.shade200),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey.shade200,
-                        child: Icon(
-                          Icons.image_not_supported,
-                          size: AppSizes.w(context, 30),
+                  child: GestureDetector(
+                     onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.serviceDetails,
+                        arguments: widget.service,
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: CachedNetworkImage(
+                        imageUrl:
+                            (widget.service.attachmentsArray != null &&
+                                widget.service.attachmentsArray!.isNotEmpty)
+                            ? widget.service.attachmentsArray!.first.url ?? ""
+                            : (widget.service.attachments != null &&
+                                  widget.service.attachments!.isNotEmpty)
+                            ? widget.service.attachments!.first
+                            : widget.service.providerImage ?? "",
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        placeholder: (context, url) =>
+                            Container(color: Colors.grey.shade200),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey.shade200,
+                          child: Icon(
+                            Icons.image_not_supported,
+                            size: AppSizes.w(context, 30),
+                          ),
                         ),
                       ),
                     ),
@@ -1408,7 +1417,7 @@ class _ServiceCardState extends State<_ServiceCard> {
                   bottom: AppSizes.h(context, 15),
                   right: AppSizes.w(context, 15),
                   child: GestureDetector(
-                    onTap: () {
+                     onTap: () {
                       Navigator.pushNamed(
                         context,
                         AppRoutes.serviceDetails,

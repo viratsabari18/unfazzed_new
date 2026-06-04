@@ -30,50 +30,61 @@ class ExpoloreCategories extends StatelessWidget {
           return const ComingSoonSection();
         }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: Insets.sm),
-              child: Text(
-                UserMessages.exploreCategories,
-                style: TextStyle(
-                  fontSize: AppSizes.w(context, 18),
-                  fontWeight: FontWeight.w700,
+
+        return Container(
+          padding: EdgeInsets.only( top: Insets.md),
+            decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: Insets.sm),
+                child: Text(
+                  UserMessages.exploreCategories,
+                  style: TextStyle(
+                    fontSize: AppSizes.w(context, 18),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-
-            SizedBox(height: Insets.sm),
-
-            SizedBox(
-              height: AppSizes.h(context, 120),
-
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.zero,
-                itemCount: categories.length,
-
-                itemBuilder: (context, index) {
-                  final item = categories[index];
-
-                  final isSelected =
-                      dashboardProvider.selectedCategoryId == item['id'];
-
-                  return GestureDetector(
-                    onTap: () =>
-                        dashboardProvider.selectCategory(item['id']),
-
-                    child: _CategoryItem(
-                      title: item["name"] ?? "",
-                      image: item["image"] ?? "",
-                      isSelected: isSelected,
-                    ),
-                  );
-                },
+          
+              SizedBox(height: Insets.sm),
+          
+              SizedBox(
+                height: AppSizes.h(context, 120),
+          
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.zero,
+                  itemCount: categories.length,
+          
+                  itemBuilder: (context, index) {
+                    final item = categories[index];
+          
+                    final isSelected =
+                        dashboardProvider.selectedCategoryId == item['id'];
+          
+                    return GestureDetector(
+                      onTap: () =>
+                          dashboardProvider.selectCategory(item['id']),
+          
+                      child: _CategoryItem(
+                        title: item["name"] ?? "",
+                        image: item["image"] ?? "",
+                        isSelected: isSelected,
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
