@@ -65,18 +65,54 @@ class AuthService {
   }
 
   // Phone Authentication: Sign In with SMS Code
-  Future<UserCredential?> signInWithPhoneNumber(String verificationId, String smsCode) async {
-    try {
-      final AuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: smsCode,
-      );
-      return await _auth.signInWithCredential(credential);
-    } catch (e) {
-      debugPrint("SMS Sign-In Error: $e");
-      return null;
-    }
+// Phone Authentication: Sign In with SMS Code
+Future<UserCredential?> signInWithPhoneNumber(
+  String verificationId,
+  String smsCode,
+) async {
+  try {
+    debugPrint("================================");
+    debugPrint("STARTING OTP VERIFICATION");
+    debugPrint("Verification ID: $verificationId");
+    debugPrint("SMS Code: $smsCode");
+    debugPrint("================================");
+
+    final AuthCredential credential =
+        PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
+
+    debugPrint("PHONE CREDENTIAL CREATED");
+
+    final result =
+        await _auth.signInWithCredential(credential);
+
+    debugPrint("================================");
+    debugPrint("OTP VERIFIED SUCCESSFULLY");
+    debugPrint("UID: ${result.user?.uid}");
+    debugPrint("PHONE: ${result.user?.phoneNumber}");
+    debugPrint("================================");
+
+    return result;
+  } on FirebaseAuthException catch (e, stackTrace) {
+    debugPrint("================================");
+    debugPrint("FIREBASE AUTH ERROR");
+    debugPrint("CODE: ${e.code}");
+    debugPrint("MESSAGE: ${e.message}");
+    debugPrint("EXCEPTION: $e");
+    debugPrint("STACKTRACE: $stackTrace");
+    debugPrint("================================");
+    return null;
+  } catch (e, stackTrace) {
+    debugPrint("================================");
+    debugPrint("GENERAL ERROR");
+    debugPrint("ERROR: $e");
+    debugPrint("STACKTRACE: $stackTrace");
+    debugPrint("================================");
+    return null;
   }
+}
 
   // Sign Out
   Future<void> signOut() async {

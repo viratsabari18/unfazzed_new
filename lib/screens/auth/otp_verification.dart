@@ -106,7 +106,9 @@ class _OtpVerificationState extends State<OtpVerification> {
     if (!isResendEnabled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Please wait ${remainingCooldownSeconds} seconds before resending OTP"),
+          content: Text(
+            "Please wait ${remainingCooldownSeconds} seconds before resending OTP",
+          ),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -145,7 +147,9 @@ class _OtpVerificationState extends State<OtpVerification> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e.message ?? "OTP resend failed. Please try again."),
+              content: Text(
+                e.message ?? "OTP resend failed. Please try again.",
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -185,11 +189,11 @@ class _OtpVerificationState extends State<OtpVerification> {
 
         try {
           final url = Uri.parse("${ApiConfig.apiBaseUrl}/otp-login");
-          
+
           debugPrint("========== OTP LOGIN API CALL ==========");
           debugPrint("URL: $url");
           debugPrint("PHONE NUMBER: ${widget.phoneNumber}");
-          
+
           final response = await http.post(
             url,
             headers: {
@@ -211,18 +215,19 @@ class _OtpVerificationState extends State<OtpVerification> {
 
               if (apiToken != null && apiToken.isNotEmpty) {
                 await userProvider.setApiToken(apiToken);
-                
+
                 final addressProvider = Provider.of<AddressProvider>(
                   context,
                   listen: false,
                 );
-                
+
                 await addressProvider.fetchAddressesFromBackend();
-                
+
                 debugPrint("TOKEN SAVED SUCCESSFULLY : $apiToken");
               }
 
-              final backendId = data['data']['employee_id']?.toString() ??
+              final backendId =
+                  data['data']['employee_id']?.toString() ??
                   data['data']['id']?.toString();
 
               if (backendId != null) {
@@ -253,7 +258,7 @@ class _OtpVerificationState extends State<OtpVerification> {
           setState(() {
             isLoading = false;
           });
-          
+
           showOtpSuccessDialog(
             context,
             forceProfileCompletion: forceProfileCompletion,
@@ -261,10 +266,13 @@ class _OtpVerificationState extends State<OtpVerification> {
         }
       }
     } else {
+      await FirebaseAuth.instance.signOut();
+
       if (mounted) {
         setState(() {
           isLoading = false;
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Invalid OTP. Please try again."),
@@ -281,14 +289,17 @@ class _OtpVerificationState extends State<OtpVerification> {
   }) {
     final w = AppSizes.width(context);
     final h = AppSizes.height(context);
-    
+
     final user = Provider.of<UserProvider>(context, listen: false).user;
-    
-    final bool hasProfile = !forceProfileCompletion &&
+
+    final bool hasProfile =
+        !forceProfileCompletion &&
         user?.displayName != null &&
         user!.displayName!.isNotEmpty;
 
-    debugPrint("showOtpSuccessDialog - forceProfileCompletion: $forceProfileCompletion");
+    debugPrint(
+      "showOtpSuccessDialog - forceProfileCompletion: $forceProfileCompletion",
+    );
     debugPrint("showOtpSuccessDialog - hasProfile: $hasProfile");
 
     showDialog(
@@ -351,17 +362,23 @@ class _OtpVerificationState extends State<OtpVerification> {
                       ),
                     ),
                     onPressed: () {
-                      debugPrint("Continue button clicked - hasProfile: $hasProfile");
-                      
+                      debugPrint(
+                        "Continue button clicked - hasProfile: $hasProfile",
+                      );
+
                       if (hasProfile) {
-                        debugPrint("User has profile - Navigating to LandingPage");
+                        debugPrint(
+                          "User has profile - Navigating to LandingPage",
+                        );
                         Navigator.pushNamedAndRemoveUntil(
                           context,
                           AppRoutes.landingPage,
                           (route) => false,
                         );
                       } else {
-                        debugPrint("User needs to complete profile - Navigating to CompleteProfile");
+                        debugPrint(
+                          "User needs to complete profile - Navigating to CompleteProfile",
+                        );
                         Navigator.pushNamedAndRemoveUntil(
                           context,
                           AppRoutes.completeProfile,
@@ -441,7 +458,10 @@ class _OtpVerificationState extends State<OtpVerification> {
                   SizedBox(height: h * 0.02),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                    child: const Icon(
+                      Icons.arrow_back_ios,
+                      color: Colors.white,
+                    ),
                   ),
                   SizedBox(height: h * 0.03),
                   Text(
@@ -465,7 +485,9 @@ class _OtpVerificationState extends State<OtpVerification> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(otpLength, (index) {
                       return Padding(
-                        padding: EdgeInsets.only(right: index == otpLength - 1 ? 0 : Insets.xs),
+                        padding: EdgeInsets.only(
+                          right: index == otpLength - 1 ? 0 : Insets.xs,
+                        ),
                         child: otpBox(index, boxWidth),
                       );
                     }),
@@ -511,7 +533,9 @@ class _OtpVerificationState extends State<OtpVerification> {
                                 ? "Resend OTP"
                                 : "Resend OTP (${remainingCooldownSeconds}s)",
                             style: TextStyles.bodySmall.copyWith(
-                              color: isResendEnabled ? AppColors.primaryYellow : Colors.grey,
+                              color: isResendEnabled
+                                  ? AppColors.primaryYellow
+                                  : Colors.grey,
                               fontWeight: FontWeight.bold,
                               fontSize: w * 0.035,
                             ),
@@ -527,7 +551,9 @@ class _OtpVerificationState extends State<OtpVerification> {
               Container(
                 color: Colors.black.withOpacity(0.3),
                 child: const Center(
-                  child: CircularProgressIndicator(color: AppColors.primaryYellow),
+                  child: CircularProgressIndicator(
+                    color: AppColors.primaryYellow,
+                  ),
                 ),
               ),
           ],

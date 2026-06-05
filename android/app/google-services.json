@@ -125,6 +125,51 @@
           }
         },
         {
+          "client_id": "888601961403-mpo47lnvt1clm6ra1ujciiur0sn9h43j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.unfazzed",
+            "certificate_hash": "f337106bc57810589a08c9940ea7115e9077b8fc"
+          }
+        },
+        {
+          "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8qDhsCwyCFTwwf9grfTm2i7pPtV-KFkw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888601961403:android:29351a295d9fc5099d5a9e",
+        "android_client_info": {
+          "package_name": "com.unfazzed_provider"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "888601961403-p2lolvbcpua35etcm2i00bmr1h0usibj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.unfazzed_provider",
+            "certificate_hash": "0c2c1d22c4a94dc3be90bcb732e724064d64cd6e"
+          }
+        },
+        {
           "client_id": "888601961403-2lnmfm28d1rirks7v1mi2no2l5nfmb1v.apps.googleusercontent.com",
           "client_type": 3
         }
