@@ -158,130 +158,159 @@ class _OtpVerificationState extends State<OtpVerification> {
     );
   }
 
-  Future<void> _handleVerifyOtp() async {
-    String otp = getOtp();
+Future<void> _handleVerifyOtp() async {
+  String otp = getOtp();
 
-    if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Enter valid OTP"),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+  if (otp.length != 6) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Enter valid OTP"),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
 
-    setState(() {
-      isLoading = true;
-    });
+  setState(() {
+    isLoading = true;
+  });
 
-    final userCredential = await _authService.signInWithPhoneNumber(
+  UserCredential? userCredential;
+
+  try {
+    userCredential = await _authService.signInWithPhoneNumber(
       currentVerificationId,
       otp,
     );
+  } catch (e) {
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
 
-    if (userCredential != null && userCredential.user != null) {
-      if (mounted) {
-        final userProvider = Provider.of<UserProvider>(context, listen: false);
-        userProvider.setUser(userCredential.user);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 10),
+        ),
+      );
+    }
+    return;
+  }
 
-        bool forceProfileCompletion = false;
+  if (userCredential != null && userCredential.user != null) {
+    if (mounted) {
+      final userProvider = Provider.of<UserProvider>(
+        context,
+        listen: false,
+      );
 
-        try {
-          final url = Uri.parse("${ApiConfig.apiBaseUrl}/otp-login");
+      userProvider.setUser(userCredential.user);
 
-          debugPrint("========== OTP LOGIN API CALL ==========");
-          debugPrint("URL: $url");
-          debugPrint("PHONE NUMBER: ${widget.phoneNumber}");
+      bool forceProfileCompletion = false;
 
-          final response = await http.post(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: json.encode({'contact_number': widget.phoneNumber}),
-          );
+      try {
+        final url = Uri.parse("${ApiConfig.apiBaseUrl}/otp-login");
 
-          debugPrint("OTP LOGIN STATUS CODE => ${response.statusCode}");
-          debugPrint("OTP RESPONSE => ${response.body}");
-          debugPrint("========================================");
+        debugPrint("========== OTP LOGIN API CALL ==========");
+        debugPrint("URL: $url");
+        debugPrint("PHONE NUMBER: ${widget.phoneNumber}");
 
-          if (response.statusCode == 200) {
-            final data = json.decode(response.body);
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: json.encode({
+            'contact_number': widget.phoneNumber,
+          }),
+        );
 
-            if (data['status'] == true && data['data'] != null) {
-              final apiToken = data['data']['api_token'];
+        debugPrint("OTP LOGIN STATUS CODE => ${response.statusCode}");
+        debugPrint("OTP RESPONSE => ${response.body}");
+        debugPrint("========================================");
 
-              if (apiToken != null && apiToken.isNotEmpty) {
-                await userProvider.setApiToken(apiToken);
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
 
-                final addressProvider = Provider.of<AddressProvider>(
-                  context,
-                  listen: false,
-                );
+          if (data['status'] == true && data['data'] != null) {
+            final apiToken = data['data']['api_token'];
 
-                await addressProvider.fetchAddressesFromBackend();
+            if (apiToken != null && apiToken.isNotEmpty) {
+              await userProvider.setApiToken(apiToken);
 
-                debugPrint("TOKEN SAVED SUCCESSFULLY : $apiToken");
-              }
+              final addressProvider = Provider.of<AddressProvider>(
+                context,
+                listen: false,
+              );
 
-              final backendId =
-                  data['data']['employee_id']?.toString() ??
-                  data['data']['id']?.toString();
+              await addressProvider.fetchAddressesFromBackend();
 
-              if (backendId != null) {
-                await userProvider.setBackendUserId(backendId);
-              }
-
-              if (data['data']['first_name'] != null) {
-                final firstName = data['data']['first_name'];
-                final lastName = data['data']['last_name'] ?? '';
-                userProvider.updateProfile(
-                  firstName: firstName,
-                  lastName: lastName,
-                  email: data['data']['email'] ?? '',
-                );
-              }
+              debugPrint("TOKEN SAVED SUCCESSFULLY : $apiToken");
             }
-          } else if (response.statusCode == 406) {
-            debugPrint("NEW USER DETECTED - Status Code 406");
-            forceProfileCompletion = true;
-          } else {
-            debugPrint("UNEXPECTED STATUS CODE: ${response.statusCode}");
+
+            final backendId =
+                data['data']['employee_id']?.toString() ??
+                data['data']['id']?.toString();
+
+            if (backendId != null) {
+              await userProvider.setBackendUserId(backendId);
+            }
+
+            if (data['data']['first_name'] != null) {
+              final firstName = data['data']['first_name'];
+              final lastName = data['data']['last_name'] ?? '';
+
+              userProvider.updateProfile(
+                firstName: firstName,
+                lastName: lastName,
+                email: data['data']['email'] ?? '',
+              );
+            }
           }
-        } catch (e) {
-          debugPrint("Backend API Error: $e");
-        }
-
-        if (mounted) {
-          setState(() {
-            isLoading = false;
-          });
-
-          showOtpSuccessDialog(
-            context,
-            forceProfileCompletion: forceProfileCompletion,
+        } else if (response.statusCode == 406) {
+          debugPrint("NEW USER DETECTED - Status Code 406");
+          forceProfileCompletion = true;
+        } else {
+          debugPrint(
+            "UNEXPECTED STATUS CODE: ${response.statusCode}",
           );
         }
+      } catch (e) {
+        debugPrint("Backend API Error: $e");
       }
-    } else {
-      await FirebaseAuth.instance.signOut();
 
       if (mounted) {
         setState(() {
           isLoading = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Invalid OTP. Please try again."),
-            backgroundColor: Colors.red,
-          ),
+        showOtpSuccessDialog(
+          context,
+          forceProfileCompletion: forceProfileCompletion,
         );
       }
     }
+  } else {
+    await FirebaseAuth.instance.signOut();
+
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("userCredential is null"),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 10),
+        ),
+      );
+    }
   }
+}
 
   void showOtpSuccessDialog(
     BuildContext context, {

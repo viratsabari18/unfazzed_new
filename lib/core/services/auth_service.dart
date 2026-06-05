@@ -64,8 +64,6 @@ class AuthService {
     }
   }
 
-  // Phone Authentication: Sign In with SMS Code
-// Phone Authentication: Sign In with SMS Code
 Future<UserCredential?> signInWithPhoneNumber(
   String verificationId,
   String smsCode,
@@ -103,14 +101,19 @@ Future<UserCredential?> signInWithPhoneNumber(
     debugPrint("EXCEPTION: $e");
     debugPrint("STACKTRACE: $stackTrace");
     debugPrint("================================");
-    return null;
+
+    throw FirebaseAuthException(
+      code: e.code,
+      message: e.message,
+    );
   } catch (e, stackTrace) {
     debugPrint("================================");
     debugPrint("GENERAL ERROR");
     debugPrint("ERROR: $e");
     debugPrint("STACKTRACE: $stackTrace");
     debugPrint("================================");
-    return null;
+
+    throw Exception(e.toString());
   }
 }
 

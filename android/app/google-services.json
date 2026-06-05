@@ -125,6 +125,14 @@
           }
         },
         {
+          "client_id": "888601961403-h5of94q095i9q80ctjl2u7poq6t2nhm6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.unfazzed",
+            "certificate_hash": "f290ecf0a0c95369beba57d9074ebfc87ac47c79"
+          }
+        },
+        {
           "client_id": "888601961403-mpo47lnvt1clm6ra1ujciiur0sn9h43j.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
