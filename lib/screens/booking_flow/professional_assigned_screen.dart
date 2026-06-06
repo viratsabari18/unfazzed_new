@@ -648,6 +648,30 @@ class _ProfessionalAssignedScreenState
     }
   }
 
+  void _animateMarker(LatLng from, LatLng to) {
+    const int frames = 20;
+
+    int frame = 0;
+
+    Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      frame++;
+
+      double t = frame / frames;
+
+      if (t >= 1) {
+        t = 1;
+        timer.cancel();
+      }
+
+      setState(() {
+        _currentRiderPos = LatLng(
+          from.latitude + (to.latitude - from.latitude) * t,
+          from.longitude + (to.longitude - from.longitude) * t,
+        );
+      });
+    });
+  }
+
   void _startMovementSimulation() {
     if (_routePoints.isEmpty) {
       debugPrint("ERROR: Cannot start simulation - route points empty");
@@ -695,14 +719,15 @@ class _ProfessionalAssignedScreenState
                 180;
           }
 
-          _currentRiderPos = _routePoints[_currentStep];
+          final oldPos = _currentRiderPos;
+          final newPos = _routePoints[_currentStep];
 
-          if (_followVehicle && _isMapReady) {
+          _animateMarker(oldPos, newPos);
+          if (_tickCount % 3 == 0) {
             mapController.animateCamera(
               CameraUpdate.newLatLng(_currentRiderPos),
             );
           }
-
           _remainingRoute = _routePoints.sublist(_currentStep);
 
           if (_tickCount % 12 == 0) {
