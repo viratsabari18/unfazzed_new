@@ -23,7 +23,8 @@ class AuthService {
       if (googleUser == null) return null; // User cancelled
 
       // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // Create a new credential
       final AuthCredential credential = GoogleAuthProvider.credential(
@@ -49,8 +50,7 @@ class AuthService {
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          // AUTO-VERIFICATION (usually on Android)
-          await _auth.signInWithCredential(credential);
+          debugPrint("Auto verification triggered but ignored");
         },
         verificationFailed: onVerificationFailed,
         codeSent: (String verificationId, int? resendToken) {
@@ -64,58 +64,53 @@ class AuthService {
     }
   }
 
-Future<UserCredential?> signInWithPhoneNumber(
-  String verificationId,
-  String smsCode,
-) async {
-  try {
-    debugPrint("================================");
-    debugPrint("STARTING OTP VERIFICATION");
-    debugPrint("Verification ID: $verificationId");
-    debugPrint("SMS Code: $smsCode");
-    debugPrint("================================");
+  Future<UserCredential?> signInWithPhoneNumber(
+    String verificationId,
+    String smsCode,
+  ) async {
+    try {
+      debugPrint("================================");
+      debugPrint("STARTING OTP VERIFICATION");
+      debugPrint("Verification ID: $verificationId");
+      debugPrint("SMS Code: $smsCode");
+      debugPrint("================================");
 
-    final AuthCredential credential =
-        PhoneAuthProvider.credential(
-      verificationId: verificationId,
-      smsCode: smsCode,
-    );
+      final AuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
 
-    debugPrint("PHONE CREDENTIAL CREATED");
+      debugPrint("PHONE CREDENTIAL CREATED");
 
-    final result =
-        await _auth.signInWithCredential(credential);
+      final result = await _auth.signInWithCredential(credential);
 
-    debugPrint("================================");
-    debugPrint("OTP VERIFIED SUCCESSFULLY");
-    debugPrint("UID: ${result.user?.uid}");
-    debugPrint("PHONE: ${result.user?.phoneNumber}");
-    debugPrint("================================");
+      debugPrint("================================");
+      debugPrint("OTP VERIFIED SUCCESSFULLY");
+      debugPrint("UID: ${result.user?.uid}");
+      debugPrint("PHONE: ${result.user?.phoneNumber}");
+      debugPrint("================================");
 
-    return result;
-  } on FirebaseAuthException catch (e, stackTrace) {
-    debugPrint("================================");
-    debugPrint("FIREBASE AUTH ERROR");
-    debugPrint("CODE: ${e.code}");
-    debugPrint("MESSAGE: ${e.message}");
-    debugPrint("EXCEPTION: $e");
-    debugPrint("STACKTRACE: $stackTrace");
-    debugPrint("================================");
+      return result;
+    } on FirebaseAuthException catch (e, stackTrace) {
+      debugPrint("================================");
+      debugPrint("FIREBASE AUTH ERROR");
+      debugPrint("CODE: ${e.code}");
+      debugPrint("MESSAGE: ${e.message}");
+      debugPrint("EXCEPTION: $e");
+      debugPrint("STACKTRACE: $stackTrace");
+      debugPrint("================================");
 
-    throw FirebaseAuthException(
-      code: e.code,
-      message: e.message,
-    );
-  } catch (e, stackTrace) {
-    debugPrint("================================");
-    debugPrint("GENERAL ERROR");
-    debugPrint("ERROR: $e");
-    debugPrint("STACKTRACE: $stackTrace");
-    debugPrint("================================");
+      throw FirebaseAuthException(code: e.code, message: e.message);
+    } catch (e, stackTrace) {
+      debugPrint("================================");
+      debugPrint("GENERAL ERROR");
+      debugPrint("ERROR: $e");
+      debugPrint("STACKTRACE: $stackTrace");
+      debugPrint("================================");
 
-    throw Exception(e.toString());
+      throw Exception(e.toString());
+    }
   }
-}
 
   // Sign Out
   Future<void> signOut() async {
