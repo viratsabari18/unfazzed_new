@@ -66,6 +66,7 @@ class _ProfessionalAssignedScreenState
   bool _isMapReady = false;
   bool _hasUserLocationFromWidget = false;
   bool _hasRiderLocationFromWidget = false;
+  double _markerRotation = 180;
 
   final Map<String, double> _dummyRatingsCache = {};
 
@@ -456,6 +457,13 @@ class _ProfessionalAssignedScreenState
     }
   }
 
+  double getBearing(LatLng begin, LatLng end) {
+    double dx = end.longitude - begin.longitude;
+    double dy = end.latitude - begin.latitude;
+
+    return atan2(dx, dy) * 180 / pi;
+  }
+
   @override
   void dispose() {
     _movementTimer?.cancel();
@@ -677,6 +685,14 @@ class _ProfessionalAssignedScreenState
           if (_remainingMins <= 1) {
             timer.cancel();
             return;
+          }
+          if (_currentStep < _routePoints.length - 1) {
+            _markerRotation =
+                getBearing(
+                  _routePoints[_currentStep],
+                  _routePoints[_currentStep + 1],
+                ) +
+                180;
           }
 
           _currentRiderPos = _routePoints[_currentStep];
@@ -1041,7 +1057,10 @@ class _ProfessionalAssignedScreenState
               physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
-                  _buildMapHeader(context, _formatRemainingTime(_remainingMins)),
+                  _buildMapHeader(
+                    context,
+                    _formatRemainingTime(_remainingMins),
+                  ),
                   _buildProfessionalInfoCard(pro),
                   SizedBox(height: AppSizes.h(context, 3)),
                   _buildServiceProgress(),
@@ -1188,13 +1207,13 @@ class _ProfessionalAssignedScreenState
               Marker(
                 markerId: const MarkerId('rider'),
                 position: _currentRiderPos,
-                rotation: 180,
+                rotation: _markerRotation,
+                flat: true,
                 icon:
                     _carIcon ??
                     BitmapDescriptor.defaultMarkerWithHue(
                       BitmapDescriptor.hueGreen,
                     ),
-                infoWindow: const InfoWindow(title: 'Rider On the Way'),
               ),
               Marker(
                 markerId: const MarkerId('user'),
@@ -1229,8 +1248,8 @@ class _ProfessionalAssignedScreenState
               _isEtaLoading
                   ? "Calculating ETA..."
                   : _remainingMins <= 1
-                      ? "📍 Your professional is nearby"
-                      : "Arriving in ${_formatRemainingTime(_remainingMins)}",
+                  ? "📍 Your professional is nearby"
+                  : "Arriving in ${_formatRemainingTime(_remainingMins)}",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: AppSizes.w(context, 16),

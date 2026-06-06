@@ -172,7 +172,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                     Text(
                       "Tell us a bit more about yourself to get started with Unfazzed.",
                       style: TextStyles.bodySmall.copyWith(
-                        color: AppColors.naturalGray,
+                        color:Colors.black,
                         fontSize: w * 0.04,
                       ),
                     ),
