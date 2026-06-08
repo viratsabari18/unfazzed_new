@@ -121,7 +121,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.black, 
       body: SingleChildScrollView(
         child: Stack(
           children: [
