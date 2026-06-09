@@ -8,8 +8,15 @@ import 'package:zeerah/core/models/booking_model.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/services/booking_service.dart';
 import 'package:zeerah/screens/handyman%20services/bookings/bookig_sevice_progress_home.dart';
+import 'package:zeerah/widgets/common/app_shimmer.dart';
 import 'package:zeerah/widgets/custom/fade_animation_text.dart';
+import 'package:shimmer/shimmer.dart';
 import 'dart:async';
+
+// Add shimmer components if not already available globally
+
+
+
 class BookingHistory extends StatefulWidget {
   BookingHistory({super.key});
 
@@ -27,45 +34,40 @@ class _BookingHistoryState extends State<BookingHistory> {
   @override
   void initState() {
     super.initState();
-  _fetchBookings(showLoader: true);
-     _timer = Timer.periodic(
-    const Duration(seconds: 5),
-    (_) {
-      _fetchBookings();
-    },
-  );
+    _fetchBookings(showLoader: true);
+    _timer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) {
+        _fetchBookings();
+      },
+    );
   }
 
-Future<void> _fetchBookings({
-  bool showLoader = false,
-}) async {
+  Future<void> _fetchBookings({
+    bool showLoader = false,
+  }) async {
+    if (showLoader) {
+      setState(() => _isLoading = true);
+    }
 
-  if (showLoader) {
-    setState(() => _isLoading = true);
+    final userProvider = Provider.of<UserProvider>(
+      context,
+      listen: false,
+    );
+
+    final response = await _bookingService.fetchBookingList(
+      token: userProvider.apiToken,
+    );
+
+    if (mounted) {
+      setState(() {
+        final List<dynamic> rawBookings = response['data'] ?? [];
+        _bookings = rawBookings.toList();
+        _isLoading = false;
+      });
+    }
   }
 
-  final userProvider =
-      Provider.of<UserProvider>(
-        context,
-        listen: false,
-      );
-
-  final response =
-      await _bookingService.fetchBookingList(
-        token: userProvider.apiToken,
-      );
-
-  if (mounted) {
-    setState(() {
-      final List<dynamic> rawBookings =
-          response['data'] ?? [];
-
-      _bookings = rawBookings.toList();
-
-      _isLoading = false;
-    });
-  }
-}
   Future<void> _navigateToPayment(BuildContext context, Map item) async {
     final bookingId = item['id']?.toString();
 
@@ -90,7 +92,6 @@ Future<void> _fetchBookings({
 
       if (response.statusCode == 200) {
         final raw = json.decode(response.body);
-
         data = raw is List
             ? Map<String, dynamic>.from(raw.first)
             : Map<String, dynamic>.from(raw);
@@ -130,19 +131,14 @@ Future<void> _fetchBookings({
         },
       );
 
-      
-
       Map<dynamic, dynamic> data = item;
 
       if (response.statusCode == 200) {
         final raw = json.decode(response.body);
-
         data = raw is List
             ? Map<String, dynamic>.from(raw.first)
             : Map<String, dynamic>.from(raw);
       }
-
-      
 
       // Extract booking detail
       final rawDetail = data['booking_detail'];
@@ -188,12 +184,12 @@ Future<void> _fetchBookings({
               'Service Provider',
           'handyman_image':
               handyman['profile_image'] ?? provider['profile_image'],
-   'handyman_rating':
-    handyman['handyman_rating'] ??
-    provider['handyman_rating'] ??
-    handyman['providers_service_rating'] ??
-    provider['providers_service_rating'] ??
-    0.0,
+          'handyman_rating':
+              handyman['handyman_rating'] ??
+              provider['handyman_rating'] ??
+              handyman['providers_service_rating'] ??
+              provider['providers_service_rating'] ??
+              0.0,
           'handyman_jobs':
               handyman['total_services_booked'] ??
               provider['total_services_booked'] ??
@@ -264,10 +260,10 @@ Future<void> _fetchBookings({
   }
 
   @override
-void dispose() {
-  _timer?.cancel();
-  super.dispose();
-}
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -290,11 +286,7 @@ void dispose() {
         children: [
           SafeArea(
             child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.primaryRed,
-                    ),
-                  )
+                ? _buildShimmerList()
                 : _bookings.isEmpty
                 ? Center(
                     child: Column(
@@ -318,7 +310,7 @@ void dispose() {
                     ),
                   )
                 : RefreshIndicator(
-                    onRefresh: _fetchBookings,
+                    onRefresh: () => _fetchBookings(),
                     color: AppColors.primaryRed,
                     child: ListView.builder(
                       padding: EdgeInsets.all(Insets.sm),
@@ -331,26 +323,24 @@ void dispose() {
                         final statusLabel =
                             item['status_label']?.toString() ?? status.value;
 
- 
+                        final rawHandyman =
+                            item['handyman_data'] ?? item['handyman'];
 
-final rawHandyman =
-    item['handyman_data'] ?? item['handyman'];
+                        Map<String, dynamic>? handyman;
 
-Map<String, dynamic>? handyman;
+                        if (rawHandyman is List && rawHandyman.isNotEmpty) {
+                          final wrapper = rawHandyman.first;
 
-if (rawHandyman is List && rawHandyman.isNotEmpty) {
-  final wrapper = rawHandyman.first;
-
-  if (wrapper is Map && wrapper['handyman'] != null) {
-    handyman = Map<String, dynamic>.from(wrapper['handyman']);
-  }
-} else if (rawHandyman is Map) {
-  if (rawHandyman['handyman'] != null) {
-    handyman = Map<String, dynamic>.from(rawHandyman['handyman']);
-  } else {
-    handyman = Map<String, dynamic>.from(rawHandyman);
-  }
-}
+                          if (wrapper is Map && wrapper['handyman'] != null) {
+                            handyman = Map<String, dynamic>.from(wrapper['handyman']);
+                          }
+                        } else if (rawHandyman is Map) {
+                          if (rawHandyman['handyman'] != null) {
+                            handyman = Map<String, dynamic>.from(rawHandyman['handyman']);
+                          } else {
+                            handyman = Map<String, dynamic>.from(rawHandyman);
+                          }
+                        }
 
                         final attachments = item['service_attchments'] as List?;
                         final imageUrl = (handyman?['profile_image'] != null)
@@ -418,16 +408,16 @@ if (rawHandyman is List && rawHandyman.isNotEmpty) {
                                         width: AppSizes.w(context, 70),
                                         fit: BoxFit.cover,
                                         httpHeaders: const {},
+                                        placeholder: (context, url) => AppShimmer(
+                                          height: AppSizes.h(context, 80),
+                                          width: AppSizes.w(context, 70),
+                                          borderRadius: BorderRadius.circular(Insets.xs),
+                                        ),
                                         errorWidget: (_, __, ___) => Container(
                                           height: AppSizes.h(context, 80),
                                           width: AppSizes.w(context, 70),
                                           color: Colors.grey.shade300,
                                           child: const Icon(Icons.image),
-                                        ),
-                                        placeholder: (_, __) => Container(
-                                          height: AppSizes.h(context, 80),
-                                          width: AppSizes.w(context, 70),
-                                          color: Colors.grey.shade200,
                                         ),
                                       ),
                                     ),
@@ -538,20 +528,6 @@ if (rawHandyman is List && rawHandyman.isNotEmpty) {
                                                             .blinkingRed,
                                                       ),
                                                     ),
-                                                  // if (status ==
-                                                  //     BookingStatus.inProgress)
-                                                  //   BlinkingText(
-                                                  //     text: UserMessages
-                                                  //         .timeRemaining,
-                                                  //     style: TextStyle(
-                                                  //       fontSize: AppSizes.w(
-                                                  //         context,
-                                                  //         11,
-                                                  //       ),
-                                                  //       color: AppColors
-                                                  //           .blinkingGreen,
-                                                  //     ),
-                                                  //   ),
                                                   Builder(
                                                     builder: (context) {
                                                       final double price =
@@ -620,9 +596,6 @@ if (rawHandyman is List && rawHandyman.isNotEmpty) {
                                         item['booking_date']?.toString() ??
                                             "N/A",
                                       ),
-                                      // API doesn't seem to have separate 'time' field in the way original dummy used it,
-                                      // it's likely included in booking_date.
-                                      // If needed we can extract it or use another field.
                                     ],
                                   ),
                                 ),
@@ -649,6 +622,11 @@ if (rawHandyman is List && rawHandyman.isNotEmpty) {
                                           width: AppSizes.w(context, 36),
                                           fit: BoxFit.cover,
                                           httpHeaders: const {},
+                                          placeholder: (context, url) => AppShimmer(
+                                            height: AppSizes.h(context, 36),
+                                            width: AppSizes.w(context, 36),
+                                            borderRadius: BorderRadius.circular(18),
+                                          ),
                                           errorWidget: (_, __, ___) =>
                                               Image.asset(
                                                 UserMessages.riderImage,
@@ -697,9 +675,7 @@ if (rawHandyman is List && rawHandyman.isNotEmpty) {
                                       ),
                                     ),
                                     if (status == BookingStatus.completed)
-                                      // In the _BookingHistoryState class, update the TextButton onPressed:
                                       TextButton(
-                                        // Prepare all data needed for rating and review
                                         onPressed: () {
                                           _navigateToRatingScreen(
                                             context,
@@ -734,6 +710,14 @@ if (rawHandyman is List && rawHandyman.isNotEmpty) {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return ListView.builder(
+      padding: EdgeInsets.all(Insets.sm),
+      itemCount: 5, // Show 5 shimmer cards
+      itemBuilder: (context, index) => const BookingCardShimmer(),
     );
   }
 
@@ -784,11 +768,11 @@ if (rawHandyman is List && rawHandyman.isNotEmpty) {
           detail = Map<String, dynamic>.from(rawDetail);
         }
 
-  final rawHandyman =
-    data['handyman_data'] ??
-    data['handyman'] ??
-    item['handyman_data'] ??
-    item['handyman'];
+        final rawHandyman =
+            data['handyman_data'] ??
+            data['handyman'] ??
+            item['handyman_data'] ??
+            item['handyman'];
         if (rawHandyman is List && rawHandyman.isNotEmpty) {
           handyman = Map<String, dynamic>.from(rawHandyman.first);
         } else if (rawHandyman is Map) {
@@ -802,8 +786,8 @@ if (rawHandyman is List && rawHandyman.isNotEmpty) {
       } else {
         // API failed — use list item data as fallback
         detail = {'status': item['status']};
-   final rawHandyman =
-    item['handyman_data'] ?? item['handyman'];
+        final rawHandyman =
+            item['handyman_data'] ?? item['handyman'];
         if (rawHandyman is List && rawHandyman.isNotEmpty) {
           handyman = Map<String, dynamic>.from(rawHandyman.first);
         } else if (rawHandyman is Map) {

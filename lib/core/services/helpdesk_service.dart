@@ -6,54 +6,85 @@ import 'package:flutter/material.dart';
 
 class HelpDeskService {
   final String baseUrl = ApiConfig.apiBaseUrl;
+Future<bool> saveTicket({
+  required String subject,
+  required String description,
+  required String employeeId,
+  String? token,
+  File? attachment,
+}) async {
+  try {
+    final url = Uri.parse("$baseUrl/helpdesk-save");
+    var request = http.MultipartRequest('POST', url);
 
-  Future<bool> saveTicket({
-    required String subject,
-    required String description,
-    required String employeeId,
-    String? token,
-    File? attachment,
-  }) async {
-    try {
-      final url = Uri.parse("$baseUrl/helpdesk-save");
-      var request = http.MultipartRequest('POST', url);
+    request.headers.addAll({
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
 
-      request.headers.addAll({
-        'Accept': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-        
-      });
+    request.fields['subject'] = subject;
+    request.fields['description'] = description;
+    request.fields['employee_id'] = employeeId;
+    request.fields['mode'] = 'app';
 
-      request.fields['subject'] = subject;
-      request.fields['description'] = description;
-      request.fields['employee_id'] = employeeId;
-      request.fields['mode'] = 'app';
-
-      if (attachment != null) {
-        request.files.add(await http.MultipartFile.fromPath(
-          'helpdesk_attachment', // Changed from helpdesk_attachment_[]
+    if (attachment != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'helpdesk_attachment',
           attachment.path,
-        ));
-      }
-
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-
-      debugPrint("HelpDesk Save Response: ${response.body}");
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        // API might return status: true or just a success message
-        return data['status'] == true || 
-               (data['message'] != null && data['message'].toString().toLowerCase().contains('successfully'));
-      }
-      return false;
-    } catch (e) {
-      debugPrint("HelpDesk Save Error: $e");
-      return false;
+        ),
+      );
     }
-  }
 
+    // ===== PRINT REQUEST DETAILS =====
+    debugPrint("========== HELPDESK REQUEST ==========");
+    debugPrint("URL: $url");
+    debugPrint("Method: ${request.method}");
+
+    debugPrint("Headers:");
+    request.headers.forEach((key, value) {
+      debugPrint("$key : $value");
+    });
+
+    debugPrint("Fields:");
+    request.fields.forEach((key, value) {
+      debugPrint("$key : $value");
+    });
+
+    debugPrint("Files:");
+    for (var file in request.files) {
+      debugPrint(
+        "Field: ${file.field}, "
+        "Filename: ${file.filename}, "
+        "Length: ${file.length}",
+      );
+    }
+    debugPrint("=====================================");
+    // ==================================
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    debugPrint("Status Code: ${response.statusCode}");
+    debugPrint("HelpDesk Save Response: ${response.body}");
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['status'] == true ||
+          (data['message'] != null &&
+              data['message']
+                  .toString()
+                  .toLowerCase()
+                  .contains('successfully'));
+    }
+
+    return false;
+  } catch (e, stackTrace) {
+    debugPrint("HelpDesk Save Error: $e");
+    debugPrint("StackTrace: $stackTrace");
+    return false;
+  }
+}
   Future<List<dynamic>> fetchTickets({required String status, String? employeeId, String? token}) async {
     try {
       // Build query parameters

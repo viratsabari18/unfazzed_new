@@ -10,7 +10,6 @@ import 'package:zeerah/screens/home/refer_section.dart';
 import 'package:zeerah/screens/home/reliable_and_trustworthy_section.dart';
 import 'package:zeerah/screens/home/seracbox.dart';
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -21,46 +20,46 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.naturalWhite,
-      body: SafeArea(
-        top: false,
-        child: RefreshIndicator(
-          color: AppColors.primaryRed,
-
-          onRefresh: () async {
-            await context.read<DashboardProvider>().fetchCategories();
-         
-            await context.read<DashboardProvider>().fetchDashboardData();
-
-          },
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    const HomeTopBanner(),
-                    Transform.translate(
-                      offset: const Offset(0, -30),
-
-                      // child: const HomeOfferSection(),
-                      // child: SearchBox(),
-                      child:ExpoloreCategories(),
+    return Consumer<DashboardProvider>(
+      builder: (context, provider, child) {
+        return Scaffold(
+          backgroundColor: AppColors.naturalWhite,
+          body: SafeArea(
+            top: false,
+            child: RefreshIndicator(
+              color: AppColors.primaryRed,
+              onRefresh: () async {
+                await context.read<DashboardProvider>().refreshAllData();
+              },
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        const HomeTopBanner(),
+                        Transform.translate(
+                          offset: const Offset(0, -30),
+                          child: const ExpoloreCategories(),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SliverToBoxAdapter(
+                    child: ExpolreCategoriesStack(),
+                  ),
+                  SliverToBoxAdapter(
+                    child: const ReliableAndTrustworthySection(),
+                  ),
+                  SliverToBoxAdapter(
+                    child: const ReferSection(),
+                  ),
+                ],
               ),
-              // const SliverToBoxAdapter(child: SearchBox()),
-              // const SliverToBoxAdapter(child: SizedBox(height: 10)),
-              // const SliverToBoxAdapter(child: ExpoloreCategories()),
-              const SliverToBoxAdapter(child: ExpolreCategoriesStack()),
-              SliverToBoxAdapter(child: ReliableAndTrustworthySection()),
-              SliverToBoxAdapter(child: ReferSection()),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

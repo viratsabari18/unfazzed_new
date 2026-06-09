@@ -50,6 +50,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _openPlayStore() async {
+    final Uri url = Uri.parse(
+      'https://play.google.com/store/apps/details?id=com.unfazzed',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,27 +115,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
 
-                _ProfileMenuItem(
-                  icon: Icons.person_outline,
-                  title: 'Referral & Loyalty',
-                  onTap: () async {
-                    final result = await Navigator.pushNamed(
-                      context,
-                      AppRoutes.referral,
-                      arguments: widget.user ?? UserModel.mock(),
-                    );
+                // _ProfileMenuItem(
+                //   icon: Icons.person_outline,
+                //   title: 'Referral & Loyalty',
+                //   onTap: () async {
+                //     final result = await Navigator.pushNamed(
+                //       context,
+                //       AppRoutes.referral,
+                //       arguments: widget.user ?? UserModel.mock(),
+                //     );
 
-                    if (result != null && result is Map<String, dynamic>) {
-                      setState(() {
-                        _currentWallet = result['newWallet'] ?? _currentWallet;
-                      });
-                    }
-                  },
-                ),
+                //     if (result != null && result is Map<String, dynamic>) {
+                //       setState(() {
+                //         _currentWallet = result['newWallet'] ?? _currentWallet;
+                //       });
+                //     }
+                //   },
+                // ),
                 _ProfileMenuItem(
                   icon: Icons.star_border_outlined,
                   title: 'Rate Us',
-                  onTap: () {},
+                  onTap: () {
+                    _openPlayStore();
+                  },
                 ),
                 _ProfileMenuItem(
                   icon: Icons.message_outlined,
@@ -141,19 +153,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _ProfileMenuItem(
                   icon: Icons.description_outlined,
                   title: 'Terms And Conditions',
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.termsAndCondtions),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.termsAndCondtions),
                 ),
 
                 _ProfileMenuItem(
                   icon: Icons.privacy_tip_outlined,
                   title: 'Privacy Policy',
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.privacyPolicy),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.privacyPolicy),
                 ),
 
-                  _ProfileMenuItem(
+                _ProfileMenuItem(
                   icon: Icons.support_agent_outlined,
                   title: 'Help And Support',
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.helpAndSupport),
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.helpAndSupport),
                 ),
               ],
             ),
@@ -223,18 +238,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Container(
                       width: 70,
                       height: 70,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFEEEEEE),
-                          width: 1,
-                        ),
-                        image: DecorationImage(
-                          image: photoUrl != null
-                              ? NetworkImage(photoUrl) as ImageProvider
-                              : const AssetImage(UserMessages.profileImage),
-                          fit: BoxFit.cover,
-                        ),
+                     
+                      child: const Icon(
+                        Icons.account_circle,
+                        size: 70,
+                        color: Colors.grey,
                       ),
                     ),
                     const SizedBox(width: 20),
@@ -418,13 +426,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (mounted) {
             Provider.of<UserProvider>(context, listen: false).clearUser();
             // User Request: Keep addresses persistent across login/logout
-            Provider.of<AddressProvider>(context, listen: false).clearAddressData();
+            Provider.of<AddressProvider>(
+              context,
+              listen: false,
+            ).clearAddressData();
             Navigator.pushNamedAndRemoveUntil(
               context,
               AppRoutes.signIn,
               (route) => false,
             );
-  
           }
         },
         style: ElevatedButton.styleFrom(

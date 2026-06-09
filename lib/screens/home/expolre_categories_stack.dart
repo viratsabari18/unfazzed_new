@@ -4,11 +4,16 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 
 import 'package:zeerah/core/common/app_exports.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/core/providers/dashboard_provider.dart';
 import 'package:zeerah/screens/home/coming_soon_section.dart';
+import 'package:zeerah/widgets/common/app_shimmer.dart';
+
+
+
 
 class ExpolreCategoriesStack extends StatelessWidget {
   const ExpolreCategoriesStack({super.key});
@@ -56,23 +61,18 @@ class ExpolreCategoriesStack extends StatelessWidget {
             );
           }
         }
+        if (!dashboardProvider.hasLoadedInitialSubCategory) {
+  return const CarouselShimmer();
+}
 
+        // Show shimmer while subcategories are loading
         if (dashboardProvider.isSubCategoryLoading) {
-          return SizedBox(
-            height: MediaQuery.of(context).size.height * 0.56,
-            child: const Center(
-              child: CircularProgressIndicator(color: Colors.red),
-            ),
-          );
+          return const CarouselShimmer();
         }
 
+        // Show shimmer while main categories are loading with empty items
         if (dashboardProvider.isLoading && items.isEmpty) {
-          return SizedBox(
-            height: MediaQuery.of(context).size.height * 0.56,
-            child: const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryRed),
-            ),
-          );
+          return const CarouselShimmer();
         }
 
         if (dashboardProvider.categories.isEmpty &&
@@ -81,7 +81,7 @@ class ExpolreCategoriesStack extends StatelessWidget {
         }
 
         if (items.isEmpty && !dashboardProvider.isLoading) {
-          return ComingSoonSection();
+          return const ComingSoonSection();
         }
 
         return Column(
@@ -379,7 +379,6 @@ class _ImageView extends StatelessWidget {
           ),
         ],
       ),
-
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
         child: _buildImage(),
@@ -397,11 +396,8 @@ class _ImageView extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
-        placeholder: (context, url) =>
-            _buildLoadingWidget(),
-        errorWidget:
-            (context, url, error) =>
-                _buildErrorWidget(),
+        placeholder: (context, url) => _buildShimmerWidget(),
+        errorWidget: (context, url, error) => _buildErrorWidget(),
       );
     } else {
       return Image.asset(
@@ -409,8 +405,7 @@ class _ImageView extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
-        errorBuilder: (_, __, ___) =>
-            _buildErrorWidget(),
+        errorBuilder: (_, __, ___) => _buildErrorWidget(),
       );
     }
   }
@@ -420,8 +415,7 @@ class _ImageView extends StatelessWidget {
       color: Colors.grey.shade900,
       child: const Center(
         child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.image_not_supported_outlined,
@@ -442,13 +436,16 @@ class _ImageView extends StatelessWidget {
     );
   }
 
-  Widget _buildLoadingWidget() {
+  Widget _buildShimmerWidget() {
     return Container(
       color: Colors.grey.shade800,
-      child: const Center(
-        child: CircularProgressIndicator(
-          color: Colors.amber,
-          strokeWidth: 2,
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey.shade800,
+        highlightColor: Colors.grey.shade600,
+        child: Container(
+          color: Colors.grey.shade800,
+          width: double.infinity,
+          height: double.infinity,
         ),
       ),
     );

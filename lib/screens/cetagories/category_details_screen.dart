@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:zeerah/controllers/service%20_list_controller.dart';
 
+
 import 'package:zeerah/core/config/api_config.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,13 @@ import 'package:zeerah/core/models/favorite_service.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
 import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/screens/handyman services/bookings/booking_home_page.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:zeerah/widgets/common/app_shimmer.dart';
+
+// Add shimmer components if not already available globally
+
+
+
 
 class CategoryDetailsScreen extends StatefulWidget {
   final String subcategoryName;
@@ -181,15 +189,9 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
             "📱 CategoryDetailsScreen: Selected Location -> Lat: $lat, Lng: $lng",
           );
 
-          if (controller.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryRed),
-            );
-          }
+          // Show shimmer while loading
           if (controller.isLoading && controller.serviceList.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryRed),
-            );
+            return _buildShimmerGrid();
           }
 
           /// SHOW EMPTY ONLY AFTER API COMPLETES
@@ -425,47 +427,6 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                           ),
                         ],
                       ),
-
-                      // Price range slider (commented out but kept for reference)
-                      // RangeSlider(
-                      //   values: _priceRange,
-                      //   min: _minPrice,
-                      //   max: _maxPrice,
-                      //   divisions: 100,
-                      //   labels: RangeLabels(
-                      //     '₹${_priceRange.start.round()}',
-                      //     '₹${_priceRange.end.round()}',
-                      //   ),
-                      //   activeColor: AppColors.primaryRed,
-                      //   inactiveColor: Colors.grey.shade300,
-                      //   onChanged: (RangeValues values) {
-                      //     setState(() {
-                      //       _priceRange = values;
-                      //     });
-                      //   },
-                      // ),
-                      // Padding(
-                      //   padding: const EdgeInsets.symmetric(horizontal: 8),
-                      //   child: Row(
-                      //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      //     children: [
-                      //       Text(
-                      //         '₹${_priceRange.start.round()}',
-                      //         style: const TextStyle(
-                      //           fontSize: 12,
-                      //           color: Colors.grey,
-                      //         ),
-                      //       ),
-                      //       Text(
-                      //         '₹${_priceRange.end.round()}',
-                      //         style: const TextStyle(
-                      //           fontSize: 12,
-                      //           color: Colors.grey,
-                      //         ),
-                      //       ),
-                      //     ],
-                      //   ),
-                      // ),
                       SizedBox(height: AppSizes.h(context, 16)),
 
                       // Sort By
@@ -624,7 +585,7 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
                         itemBuilder: (context, index) {
                           final service = filteredServices[index];
                           return _ServiceCard(
-                            key: UniqueKey(),
+                          
                             service: service,
                           );
                         },
@@ -634,6 +595,48 @@ class _CategoryDetailsScreenState extends State<CategoryDetailsScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildShimmerGrid() {
+    return Column(
+      children: [
+        // Header with Popular text and Filter Button (preserved for layout)
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSizes.w(context, 16),
+            vertical: AppSizes.h(context, 12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AppShimmer(
+                height: 24,
+                width: AppSizes.w(context, 80),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              AppShimmer(
+                height: 36,
+                width: AppSizes.w(context, 80),
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: GridView.builder(
+            padding: EdgeInsets.all(Insets.md),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: AppSizes.w(context, 16),
+              mainAxisSpacing: AppSizes.h(context, 16),
+              childAspectRatio: getCardAspectRatio(context),
+            ),
+            itemCount: 6, // Show 6 shimmer cards
+            itemBuilder: (context, index) => const ServiceCardShimmer(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -907,11 +910,7 @@ class _ServiceCardState extends State<_ServiceCard> {
                   _isLoadingAddOns
                       ? Padding(
                           padding: EdgeInsets.all(AppSizes.w(context, 40)),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.primaryRed,
-                            ),
-                          ),
+                          child: const ServiceCardShimmer(),
                         )
                       : _addOnServices.isEmpty
                       ? Padding(
@@ -1035,10 +1034,11 @@ class _ServiceCardState extends State<_ServiceCard> {
                                                       child: SizedBox(
                                                         height: 24,
                                                         width: 24,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                              strokeWidth: 2,
-                                                            ),
+                                                        child: AppShimmer(
+                                                          height: 24,
+                                                          width: 24,
+                                                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                                                        ),
                                                       ),
                                                     ),
                                                   ),
@@ -1283,7 +1283,7 @@ class _ServiceCardState extends State<_ServiceCard> {
                     color: Colors.grey.shade100,
                   ),
                   child: GestureDetector(
-                     onTap: () {
+                    onTap: () {
                       Navigator.pushNamed(
                         context,
                         AppRoutes.serviceDetails,
@@ -1304,8 +1304,11 @@ class _ServiceCardState extends State<_ServiceCard> {
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
-                        placeholder: (context, url) =>
-                            Container(color: Colors.grey.shade200),
+                        placeholder: (context, url) => AppShimmer(
+                          height: double.infinity,
+                          width: double.infinity,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         errorWidget: (context, url, error) => Container(
                           color: Colors.grey.shade200,
                           child: Icon(
@@ -1417,7 +1420,7 @@ class _ServiceCardState extends State<_ServiceCard> {
                   bottom: AppSizes.h(context, 15),
                   right: AppSizes.w(context, 15),
                   child: GestureDetector(
-                     onTap: () {
+                    onTap: () {
                       Navigator.pushNamed(
                         context,
                         AppRoutes.serviceDetails,
@@ -1518,38 +1521,45 @@ class _ServiceCardState extends State<_ServiceCard> {
                       ],
                     ),
                     GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        if (_addOnServices.isNotEmpty) {
-                          _showAddOnsBottomSheet();
-                        } else {
-                          final subtotal =
-                              widget.service.price?.toDouble() ?? 0;
-                          final discountPercent =
-                              double.tryParse(
-                                widget.service.discount.toString(),
-                              ) ??
-                              0;
-                          final discountAmount =
-                              (subtotal * discountPercent) / 100;
+                onTap: () async {
+  HapticFeedback.lightImpact();
 
-                          print("Subtotal: $subtotal");
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => BookingHomePage(
-                                service: widget.service,
-                                discountAmount: discountAmount,
-                                discountPercent: discountPercent,
-                                totalAmount: subtotal - discountAmount,
-                                fullAmount: subtotal,
-                                selectedOption: null,
-                                selectedAddOns: [],
-                              ),
-                            ),
-                          );
-                        }
-                      },
+  if (_isLoadingAddOns || _isFetchingPrice) {
+    debugPrint("Waiting for addons API...");
+    return;
+  }
+
+  if (_addOnServices.isNotEmpty) {
+    _showAddOnsBottomSheet();
+    return;
+  }
+
+  final subtotal = widget.service.price?.toDouble() ?? 0;
+
+  final discountPercent =
+      double.tryParse(
+        widget.service.discount.toString(),
+      ) ??
+      0;
+
+  final discountAmount =
+      (subtotal * discountPercent) / 100;
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => BookingHomePage(
+        service: widget.service,
+        discountAmount: discountAmount,
+        discountPercent: discountPercent,
+        totalAmount: subtotal - discountAmount,
+        fullAmount: subtotal,
+        selectedOption: null,
+        selectedAddOns: [],
+      ),
+    ),
+  );
+},
                       child: Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: AppSizes.w(context, 10),

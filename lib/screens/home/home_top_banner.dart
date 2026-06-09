@@ -8,6 +8,8 @@ import 'package:zeerah/core/providers/user_provider.dart';
 import 'package:zeerah/core/providers/dashboard_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:zeerah/core/services/notification_service.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:zeerah/widgets/common/app_shimmer.dart';
 
 class HomeTopBanner extends StatefulWidget {
   const HomeTopBanner({super.key});
@@ -146,24 +148,16 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
   Widget build(BuildContext context) {
     return Consumer<DashboardProvider>(
       builder: (context, dashboardProvider, _) {
-        final List<String> banners = dashboardProvider.sliderImages.isNotEmpty
-            ? dashboardProvider.sliderImages
-            : [
-                UserMessages.homepageBannerDummy2,
-                UserMessages.homepageBannerDummy3,
-                UserMessages.homeBanner,
-                UserMessages.homepageBannerDummy,
-              ];
-
-        if (dashboardProvider.isLoading &&
-            dashboardProvider.sliderImages.isEmpty) {
+        // Show shimmer when loading OR when no images are available
+        if (dashboardProvider.isLoading ||
+            (dashboardProvider.sliderImages.isEmpty && !dashboardProvider.isLoading)) {
           return SizedBox(
             height: AppSizes.h(context, 325),
-            child: const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryRed),
-            ),
+            child: const AppCardShimmer(height: 325),
           );
         }
+        
+        final List<String> banners = dashboardProvider.sliderImages;
 
         return SizedBox(
           height: AppSizes.h(context, 325),
@@ -181,26 +175,18 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                   },
                 ),
                 items: banners.map((image) {
-                  return image.startsWith('http')
-                      ? CachedNetworkImage(
-                          imageUrl: image,
-                          httpHeaders: const {},
-                          width: double.infinity,
-                          fit: BoxFit.fill,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) =>
-                              const Icon(Icons.error),
-                        )
-                      : Image.asset(
-                          image,
-                          width: double.infinity,
-                          fit: BoxFit.contain,
-                        );
+                  return CachedNetworkImage(
+                    imageUrl: image,
+                    width: double.infinity,
+                    fit: BoxFit.fill,
+                    useOldImageOnUrlChange: false,
+                    placeholder: (context, url) => const AppCardShimmer(
+                      height: 325,
+                    ),
+                    errorWidget: (context, url, error) => const AppCardShimmer(
+                      height: 325,
+                    ),
+                  );
                 }).toList(),
               ),
               Positioned(
@@ -293,13 +279,10 @@ class _HomeTopBannerState extends State<HomeTopBanner> {
                       Row(
                         children: [
                           if (showLoading)
-                            SizedBox(
+                            const SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.grey.shade600,
-                              ),
+                              child: AppCircleShimmer(size: 14),
                             ),
                           if (showLoading) const SizedBox(width: 8),
                           Flexible(

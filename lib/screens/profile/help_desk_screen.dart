@@ -449,19 +449,18 @@ Widget _buildContactCard(
         Text(
           title,
           textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+  style: const TextStyle(
+  fontSize: 13,
+  fontWeight: FontWeight.w600,
+)
         ),
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(
-            fontSize: 11,
-            color: Colors.green,
-            fontWeight: FontWeight.w500,
-          ),
+     style: const TextStyle(
+  fontSize: 13,
+  fontWeight: FontWeight.w600,
+)
         ),
       ],
     ),

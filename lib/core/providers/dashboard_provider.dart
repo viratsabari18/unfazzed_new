@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:zeerah/core/config/api_config.dart';
 import 'package:http/http.dart' as http;
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:provider/provider.dart';
 import 'package:zeerah/core/providers/address_provider.dart';
 
 class DashboardProvider with ChangeNotifier {
@@ -20,6 +18,11 @@ class DashboardProvider with ChangeNotifier {
   bool _isRefreshing = false;
   AddressProvider? _addressProvider;
 
+  // Cache flags
+  bool _dashboardLoaded = false;
+  bool _categoriesLoaded = false;
+  bool _offersLoaded = false;
+
   bool get isLoading => _isLoading;
   List<String> get sliderImages => _sliderImages;
   List<Map<String, dynamic>> get categories => _categories;
@@ -28,6 +31,22 @@ class DashboardProvider with ChangeNotifier {
       (_selectedCategoryId != null) ? (_subCategoriesMap[_selectedCategoryId] ?? []) : [];
   int? get selectedCategoryId => _selectedCategoryId;
   String? get errorMessage => _errorMessage;
+
+  bool _isInitialLoading = true;
+  bool get isInitialLoading => _isInitialLoading;
+
+  bool _hasLoadedInitialSubCategory = false;
+  bool get hasLoadedInitialSubCategory => _hasLoadedInitialSubCategory;
+
+  String fixImageUrl(String imageUrl) {
+    if (imageUrl.contains("127.0.0.1:8000")) {
+      return imageUrl.replaceAll(
+        "http://127.0.0.1:8000",
+        baseUrl,
+      );
+    }
+    return imageUrl;
+  }
 
   void setLocation(double? lat, double? lng) {
     if (_latitude == lat && _longitude == lng) return;
@@ -58,147 +77,227 @@ class DashboardProvider with ChangeNotifier {
     if (location == null) return;
     
     if (_isRefreshing) {
-      debugPrint("Already refreshing, skipping duplicate call");
+      debugPrint("Refresh already running");
       return;
     }
-    
-    _isRefreshing = true;
     
     double? lat = double.tryParse(location['latitude'].toString());
     double? lng = double.tryParse(location['longitude'].toString());
     
-    setLocation(lat, lng);
-    
-    debugPrint("DashboardProvider: Location changed - Refreshing all data");
-    debugPrint("NEW LAT: $_latitude, LNG: $_longitude");
-    
-    // Clear subcategory cache when location changes
-    _subCategoriesMap.clear();
-    
-    // Refresh all main data
-    await Future.wait([
-      fetchDashboardData(),
-      fetchCategories(),
-      fetchOffers(),
-    ]);
-    
-    // After refreshing categories, refresh subcategories for current selection
-    if (_selectedCategoryId != null) {
-      debugPrint("Refreshing subcategories for selected category: $_selectedCategoryId");
-      await fetchSubCategories(_selectedCategoryId!);
+    if (lat == null || lng == null) {
+      _isRefreshing = false;
+      return;
     }
     
-    _isRefreshing = false;
-  }
-
-  Future<void> refreshAllData() async {
-    if (_isRefreshing) return;
+    if (_latitude == lat && _longitude == lng) return;
+    
     _isRefreshing = true;
     
-    debugPrint("Manual refresh - Clearing all cache");
-    
-    // Clear cache on manual refresh
-    _subCategoriesMap.clear();
-    
-    await Future.wait([
-      fetchDashboardData(),
-      fetchCategories(),
-      fetchOffers(),
-    ]);
-    
-    if (_selectedCategoryId != null) {
-      await fetchSubCategories(_selectedCategoryId!);
-    }
-    
-    _isRefreshing = false;
-  }
-
-  Future<void> fetchInitialData({double? latitude, double? longitude}) async {
-    if (latitude != null) _latitude = latitude;
-    if (longitude != null) _longitude = longitude;
-
-    if (_categories.isEmpty && !_isRefreshing) {
-      _isRefreshing = true;
+    try {
+      setLocation(lat, lng);
+      
+      debugPrint("DashboardProvider: Location changed - Refreshing all data");
+      debugPrint("NEW LAT: $_latitude, LNG: $_longitude");
+      
+      // Clear subcategory cache when location changes
+      _subCategoriesMap.clear();
+      _hasLoadedInitialSubCategory = false;
+      
+      // Reset cache flags
+      _dashboardLoaded = false;
+      _categoriesLoaded = false;
+      _offersLoaded = false;
+      
+      // Refresh all main data
       await Future.wait([
-        fetchDashboardData(),
-        fetchCategories(),
-        fetchOffers(),
+        _fetchDashboardDataInternal(),
+        _fetchCategoriesInternal(),
+        _fetchOffersInternal(),
       ]);
       
-      // Fetch subcategories for selected category if exists
+      // After refreshing categories, refresh subcategories for current selection
       if (_selectedCategoryId != null) {
-        await fetchSubCategories(_selectedCategoryId!);
+        debugPrint("Refreshing subcategories for selected category: $_selectedCategoryId");
+        
+        _isSubCategoryLoading = true;
+        notifyListeners();
+
+        try {
+          await fetchSubCategories(_selectedCategoryId!);
+          _hasLoadedInitialSubCategory = true;
+        } finally {
+          _isSubCategoryLoading = false;
+          notifyListeners();
+        }
       }
-      
+    } finally {
       _isRefreshing = false;
     }
   }
 
-  Future<void> fetchOffers() async {
+  Future<void> refreshAllData() async {
+    if (_isRefreshing) {
+      debugPrint("Refresh already running");
+      return;
+    }
+    _isRefreshing = true;
+    
     try {
-      final response = await http.get(Uri.parse(offerUrl));
+      debugPrint("Manual refresh - Clearing all cache");
+      
+      // Reset cache flags
+      _dashboardLoaded = false;
+      _categoriesLoaded = false;
+      _offersLoaded = false;
+      
+      // Clear cache on manual refresh
+      _subCategoriesMap.clear();
+      _hasLoadedInitialSubCategory = false;
+      
+      await Future.wait([
+        _fetchDashboardDataInternal(),
+        _fetchCategoriesInternal(),
+        _fetchOffersInternal(),
+      ]);
+      
+      if (_selectedCategoryId != null) {
+        _isSubCategoryLoading = true;
+        notifyListeners();
+
+        try {
+          await fetchSubCategories(_selectedCategoryId!);
+          _hasLoadedInitialSubCategory = true;
+        } finally {
+          _isSubCategoryLoading = false;
+          notifyListeners();
+        }
+      }
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  Future<void> fetchInitialData({
+    double? latitude,
+    double? longitude,
+  }) async {
+    if (latitude != null) _latitude = latitude;
+    if (longitude != null) _longitude = longitude;
+
+    _isInitialLoading = true;
+    notifyListeners();
+
+    try {
+      await Future.wait([
+        _fetchDashboardDataInternal(),
+        _fetchCategoriesInternal(),
+        _fetchOffersInternal(),
+      ]);
+    } finally {
+      _isInitialLoading = false;
+      notifyListeners();
+    }
+
+    if (_selectedCategoryId != null) {
+      _isSubCategoryLoading = true;
+      notifyListeners();
+
+      try {
+        await fetchSubCategories(_selectedCategoryId!);
+      } finally {
+        _hasLoadedInitialSubCategory = true;
+        _isSubCategoryLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> _fetchOffersInternal() async {
+    if (_offersLoaded) return;
+
+    try {
+      final response = await http
+          .get(Uri.parse(offerUrl))
+          .timeout(const Duration(seconds: 10));
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> offerData = data['data'];
-        _offers = offerData.map((item) {
+        final newOffers = offerData.map((item) {
           String imageUrl = item['offer_image'] ?? "";
-          if (imageUrl.contains("127.0.0.1:8000")) {
-            imageUrl = imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
-          }
           return {
             'id': item['id'],
             'title': item['title'],
             'subtitle': item['short_description_1'],
             'footer': item['short_description_2'] ?? 'Explore Now',
             'color': item['background_color'],
-            'image': imageUrl,
+            'image': fixImageUrl(imageUrl),
           };
         }).toList();
-        notifyListeners();
+        
+        // Only notify if data actually changed
+        if (!_areOffersEqual(_offers, newOffers)) {
+          _offers = newOffers;
+          notifyListeners();
+        }
       }
     } catch (e) {
       debugPrint("Error fetching offers: $e");
+    } finally {
+      _offersLoaded = true;
     }
   }
 
-  Future<void> fetchDashboardData() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  Future<void> fetchOffers() async {
+    await _fetchOffersInternal();
+  }
+
+  Future<void> _fetchDashboardDataInternal() async {
+    if (_dashboardLoaded) return;
 
     try {
-      final response = await http.get(Uri.parse(dashboardUrl));
+      final response = await http
+          .get(Uri.parse(dashboardUrl))
+          .timeout(const Duration(seconds: 10));
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == true) {
           final List<dynamic> sliderData = data['slider'];
-          _sliderImages = sliderData.map((item) {
+          final newSliderImages = sliderData.map((item) {
             String imageUrl = item['slider_image'] ?? "";
-            if (imageUrl.contains("127.0.0.1:8000")) {
-              imageUrl = imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
-            }
-            return imageUrl;
+            return fixImageUrl(imageUrl);
           }).toList();
+          
+          // Only notify if data actually changed
+          if (!_areSliderImagesEqual(_sliderImages, newSliderImages)) {
+            _sliderImages = newSliderImages;
+            notifyListeners();
+          }
         }
       }
     } catch (e) {
       debugPrint("Error fetching dashboard: $e");
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _dashboardLoaded = true;
     }
   }
 
-  Future<void> fetchCategories() async {
-    _isLoading = true;
-    notifyListeners();
+  Future<void> fetchDashboardData({bool force = false}) async {
+    if (force) _dashboardLoaded = false;
+    await _fetchDashboardDataInternal();
+  }
+
+  Future<void> _fetchCategoriesInternal() async {
+    if (_categoriesLoaded) return;
 
     try {
       String url = categoryUrl;
-
       debugPrint("Fetch Categories URL: $url");
 
-      final response = await http.get(Uri.parse(url));
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -206,35 +305,42 @@ class DashboardProvider with ChangeNotifier {
 
         final List<dynamic> catData = data['data'];
 
-        _categories = catData.map((item) {
+        final newCategories = catData.map((item) {
           String imageUrl = item['category_image'] ?? "";
-          if (imageUrl.contains("127.0.0.1:8000")) {
-            imageUrl = imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
-          }
           return {
             'id': item['id'],
             'name': item['name'],
-            'image': imageUrl,
+            'image': fixImageUrl(imageUrl),
           };
         }).toList();
 
-        debugPrint("Categories Count: ${_categories.length}");
+        debugPrint("Categories Count: ${newCategories.length}");
+
+        int? newSelectedCategoryId = _selectedCategoryId;
 
         // FIX: If categories are empty, clear selected category
-        if (_categories.isEmpty) {
-          _selectedCategoryId = null;
+        if (newCategories.isEmpty) {
+          newSelectedCategoryId = null;
           debugPrint("No categories found, clearing selected category");
-        } else if (_selectedCategoryId == null) {
+        } else if (newSelectedCategoryId == null) {
           // Only set initial category if none is selected
-          _selectedCategoryId = _categories[0]['id'];
-          debugPrint("Initial category selected: $_selectedCategoryId");
+          newSelectedCategoryId = newCategories[0]['id'];
+          debugPrint("Initial category selected: $newSelectedCategoryId");
         } else {
           // FIX: Check if selected category still exists in new categories
-          final stillExists = _categories.any((c) => c['id'] == _selectedCategoryId);
+          final stillExists = newCategories.any((c) => c['id'] == newSelectedCategoryId);
           if (!stillExists) {
-            _selectedCategoryId = _categories[0]['id'];
-            debugPrint("Selected category no longer exists, switching to: $_selectedCategoryId");
+            newSelectedCategoryId = newCategories[0]['id'];
+            debugPrint("Selected category no longer exists, switching to: $newSelectedCategoryId");
           }
+        }
+
+        // Only notify if data actually changed
+        if (!_areCategoriesEqual(_categories, newCategories) || 
+            _selectedCategoryId != newSelectedCategoryId) {
+          _categories = newCategories;
+          _selectedCategoryId = newSelectedCategoryId;
+          notifyListeners();
         }
       } else {
         debugPrint("Fetch Categories Failed: ${response.statusCode}");
@@ -242,9 +348,13 @@ class DashboardProvider with ChangeNotifier {
     } catch (e) {
       debugPrint("Error fetching categories: $e");
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _categoriesLoaded = true;
     }
+  }
+
+  Future<void> fetchCategories({bool force = false}) async {
+    if (force) _categoriesLoaded = false;
+    await _fetchCategoriesInternal();
   }
 
   bool _isSubCategoryLoading = false;
@@ -261,10 +371,12 @@ class DashboardProvider with ChangeNotifier {
     _isSubCategoryLoading = true;
     notifyListeners();
 
-    await fetchSubCategories(categoryId);
-
-    _isSubCategoryLoading = false;
-    notifyListeners();
+    try {
+      await fetchSubCategories(categoryId);
+    } finally {
+      _isSubCategoryLoading = false;
+      notifyListeners();
+    }
   }
 
   void searchCategory(String query) {
@@ -293,7 +405,10 @@ class DashboardProvider with ChangeNotifier {
       debugPrint("LONGITUDE => $_longitude");
       debugPrint("SUB CATEGORY URL : $url");
 
-      final response = await http.get(Uri.parse(url));
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
+      
       debugPrint("SUB CATEGORY RESPONSE : ${response.body}");
 
       if (response.statusCode == 200) {
@@ -303,25 +418,23 @@ class DashboardProvider with ChangeNotifier {
         final subCats = subCatData.map((item) {
           final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item);
           String imageUrl = itemMap['category_image'] ?? "";
-
-          if (imageUrl.contains("127.0.0.1:8000")) {
-            imageUrl = imageUrl.replaceAll("http://127.0.0.1:8000", baseUrl);
-          }
-
           return {
             ...itemMap,
             'id': itemMap['id'],
             'name': itemMap['name'],
-            'image': imageUrl,
+            'image': fixImageUrl(imageUrl),
             'description': itemMap['description'] ?? "Professional service at your doorstep",
           };
         }).toList();
 
-        _subCategoriesMap[categoryId] = subCats;
+        // Only notify if data actually changed
+        if (!_areSubCategoriesEqual(_subCategoriesMap[categoryId], subCats)) {
+          _subCategoriesMap[categoryId] = subCats;
+          notifyListeners();
+        }
         
         debugPrint("SUBCATEGORY COUNT => ${subCats.length}");
         debugPrint("============================================");
-        notifyListeners();
       } else {
         debugPrint("Failed to fetch subcategories: ${response.statusCode}");
         _subCategoriesMap[categoryId] = [];
@@ -348,6 +461,48 @@ class DashboardProvider with ChangeNotifier {
     _sliderImages.clear();
     _offers.clear();
     _selectedCategoryId = null;
+    _dashboardLoaded = false;
+    _categoriesLoaded = false;
+    _offersLoaded = false;
+    _hasLoadedInitialSubCategory = false; // Added this line
     notifyListeners();
+  }
+
+  // Equality check helpers to prevent unnecessary rebuilds
+  bool _areOffersEqual(List<Map<String, dynamic>> oldOffers, List<Map<String, dynamic>> newOffers) {
+    if (oldOffers.length != newOffers.length) return false;
+    for (int i = 0; i < oldOffers.length; i++) {
+      if (oldOffers[i]['id'] != newOffers[i]['id']) return false;
+      if (oldOffers[i]['image'] != newOffers[i]['image']) return false;
+    }
+    return true;
+  }
+
+  bool _areSliderImagesEqual(List<String> oldImages, List<String> newImages) {
+    if (oldImages.length != newImages.length) return false;
+    for (int i = 0; i < oldImages.length; i++) {
+      if (oldImages[i] != newImages[i]) return false;
+    }
+    return true;
+  }
+
+  bool _areCategoriesEqual(List<Map<String, dynamic>> oldCats, List<Map<String, dynamic>> newCats) {
+    if (oldCats.length != newCats.length) return false;
+    for (int i = 0; i < oldCats.length; i++) {
+      if (oldCats[i]['id'] != newCats[i]['id']) return false;
+      if (oldCats[i]['name'] != newCats[i]['name']) return false;
+      if (oldCats[i]['image'] != newCats[i]['image']) return false;
+    }
+    return true;
+  }
+
+  bool _areSubCategoriesEqual(List<Map<String, dynamic>>? oldSubs, List<Map<String, dynamic>> newSubs) {
+    if (oldSubs == null) return false;
+    if (oldSubs.length != newSubs.length) return false;
+    for (int i = 0; i < oldSubs.length; i++) {
+      if (oldSubs[i]['id'] != newSubs[i]['id']) return false;
+      if (oldSubs[i]['name'] != newSubs[i]['name']) return false;
+    }
+    return true;
   }
 }
